@@ -38,7 +38,7 @@ Focus the waveform with <kbd>Tab</kbd>, then:
 | <kbd>Home</kbd> | Jump to start (0 s) |
 | <kbd>End</kbd> | Jump to the end |
 
-These work in **both** audio modes. In self mode they call `seekTo()` directly; in [external mode](/player/audio-modes/) they dispatch a cancelable `waveformplayer:request-seek` event (the controller may `preventDefault()` to veto it; otherwise the local overlay advances optimistically). Seeking is a no-op until a duration is known.
+These work in **both** audio modes. In self mode they call `seekTo()` directly; in [external mode](/player/external-mode/) they dispatch a cancelable `waveformplayer:request-seek` event (the controller may `preventDefault()` to veto it; otherwise the local overlay advances optimistically). Seeking is a no-op until a duration is known.
 
 ### The player root
 
@@ -114,7 +114,7 @@ Beyond the slider, the rendered DOM is labelled throughout:
 | Cue markers | `.waveform-marker` | `aria-label` set to each marker's `label` |
 | Error overlay | `.waveform-error` | `role="alert"` — announced when load fails |
 
-Marker labels come straight from your [`markers`](/player/markers/) data, so give each cue a meaningful `label`. The error overlay text comes from `errorText` (escaped) and is announced live via `role="alert"`.
+Marker labels come straight from your [`markers`](/player/data-attributes/#markers) data, so give each cue a meaningful `label`. The error overlay text comes from `errorText` (escaped) and is announced live via `role="alert"`.
 
 ## Visible focus
 
@@ -191,12 +191,12 @@ new WaveformPlayer('#player', {
 ```
 
 <Aside type="caution">
-Media Session is **self mode only**. In external mode `this.audio` is `null`, so registration is skipped — the controller (for example [`waveform-bar`](/ecosystem/waveform-bar/)) owns playback and registers its own Media Session handlers; registering ours too would conflict. Set `enableMediaSession: false` if a host page manages Media Session itself.
+Media Session is **self mode only**. In external mode `this.audio` is `null`, so registration is skipped — the controller (for example [`waveform-bar`](/extensions/bar/)) owns playback and registers its own Media Session handlers; registering ours too would conflict. Set `enableMediaSession: false` if a host page manages Media Session itself.
 </Aside>
 
 ## External mode and assistive tech
 
-[External mode](/player/audio-modes/) keeps full accessibility even without an owned `<audio>` element:
+[External mode](/player/external-mode/) keeps full accessibility even without an owned `<audio>` element:
 
 - The seek slider still renders with `role="slider"` and full ARIA values, driven by the external clock via `setProgress()`.
 - Arrow / Page / Home / End seeking and <kbd>Space</kbd> still work — they dispatch cancelable `waveformplayer:request-seek` / `request-play` / `request-pause` events for the controller to honour.
@@ -239,4 +239,4 @@ What does **not** apply in external mode: digit-key seeking, arrow-key volume, `
 
 </Tabs>
 
-See [Options](/player/options/) for the full surface and [Audio modes](/player/audio-modes/) for how external-mode events drive the slider.
+See [Options](/player/options/) for the full surface and [Audio modes](/player/external-mode/) for how external-mode events drive the slider.

@@ -98,12 +98,12 @@ The fetched file is a single object. Only `peaks` is required:
 ```
 
 - **`peaks`** — `number[]`, each value a normalized amplitude in `0..1`. This is the waveform.
-- **`markers`** — optional `Array<{ time: number, label: string, color?: string }>`. Embedded markers are applied automatically **only if you have not already set `markers`** on the player — an explicit `markers` option/attribute wins. See [Markers](/player/markers/).
+- **`markers`** — optional `Array<{ time: number, label: string, color?: string }>`. Embedded markers are applied automatically **only if you have not already set `markers`** on the player — an explicit `markers` option/attribute wins. See [Markers](/player/data-attributes/#markers).
 
 A bare top-level array is also accepted (`[0.2, 0.37, ...]`) and treated as the peaks list, but the object form is preferred because it carries markers.
 
 <Aside type="note">
-  The player reads `peaks` and `markers` from the fetched JSON. It does **not** read an embedded `bpm` field — if WaveformGen wrote one, surface it through the [`bpm` option](/player/bpm/) or `data-bpm` instead. A known `bpm` shows even when peaks are pre-supplied (it wins over auto-detection).
+  The player reads `peaks` and `markers` from the fetched JSON. It does **not** read an embedded `bpm` field — if WaveformGen wrote one, surface it through the [`bpm` option](/player/data-attributes/#bpm) or `data-bpm` instead. A known `bpm` shows even when peaks are pre-supplied (it wins over auto-detection).
 </Aside>
 
 ## Generating peaks with WaveformGen
@@ -263,5 +263,5 @@ This still performs a Web Audio decode — it is the runtime counterpart to the 
 
 - [Options](/player/options/) — the full option surface, including `samples` and `preload`.
 - [Data attributes](/player/data-attributes/) — the declarative `data-waveform` contract.
-- [Markers](/player/markers/) — how embedded JSON markers interact with the `markers` option.
-- [BPM](/player/bpm/) — surfacing tempo alongside pre-computed peaks.
+- [Markers](/player/data-attributes/#markers) — how embedded JSON markers interact with the `markers` option.
+- [BPM](/player/data-attributes/#bpm) — surfacing tempo alongside pre-computed peaks.

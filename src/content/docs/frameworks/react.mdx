@@ -11,8 +11,8 @@ The `@arraypress` waveform family ships three React wrappers, each a thin, typed
 | Package | Component(s) | Wraps |
 | --- | --- | --- |
 | `@arraypress/waveform-player-react` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
-| `@arraypress/waveform-bar-react` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/bar/) |
-| `@arraypress/waveform-playlist-react` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/playlist/) |
+| `@arraypress/waveform-bar-react` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/extensions/bar/) |
+| `@arraypress/waveform-playlist-react` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/extensions/playlist/) |
 
 Every wrapper follows the same design:
 
@@ -515,7 +515,7 @@ All three components are SSR / RSC safe by construction: the host markup renders
     The `waveformplayer:*` DOM events — [Player → Events](/player/events/).
   </Card>
   <Card title="Astro" icon="astro">
-    The declarative `data-*` wrappers — [Astro](/astro/).
+    The declarative `data-*` wrappers — [Astro](/frameworks/astro/).
   </Card>
   <Card title="Installation" icon="download">
     Bundler, CDN, and CSS setup — [Getting started](/getting-started/installation/).

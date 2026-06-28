@@ -174,7 +174,7 @@ The full event surface:
 | `waveformplayer:timeupdate` | `{ player, currentTime, duration, progress, url }` | `progress` is `0..1`. |
 | `waveformplayer:destroy` | `{ player, url }` | Emitted at the start of `destroy()`. |
 
-Cancelable `waveformplayer:request-*` events fire only in `external` mode — see [Audio modes](/player/audio-modes/). See [Events](/player/events/) for the complete reference.
+Cancelable `waveformplayer:request-*` events fire only in `external` mode — see [Audio modes](/player/external-mode/). See [Events](/player/events/) for the complete reference.
 
 ### Reacting to prop changes
 
@@ -328,7 +328,7 @@ onUnmounted(() => {
 </template>
 ```
 
-See [Pre-computed peaks](/player/peaks/) for generating and serving `.json` peak files.
+See [Pre-computed peaks](/player/waveform-data/) for generating and serving `.json` peak files.
 
 ## TypeScript
 
@@ -386,5 +386,5 @@ Mostly-static markup, no per-instance JS. Render `data-*`, call `WaveformPlayer.
 - [Methods](/player/methods/) — imperative API.
 - [Events](/player/events/) — DOM events and callbacks.
 - [Data attributes](/player/data-attributes/) — the declarative contract.
-- [Audio modes](/player/audio-modes/) — `self` vs `external`.
+- [Audio modes](/player/external-mode/) — `self` vs `external`.
 - [Getting started](/getting-started/installation/) — base install and concepts.

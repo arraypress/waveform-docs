@@ -218,7 +218,7 @@ So the rule is simple: **load the core player first, then any extension.**
 Ordinary `<script>` tags execute in document order, so listing the core first is enough. If you load scripts with `async`, that ordering guarantee is lost — use `defer` (which preserves order) or plain scripts when combining packages.
 </Aside>
 
-Stylesheet order doesn't matter for correctness, but keep the core stylesheet present whenever any extension is on the page — the extensions render core players and rely on its classes. Continue with [Bottom bar](/bar/getting-started/) or [Playlist](/playlist/getting-started/) for each extension's markup and triggers.
+Stylesheet order doesn't matter for correctness, but keep the core stylesheet present whenever any extension is on the page — the extensions render core players and rely on its classes. Continue with [Bottom bar](/extensions/bar/) or [Playlist](/extensions/playlist/) for each extension's markup and triggers.
 
 ## Self-hosting the dist files
 

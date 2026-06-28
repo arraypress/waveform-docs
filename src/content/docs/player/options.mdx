@@ -100,7 +100,7 @@ What to load and how to drive it.
 | `playbackRate` | `1` | `number` | Initial playback rate (self mode). `data-playback-rate`. |
 
 :::note[`audioMode: 'external'`]
-External players have no `<audio>` element — `seekTo`, `seekToPercent`, `setVolume`, `setPlaybackRate`, and Media Session are no-ops. Instead you drive visuals with `setPlayingState()` / `setProgress()`, and `play`/`pause`/seek dispatch **cancelable** `waveformplayer:request-*` events. See [Audio modes](/player/audio-modes/).
+External players have no `<audio>` element — `seekTo`, `seekToPercent`, `setVolume`, `setPlaybackRate`, and Media Session are no-ops. Instead you drive visuals with `setPlayingState()` / `setProgress()`, and `play`/`pause`/seek dispatch **cancelable** `waveformplayer:request-*` events. See [Audio modes](/player/external-mode/).
 :::
 
 ### Supplying peaks instead of decoding
@@ -200,7 +200,7 @@ When `colorPreset` is `null`, the library resolves a theme automatically and app
 | `borderColor` | `rgba(255,255,255,0.1)` | `rgba(0,0,0,0.1)` |
 
 :::note[Auto-theme opt-out]
-Auto-detection (and live re-detection on `<html>`/`<body>` theme flips or OS `prefers-color-scheme` changes) only runs while `colorPreset` is `null` and a colour is left unset. Setting an explicit `colorPreset` **or** any colour opts that out. Call [`refreshTheme()`](/player/api/#refreshtheme) to re-detect manually.
+Auto-detection (and live re-detection on `<html>`/`<body>` theme flips or OS `prefers-color-scheme` changes) only runs while `colorPreset` is `null` and a colour is left unset. Setting an explicit `colorPreset` **or** any colour opts that out. Call [`refreshTheme()`](/player/methods/#refreshtheme) to re-detect manually.
 :::
 
 ---
@@ -297,7 +297,7 @@ new WaveformPlayer('#player', {
 
 ## Per-track resets
 
-When you swap tracks at runtime with [`loadTrack()`](/player/api/#loadtrack), some options are deliberately reset so the new track can't inherit stale state:
+When you swap tracks at runtime with [`loadTrack()`](/player/methods/#loadtrackurl-title-subtitle-options), some options are deliberately reset so the new track can't inherit stale state:
 
 - `waveform` &rarr; `null` (otherwise the previous track's peaks would redraw)
 - `markers` &rarr; `[]`
@@ -372,13 +372,13 @@ Every attribute the parser recognises, including the marker and library-managed 
 <CardGrid>
 
   <Card title="Methods & API" icon="setting">
-    Drive players at runtime — [`loadTrack`, `seekTo`, `setProgress`, and the static helpers](/player/api/).
+    Drive players at runtime — [`loadTrack`, `seekTo`, `setProgress`, and the static helpers](/player/methods/).
   </Card>
   <Card title="Events" icon="bars">
     The full `waveformplayer:*` event map and cancelable `request-*` events — see [Events](/player/events/).
   </Card>
   <Card title="Audio modes" icon="random">
-    `self` vs `external` and how to wire a visualization-only player — see [Audio modes](/player/audio-modes/).
+    `self` vs `external` and how to wire a visualization-only player — see [Audio modes](/player/external-mode/).
   </Card>
   <Card title="Styling" icon="pencil">
     CSS classes and the `--wfp-*` custom properties — see [Styling](/player/styling/).

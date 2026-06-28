@@ -152,7 +152,7 @@ Defaults shown are the runtime `DEFAULT_OPTIONS` values (`themes.js` is the sour
 | `data-audio-mode` | `audioMode` | `self` \| `external` | `self` |
 | `data-autoplay` | `autoplay` | boolean | `false` |
 
-`data-audio-mode="external"` makes the player visualization-only — it owns no `<audio>` element and is driven by `setPlayingState()` / `setProgress()`. See [Audio modes](/player/audio-modes/).
+`data-audio-mode="external"` makes the player visualization-only — it owns no `<audio>` element and is driven by `setPlayingState()` / `setProgress()`. See [Audio modes](/player/external-mode/).
 
 ### Layout & sizing
 
@@ -198,7 +198,7 @@ If you do **not** set `barWidth`/`barSpacing` (via option or attribute), each st
 | `data-color` | `waveformColor` *(legacy alias)* | CSS color | — |
 | `data-theme` | `colorPreset` *(legacy alias)* | `dark` \| `light` | — |
 
-Leaving a color `null` lets it follow the resolved preset, and any color you leave `null` participates in **auto-theme** re-detection. Setting an explicit `colorPreset` (or hand-setting a color) opts that aspect out of re-detection. See [Theming](/player/theming/).
+Leaving a color `null` lets it follow the resolved preset, and any color you leave `null` participates in **auto-theme** re-detection. Setting an explicit `colorPreset` (or hand-setting a color) opts that aspect out of re-detection. See [Theming](/player/styling/).
 
 ### Behavior flags
 
@@ -253,7 +253,7 @@ The option is `showBPM`, but the attribute is **`data-show-bpm`** (the parser ma
 ></div>
 ```
 
-Use single quotes around the attribute so the JSON's double quotes survive in HTML. Invalid JSON is logged with a `[WaveformPlayer]` warning and skipped — the player still loads, just without markers. See [Markers](/player/markers/).
+Use single quotes around the attribute so the JSON's double quotes survive in HTML. Invalid JSON is logged with a `[WaveformPlayer]` warning and skipped — the player still loads, just without markers. See [Markers](/player/data-attributes/#markers).
 
 ### Playback speed
 
