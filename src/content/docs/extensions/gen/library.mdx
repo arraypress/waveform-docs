@@ -1,0 +1,168 @@
+---
+title: Library API
+description: The programmatic API, feeding the player, and build pipelines.
+sidebar:
+  order: 3
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Library API
+
+The package exports exactly one function — `generatePeaks` — re-exported from `lib/index.js`.
+
+```javascript
+import { generatePeaks } from '@arraypress/waveform-gen';
+
+const { peaks, bpm } = await generatePeaks('./song.mp3', {
+  samples: 1800,   // pass explicitly — library default is 200, not 1800
+  precision: 2,
+  detectBPM: true,
+});
+
+// peaks → number[] normalized 0..1 (loudest = 1.0)
+// bpm   → number | null
+```
+
+### `generatePeaks(filePath, options?)`
+
+`(filePath: string, options?: { samples?: number; precision?: number; detectBPM?: boolean }) => Promise<{ peaks: number[]; bpm: number | null }>`
+
+Reads and decodes the file, extracts max-amplitude peaks per bin across all channels, normalizes so the loudest peak is `1.0`, and rounds to `precision`.
+
+| Option | Default | Type | Description |
+|--------|---------|------|-------------|
+| `samples` | `200` | number | Number of peaks. Falsy (`0` / `undefined`) falls back to `200` via `options.samples \|\| 200`. |
+| `precision` | `2` | number | Decimal places. `>= 0` rounds; `< 0` returns unrounded normalized peaks. |
+| `detectBPM` | `false` | boolean | When `true`, also run BPM detection and return `bpm` (`number \| null`). |
+
+**Returns** a Promise resolving to `{ peaks, bpm }`. `bpm` is `null` unless `detectBPM` is `true` **and** a stable tempo was found.
+
+```javascript
+import { generatePeaks } from '@arraypress/waveform-gen';
+import { writeFile } from 'node:fs/promises';
+
+const result = await generatePeaks('./track.wav', { samples: 1800 });
+
+// Build the same JSON shape the CLI writes
+const output = { peaks: result.peaks };
+if (result.bpm != null) output.bpm = result.bpm;
+
+await writeFile('./waveforms/track.json', JSON.stringify(output, null, 2) + '\n');
+```
+
+<Aside type="note" title="Markers are CLI-only">
+The `.markers.txt` sidecar parsing lives in the CLI, not the library. `generatePeaks()` returns only `{ peaks, bpm }` — if you need markers from the library path, parse the sidecar yourself and merge it into the output object.
+</Aside>
+
+### BPM detection
+
+BPM is energy/onset based (window `2048`, hop `1024`): it detects transients, buckets the intervals into tempos `60 < bpm < 200`, picks the most common, applies octave-doubling/halving correction, and subtracts a `-1` calibration offset. It returns:
+
+- an **integer** when a stable tempo is found,
+- **`null`** when there are fewer than 2 onsets or no bucket matched.
+
+It's a heuristic, not exact metadata — verify critical values. When `null`, the CLI omits `bpm` from the JSON entirely.
+
+## Feeding the player
+
+The generated JSON is consumed by the player and bar via attributes (no WaveformGen-specific attributes exist — these belong to the consuming libraries):
+
+<Tabs syncKey="consumer">
+
+<TabItem label="WaveformPlayer">
+
+```html
+    <div data-waveform-player
+         data-url="song.mp3"
+         data-waveform="waveforms/song.json"></div>
+```
+    Or via JS — see [Options](/player/options/):
+```javascript
+    new WaveformPlayer(el, {
+      url: 'song.mp3',
+      waveform: 'waveforms/song.json',
+    });
+```
+
+</TabItem>
+<TabItem label="WaveformBar">
+
+```html
+    <div data-wb-play
+         data-url="song.mp3"
+         data-wb-waveform="waveforms/song.json"></div>
+```
+    See [WaveformBar](/bar/getting-started/).
+
+</TabItem>
+
+</Tabs>
+
+When a player is given pre-generated peaks, it skips client-side decoding entirely and renders the waveform immediately. If the JSON also carries `bpm` and `markers`, those flow through to the player's tempo display and marker track.
+
+## Build-pipeline usage
+
+### Batch a folder into a `waveforms/` directory
+
+```bash
+waveform-gen ./public/audio/ --recursive --output ./public/waveforms/ --samples 1800 --bpm
+```
+
+Every supported file under `./public/audio/` becomes `./public/waveforms/<name>.json` with peaks, detected `bpm`, and any sidecar markers.
+
+### npm script
+
+```json title="package.json"
+{
+  "scripts": {
+    "waveforms": "waveform-gen ./src/audio/ --recursive --output ./public/waveforms/ --samples 1800 --bpm --quiet",
+    "prebuild": "npm run waveforms"
+  }
+}
+```
+
+`--quiet` keeps CI logs clean; wiring it to `prebuild` regenerates peaks before every production build.
+
+### Programmatic batch with a manifest
+
+When you need more control — a manifest, custom file names, or merged metadata — drive the library directly:
+
+```javascript
+import { generatePeaks } from '@arraypress/waveform-gen';
+import { readdir, writeFile, mkdir } from 'node:fs/promises';
+import { join, basename, extname } from 'node:path';
+
+const SRC = './src/audio';
+const OUT = './public/waveforms';
+const SAMPLES = 1800; // match the CLI default explicitly
+
+await mkdir(OUT, { recursive: true });
+
+const manifest = {};
+for (const file of await readdir(SRC)) {
+  if (!/\.(mp3|wav|flac|ogg)$/i.test(file)) continue;
+
+  const name = basename(file, extname(file));
+  try {
+    const { peaks, bpm } = await generatePeaks(join(SRC, file), {
+      samples: SAMPLES,
+      precision: 2,
+      detectBPM: true,
+    });
+
+    const output = { peaks };
+    if (bpm != null) output.bpm = bpm;
+
+    await writeFile(join(OUT, `${name}.json`), JSON.stringify(output, null, 2) + '\n');
+    manifest[file] = { waveform: `waveforms/${name}.json`, bpm };
+  } catch (err) {
+    console.error(`[build] ${file}: ${err.message}`); // don't abort the batch
+  }
+}
+
+await writeFile(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+```
+
+<Aside type="tip" title="Keep samples consistent across a project">
+Pick one `samples` value and reuse it everywhere (build script, CI, ad-hoc CLI runs). Mixing `1800` and `200` across files produces visually inconsistent waveforms even for tracks of identical length.
+</Aside>

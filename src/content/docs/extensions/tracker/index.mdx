@@ -1,0 +1,126 @@
+---
+title: Getting Started
+description: What WaveformTracker measures and how to attach it.
+sidebar:
+  order: 1
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+**WaveformTracker** is a headless, ~2KB analytics add-on for [WaveformPlayer](/player/options/). It measures how much of your audio people *actually listen to* — real media-time, not wall-clock — and POSTs a compact JSON event to your endpoint (or hands it to your own callback) when a listener crosses a threshold you define.
+
+It renders no DOM, ships no CSS, sets no cookies, and collects no PII. Drop it on a page, call `init()` once, and it auto-discovers every player.
+
+<CardGrid>
+
+  <Card title="Media-time, not wall-clock" icon="seti:audio">
+    Engagement accumulates from `currentTime` deltas. 1.5x/2x playback is fully credited; paused and idle time is not.
+  </Card>
+  <Card title="Seeks ignored" icon="random">
+    Any forward jump of 5s or more is treated as a seek and dropped — scrubbing never inflates your numbers.
+  </Card>
+  <Card title="Privacy-first" icon="approve-check">
+    No cookies, no `localStorage`, no PII. The optional session id is a random in-memory string, regenerated every reload.
+  </Card>
+  <Card title="Survives unload" icon="rocket">
+    Terminal events use `navigator.sendBeacon` (with `fetch` + `keepalive` fallback) so they land even as the page navigates away.
+  </Card>
+
+</CardGrid>
+
+## What it measures
+
+WaveformTracker credits **media-time consumed**, derived from the player's `waveformplayer:timeupdate` events. On every update it computes the delta between the current and previous `currentTime` and accumulates it as `elapsedTime` — but only when the delta is a genuine forward step:
+
+| Delta between updates | Credited? | Why |
+| --- | --- | --- |
+| `0 < delta < 5s` | Yes | Normal playback, including 1.5x / 2x (faster playback still advances `currentTime`) |
+| `delta <= 0` | No | A loop, rewind, or non-advance — nothing was consumed |
+| `delta >= 5s` | No | Treated as a **seek** (see `SEEK_THRESHOLD` below) and dropped |
+
+The result is an honest "seconds of content heard" number. Pausing stops crediting and clears the delta baseline, but it does **not** reset the accumulated total — resuming continues where you left off. The accumulated total and the fired-event set reset only when the track `ended` fires, which re-arms every event for a replay.
+
+:::note[Engagement is content, not attention]
+Thresholds for `play` and `listen` are **seconds of accumulated media-time**, not seconds spent on the page. Someone who plays a 30-second clip at 2x speed crosses a 15s `listen` threshold but not a 30s one — they only consumed 15 seconds of audio.
+:::
+
+### The seek threshold
+
+```js
+WaveformTracker.SEEK_THRESHOLD // static class constant = 5
+```
+
+`SEEK_THRESHOLD` is the maximum forward `currentTime` jump (in seconds) still credited as playback. It is a **class-level constant, not a config option** — it lives on the class, so `window.WaveformTracker.SEEK_THRESHOLD` (the exported singleton) is `undefined`. There is no runtime knob to change it; 5 seconds is the fixed boundary between "playback" and "seek". The player fires `timeupdate` far more often than once every 5 seconds, so real playback never trips it.
+
+## Install
+
+WaveformTracker has a peer dependency on `@arraypress/waveform-player@^1.8.0`. Load and initialize the **player first** — it dispatches the events the tracker consumes — then load the tracker.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```sh
+    npm install @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```sh
+    pnpm add @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```sh
+    yarn add @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```sh
+    bun add @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+
+</Tabs>
+
+The default export is a **singleton instance**, not the class — never `new` it. It is also assigned to `window.WaveformTracker` in browser builds.
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player';
+import WaveformTracker from '@arraypress/waveform-tracker';
+
+// Players exist on the page (auto-mounted via data-waveform-player, or constructed)…
+WaveformTracker.init({ endpoint: '/api/track' });
+```
+
+<Aside type="note" title="Script tags">
+  With the IIFE builds, load `waveform-player.js` before `waveform-tracker.js`. Both expose globals (`window.WaveformPlayer`, `window.WaveformTracker`), so you can call `WaveformTracker.init(...)` directly with no import. No TypeScript declarations are shipped.
+</Aside>
+
+## Attaching it to players
+
+You don't attach the tracker to a player by hand. Calling `init()` does three things:
+
+1. **Reads existing players.** It immediately calls `WaveformPlayer.getAllInstances()` and tracks every player already on the page.
+
+2. **Listens for new players.** It adds capturing-phase listeners for `waveformplayer:ready` on `document`, so any player created later (lazy-mounted, SPA route change) is tracked automatically.
+
+3. **Cleans up destroyed players.** It listens for `waveformplayer:destroy` and untracks the player, removing its listeners — this prevents the tracker's internal `Map` from leaking players (and their DOM) in single-page apps. Requires player **v1.8.0+**.
+
+```js
+// Call this exactly once, as early as players may appear.
+WaveformTracker.init({
+  endpoint: 'https://api.example.com/track',
+  events: { play: 3, listen: 30, complete: 90 },
+  metadata: { post_id: 456 }
+});
+```
+
+:::caution[Call `init()` once]
+Each `init()` re-adds the `document`-level `ready`/`destroy` capturing listeners, and they are **never removed** — `reset()` clears trackers, config, and session id but leaves those document listeners attached. Calling `init()` repeatedly stacks duplicate listeners. Initialize a single time per page.
+:::

@@ -1,0 +1,163 @@
+---
+title: Payload & API
+description: The event payload, a complete endpoint example, methods and events.
+sidebar:
+  order: 3
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Event payload
+
+Every fired event sends the same shape. Field order is deterministic: `{ event, url, time, duration, page, ...metadata }`, then `session`, then `title`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `event` | `string` | `'play'`, `'listen'`, or `'complete'`. |
+| `url` | `string` | The player's `options.url` (typically from `data-url`). **Required** — events without it are dropped with a warning. |
+| `time` | `number` | For `play` / `listen`: `floor(accumulated media-time)`. For `complete`: `floor(currentTime)`. |
+| `duration` | `number` | `floor(duration)` of the track, in seconds. |
+| `page` | `string` | `window.location.pathname` — path only, no query string or host. |
+| *…metadata* | `any` | Each key from your `metadata` config. |
+| `session` | `string` | Present only when `session` is enabled. |
+| `title` | `string` | Present only when the player has `options.title` (typically from `data-title`). |
+
+```json
+{
+  "event": "listen",
+  "url": "audio/ep-42.mp3",
+  "time": 30,
+  "duration": 180,
+  "page": "/podcast/ep-42",
+  "post_id": 456,
+  "session": "k3f9q2abc1",
+  "title": "Episode 42"
+}
+```
+
+### Delivery semantics
+
+| Event | Terminal? | Transport |
+| --- | --- | --- |
+| `play` | No | Plain `fetch` POST, `keepalive: false`. |
+| `listen` | Yes | `navigator.sendBeacon` (Blob, `application/json`), falls back to `fetch` + `keepalive`. |
+| `complete` | Yes | Same as `listen`. |
+
+Delivery priority is absolute: if `handler` is set, it wins outright and `endpoint` is never called. Otherwise the payload is POSTed to `endpoint`. Terminal events (`listen`, `complete`) prefer `sendBeacon` so they survive page unload — **but only when no custom `headers` are configured**, since beacon can't send headers. With custom headers, terminal events fall back to `fetch` + `keepalive`, and `fetch` failures are logged via `console.error`.
+
+:::caution[Receiving beacons server-side]
+`sendBeacon` sends the body with `Content-Type: application/json` and **cannot** attach custom headers — including `Authorization`. If your endpoint needs auth headers on terminal events, set `headers` (which forces the `fetch` path), or authenticate another way (cookie, signed URL, IP allowlist). Your handler should also tolerate beacon requests, which arrive without your custom headers.
+:::
+
+## Complete wiring example: custom endpoint
+
+A full setup — players on the page, a tracker POSTing to your API, and a minimal server route to receive it.
+
+```html
+<!-- 1. Players (auto-mounted by the player's data-* contract) -->
+<div data-waveform-player
+     data-url="audio/ep-42.mp3"
+     data-title="Episode 42"></div>
+
+<script src="/js/waveform-player.js"></script>
+<script src="/js/waveform-tracker.js"></script>
+```
+
+```js
+// 2. Initialize the tracker ONCE, after the player script has loaded.
+WaveformTracker.init({
+  endpoint: 'https://api.example.com/track',
+  events: { play: 3, listen: 30, complete: 90 },
+  headers: { 'Authorization': 'Bearer ' + window.API_TOKEN }, // forces fetch path
+  metadata: { post_id: 456, user_id: window.currentUserId },
+  session: true,
+  debug: false
+});
+```
+
+```js
+// 3. Example endpoint (Express). The body is the payload object above.
+app.post('/track', express.json(), (req, res) => {
+  const { event, url, time, duration, page, session, title, post_id } = req.body;
+
+  // event: 'play' | 'listen' | 'complete'
+  // time:  media-seconds heard (play/listen) or currentTime (complete)
+  await db.listens.insert({
+    event, url, title, seconds: time, duration,
+    page, session, post_id,
+    at: new Date()
+  });
+
+  res.sendStatus(204); // beacons ignore the response; 2xx keeps logs clean
+});
+```
+
+### Or skip the network with `handler`
+
+When you'd rather route events through your own analytics layer (Segment, GA, a queue) instead of HTTP, pass a `handler`. It receives every payload and fully replaces network delivery — `endpoint` is ignored.
+
+```js
+WaveformTracker.init({
+  events: { listen: 30, complete: 90 },
+  handler(payload) {
+    // payload === { event, url, time, duration, page, ...metadata, session?, title? }
+    window.analytics?.track('Audio ' + payload.event, payload);
+  }
+});
+```
+
+<Aside type="caution" title="debug does not mean dry-run">
+  `debug: true` only adds `console.log` tracing — events are **still delivered**. (The README's "logs instead of sending" wording is inaccurate.) To inspect events without hitting the network, use a `handler` instead of an `endpoint`.
+</Aside>
+
+## Methods
+
+`init()` is the only entry point you normally need; the rest are for inspection, SPA control, and teardown.
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `init(config = {})` | `undefined` | Configure the singleton, attach `document` ready/destroy listeners, and track existing players. Call once. |
+| `trackPlayer(player)` | `undefined` | Begin tracking one player. Validates `player.container` + `player.options` (warns and bails if invalid); idempotent. |
+| `untrackPlayer(player)` | `undefined` | Stop tracking a player and remove its container listeners. No-op if not tracked. |
+| `trackAllPlayers()` | `undefined` | Track every instance from `WaveformPlayer.getAllInstances()`. Called automatically by `init()`. |
+| `getStats()` | `Array` | One entry per tracked player: `{ url, title, elapsedTime, isTracking, sentEvents }`. |
+| `getTrackedCount()` | `number` | How many players are currently tracked. |
+| `reset()` | `undefined` | Untrack all players, clear the trackers Map, and null `config` + `sessionId`. Does **not** remove the document ready/destroy listeners. |
+
+```js
+WaveformTracker.getTrackedCount();
+// → 2
+
+WaveformTracker.getStats();
+// → [
+//     { url: 'audio/ep-42.mp3', title: 'Episode 42',
+//       elapsedTime: 47.3, isTracking: true, sentEvents: ['play', 'listen'] }
+//   ]
+```
+
+`elapsedTime` is accumulated media-seconds (a float); `sentEvents` lists the event names already fired this playback.
+
+## Events consumed
+
+WaveformTracker is purely reactive — it listens to player events and never renders anything. For the player's full event surface, see [Player events](/player/options/).
+
+| Source | Event | Effect |
+| --- | --- | --- |
+| `document` | `waveformplayer:ready` | Captured (capture phase) → `trackPlayer(detail.player)`. |
+| `document` | `waveformplayer:destroy` | Captured → `untrackPlayer(detail.player)`. Prevents SPA leaks (player v1.8.0+). |
+| container | `waveformplayer:play` | Start tracking; reset the media-time baseline (`lastTime = null`). |
+| container | `waveformplayer:pause` | Stop tracking; clear the baseline. Accumulated `elapsedTime` is **kept**. |
+| container | `waveformplayer:timeupdate` | `{ currentTime, duration }` → accumulate deltas and run threshold checks. |
+| container | `waveformplayer:ended` | `{ currentTime, duration }` → maybe fire `complete`, then reset `sentEvents` / `elapsedTime` for replay. Reads time from the detail, so it works in the player's external audio mode. |
+
+:::tip[Works in external audio mode]
+The `ended` handler reads `currentTime` and `duration` from the event detail rather than `player.audio`, so tracking works even when the player is in [external audio mode](/player/options/) (where `player.audio` is `null`). `complete` via `ended` requires `duration > 0`; with a missing or zero duration, `complete` is skipped.
+:::
+
+## Logging
+
+Every tracker message is prefixed `[WaveformTracker]`.
+
+- `warn` and `error` are **always** emitted, even with `debug: false`, so integration mistakes (no endpoint/handler, missing `url`, a thrown handler, dropped events) surface immediately.
+- Verbose `log` tracing (player ready/destroy, play/pause, sent payloads, beacon fallbacks) is gated behind `debug: true`.
+
+The `init()` validation warning — `No endpoint or handler configured; events will not be delivered` — fires regardless of `debug`.

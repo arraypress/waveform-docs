@@ -1,0 +1,128 @@
+---
+title: Configuration
+description: Every init(config) option.
+sidebar:
+  order: 2
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## `init(config)` options
+
+`WaveformBar.init(config = {})` builds the bar, the queue panel, and the embedded player; binds triggers; observes the DOM and theme; restores persisted volume/favorites/queue state; and applies any share-link target from the URL. Every option is optional.
+
+### Playback & queue
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `continuous` | `boolean` | `true` | Auto-advance to the next queue track when a track ends (and on track error). |
+| `autoResume` | `boolean` | `true` | On restore, resume playback if the saved state was playing. Falls back to paused if the browser blocks autoplay. |
+| `repeat` | `'off' \| 'all' \| 'one'` | `'off'` | Initial repeat mode. `'all'` loops the queue; `'one'` loops the current track. |
+| `volume` | `number` | `1` | Initial volume `0..1` (clamped; `NaN`/out-of-range coerced to `1`). Overridden by persisted volume when `persist` is on. |
+| `persist` | `boolean` | `true` | Save queue/index/position/playing to `sessionStorage`, and volume/mute/favorites to `localStorage`. Also gates the collapsed-state save. |
+| `storageKey` | `string` | `'waveform-bar'` | Storage key prefix. See [Persistence](#cross-page-persistence). |
+
+### Controls visibility
+
+Buttons render only when their flag (or the relevant config) is set. The methods behind them still work programmatically even when the button is hidden.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `showRepeat` | `boolean` | `true` | Render the repeat-cycle button. |
+| `showQueue` | `boolean` | `true` | Render the queue toggle button **and** create the queue panel. `false` = no panel at all. |
+| `showPrevNext` | `boolean` | `true` | Render the prev/next skip buttons. |
+| `showVolume` | `boolean` | `true` | Render the volume popup slider. |
+| `showMute` | `boolean` | `true` | Render the mute/volume button. The volume wrapper renders if `showMute` **or** `showVolume` is true. |
+| `showMeta` | `boolean` | `true` | Render the metadata tag strip (BPM/key/duration/custom). |
+| `showTrackLink` | `boolean` | `true` | Make the track-info area clickable, navigating to the track's `data-link` (scheme-guarded). |
+| `maxMeta` | `number` | `3` | Maximum number of metadata tags shown in the bar. |
+| `collapsible` | `boolean` | `false` | Render a collapse button that shrinks the bar to a floating transport pill. |
+| `share` | `boolean` | `false` | Render a "copy share link" button (emits a URL with the timestamp + track identity). |
+
+<Aside type="caution" title="showTime is a no-op">
+`showTime` exists in the defaults (`true`) and older docs, but the value is **never read** — the `.wb-time` display always renders. Do not rely on it to hide the time.
+</Aside>
+
+### Layout & theme
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `position` | `'bottom' \| 'top'` | `'bottom'` | Which edge the bar docks to. `'top'` adds `.wb-top` and flips the slide direction. |
+| `theme` | `'dark' \| 'light' \| null` | `null` | Force a theme. `null` = auto-detect from the page and re-detect live (see [Theming](#theming)). |
+| `wide` | `boolean` | `false` | `true` sets `--wb-max-width: 100%`, lifting the stylesheet's 1400px content cap. |
+| `maxWidth` | `string \| null` | `null` | Custom CSS max-width (e.g. `'1200px'`) set as `--wb-max-width`. Overrides `wide`. |
+| `defaultArtwork` | `string \| null` | `null` | Fallback artwork URL when a track has no `artwork`. |
+
+### Embedded player (waveform)
+
+These pass through to the bar's single embedded WaveformPlayer instance.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `waveform` | `boolean` | `true` | `false` forces the player's built-in `seekbar` style (classic Spotify-style progress bar instead of a waveform). |
+| `waveformStyle` | `string` | `'mirror'` | Player style: `'bars'`, `'mirror'`, `'line'`, `'blocks'`, `'dots'`, `'seekbar'`. Ignored when `waveform: false`. |
+| `waveformHeight` | `number` | `32` | Waveform height in px (passed to the player as `height`). |
+| `barWidth` | `number` | `2` | Waveform bar width in px. |
+| `barSpacing` | `number` | `2` | Gap between waveform bars in px. |
+| `waveformColor` | `string \| null` | `null` | Waveform color. Only passed to the player when truthy (else the player auto-detects from the theme). |
+| `progressColor` | `string \| null` | `null` | Progress color. Only passed when truthy. |
+| `markerColor` | `string` | `'rgba(255, 255, 255, 0.25)'` | Default marker line color for markers lacking their own `color`. |
+| `errorText` | `string \| null` | `null` | Custom "audio failed to load" message passed to the player. `null` = the player's own default. |
+
+<Aside type="note" title="barSpacing default">
+The code default for `barSpacing` is `2`. Some older docs list `0` — the running default is `2`.
+</Aside>
+
+### Share links
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `share` | `boolean` | `false` | Render the copy-share-link button. |
+| `shareParam` | `string` | `'wt'` | URL query param carrying the shared timestamp in seconds (e.g. `?wt=42`). |
+
+### Server actions
+
+`actions` wires the heart and cart buttons to your backend. **The buttons only render when their action config is present.**
+
+```ts
+actions: {
+  favorite?: { endpoint: string | ((payload) => any), method?: string, headers?: object },
+  cart?:     { endpoint: string | ((payload) => any), method?: string, headers?: object }
+} | null  // default: null
+```
+
+- A **string** `endpoint` is `fetch()`'d with a JSON body (`method` defaults to `'POST'`, plus any `headers`).
+- A **function** `endpoint` is called with the payload object directly — use it for client-side carts or custom transports.
+
+```js
+WaveformBar.init({
+  actions: {
+    favorite: { endpoint: '/api/favorites', method: 'POST', headers: { 'X-CSRF': token } },
+    cart:     { endpoint: (payload) => myCart.add(payload) }
+  }
+});
+```
+
+Payloads sent by the bar:
+
+| Action | Payload |
+| --- | --- |
+| favorite | `{ action: 'favorite', id, url, title, favorited }` |
+| cart | `{ action: 'cart', id, url, title }` |
+
+### Callbacks
+
+Config callbacks fire alongside the [DOM events](#events) but are scoped to your `init()` call.
+
+| Option | Signature | Fires when |
+| --- | --- | --- |
+| `onPlay` | `(track) => void` | Playback starts. |
+| `onPause` | `(track) => void` | Playback pauses. |
+| `onTrackChange` | `(track, index) => void` | The current track changes. |
+| `onQueueChange` | `(queue, currentIndex) => void` | A track is added/removed/cleared. **Not** fired by `play()`-driven insertions. |
+| `onVolumeChange` | `(volume) => void` | `setVolume` runs (and the unmute path). Not fired by the mute-only branch. |
+| `onFavorite` | `(track, favorited) => void` | `toggleFavorite` runs. |
+| `onCart` | `(track) => void` | `addToCart` runs. |
+
+:::note
+There is no callback for `markerchange`, `repeatchange`, `error`, `share`, or `collapse` — those are **DOM events only** (see [Events](#events)).
+:::

@@ -1,0 +1,99 @@
+---
+title: Output & formats
+description: The peaks JSON shape, markers, formats and file resolution.
+sidebar:
+  order: 2
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Output JSON shape
+
+In `json` format, each input file produces `<nameNoExt>.json` in the output directory. The object is pretty-printed (2-space indent) with a trailing newline. Key order is always `peaks`, then `bpm`, then `markers`:
+
+```json
+{
+  "peaks": [0.2, 0.37, 0.41, 0.55, 1.0, 0.82],
+  "bpm": 120,
+  "markers": [
+    { "time": 0, "label": "Intro" },
+    { "time": 30, "label": "Chorus" }
+  ]
+}
+```
+
+| Key | Always present? | Shape | Notes |
+|-----|-----------------|-------|-------|
+| `peaks` | Yes | `number[]` | Normalized amplitudes, `0..1`, loudest peak is exactly `1.0`. Length = `--samples`. |
+| `bpm` | Only with `--bpm` **and** a detected tempo | `number` | Integer. Omitted entirely if detection returns `null`. |
+| `markers` | Only if a sidecar file exists | `{ time: number, label: string }[]` | `time` in seconds. Omitted if no markers parsed. |
+
+### How peaks are computed
+
+1. **Decode** the file (`audio-decode`) into channel data.
+2. **Bin** the samples into `samples` equal-width buckets.
+3. **Scan every frame** in each bucket — unlike the live player, which skips ~9/10 frames for real-time speed — taking `max(|max|, |min|)` per bucket so no transient is missed.
+4. **Mono-sum across channels**: each peak is the max amplitude across all channels for that bucket.
+5. **Normalize** by dividing every peak by the loudest, so the maximum is exactly `1.0`.
+6. **Round** to `precision` decimals (`precision >= 0`). A negative `precision` returns unrounded normalized peaks.
+
+<Aside type="tip" title="Identical amplitude to a live decode">
+Normalization divides by the max peak (loudest = `1.0`), deliberately matching the core player's `audio.js`. Pre-generated JSON renders at the exact same height as an in-browser decode of the same file. (An earlier release scaled to a `0.95` ceiling, which rendered ~5% shorter.)
+</Aside>
+
+### `inline` format
+
+`--format inline` prints `JSON.stringify(peaks)` — the raw array, one line per file — to stdout and **writes no file**. It ignores `bpm` and `markers` entirely. Use it for piping or inlining into another build step:
+
+```bash
+# Capture peaks into a variable / file
+waveform-gen song.mp3 --format inline > song.peaks.json
+
+# → [0.2,0.37,0.41,0.55,1,0.82]
+```
+
+## Markers (sidecar files)
+
+Markers are **auto-detected — there is no flag.** For `song.mp3`, WaveformGen looks for `song.markers.txt` (basename without extension + `.markers.txt`) in the **same directory** as the audio.
+
+```txt title="song.markers.txt"
+# Lines starting with # are ignored
+0:00 Intro
+0:30 Verse 1
+1:15 Chorus
+1:02:30 Bridge
+```
+
+- **Line format:** `<timestamp> <label>` — the first run of whitespace splits timestamp from label.
+- **Timestamps:** `SS`, `MM:SS`, or `H:MM:SS`. All are converted to seconds.
+- Blank lines and lines starting with `#` are ignored.
+- Invalid / `NaN` timestamps are silently skipped.
+
+The parsed markers land in the JSON's `markers` array and feed the player's marker rendering — see [Markers](/player/markers/).
+
+## Supported audio formats
+
+| Format | Decodes? | Picked up as input? |
+|--------|----------|---------------------|
+| MP3 | ✅ | ✅ |
+| WAV | ✅ | ✅ |
+| FLAC | ✅ | ✅ |
+| OGG | ✅ | ✅ |
+| M4A | ❌ | ✅ (then errors) |
+| AAC | ❌ | ✅ (then errors) |
+
+<Aside type="caution" title="M4A / AAC are matched but cannot be decoded">
+The input scanner's extension set includes `.m4a` and `.aac`, so those files are picked up as inputs — but the bundled decoder cannot handle them. WaveformGen turns the cryptic decoder crash into a clear, actionable error and advises converting first:
+
+```bash
+ffmpeg -i in.m4a out.wav
+```
+
+This is a per-file error: it's counted and reported, but the rest of the batch still runs.
+</Aside>
+
+## File resolution
+
+- Each positional path is resolved. **Files** are kept if their extension is a known audio type. **Directories** are scanned.
+- Directories are scanned **top level only** unless `--recursive` is passed.
+- The final file list is **de-duplicated**.
+- Output path is `<output-dir or input-dir>/<nameNoExt>.json`. With `--output`, the directory is created recursively up front. Without it, each JSON is written **next to its source audio file**.

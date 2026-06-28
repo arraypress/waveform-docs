@@ -1,0 +1,20 @@
+---
+title: Chapters & markers
+description: Chapter navigation and waveform markers.
+sidebar:
+  order: 3
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Chapters & markers
+
+Chapters serve two purposes: as **navigable list rows** and, optionally, as **markers drawn on the waveform**.
+
+`showChapterMarkers` controls the waveform markers, and its `null` default is a smart heuristic:
+
+- `null` resolves to `true` only when there is **exactly one track that has chapters**. So a single chaptered episode shows its chapters as waveform markers automatically; multi-track playlists instead show chapters as expandable list sub-lists.
+- Set `showChapterMarkers` explicitly (`true`/`false`, or `data-show-chapter-markers`) to override the heuristic.
+
+Chapters are converted to markers **only when the track has no explicit `data-markers`** (`markers.length === 0`). Explicit `data-markers` always win, and each chapter-derived marker uses `data-color` if present, otherwise `chapterMarkerColor`.
+
+While a track plays, the active chapter row is re-highlighted on every `onTimeUpdate` — the row gets the `.wp-active` class and `aria-current="true"`.

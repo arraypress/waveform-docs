@@ -1,0 +1,106 @@
+---
+title: JavaScript API
+description: Methods and events.
+sidebar:
+  order: 4
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## JavaScript API
+
+Every method returns the singleton (unless noted), so calls chain. Highlights:
+
+### Playback & navigation
+
+```js
+WaveformBar.play('audio/track.mp3');              // play now (url string or track object)
+WaveformBar.play({ url: 'x.mp3', title: 'X' });   // already-current → toggles play/pause
+WaveformBar.togglePlay();
+WaveformBar.pause();
+WaveformBar.next();        // wraps to 0 when repeat === 'all'
+WaveformBar.previous();    // > 3s into the track → restart; else go back
+WaveformBar.skipTo(2);     // jump to queue index (toggles play if already current)
+```
+
+`play()` dedupes by URL: if the track is already queued it merges new data into that entry, otherwise it inserts right after the current index. `play()` does **not** fire `onQueueChange`.
+
+### Queue
+
+```js
+WaveformBar.addToQueue({ url: 'next.mp3', title: 'Next Up' }); // append; starts if queue was empty
+WaveformBar.removeFromQueue(3);  // cannot remove the current track
+WaveformBar.clearQueue();        // clears all except the current track
+WaveformBar.getQueue();          // shallow copy
+WaveformBar.getCurrentTrack();   // object | null
+WaveformBar.getCurrentIndex();   // number, -1 if none
+WaveformBar.isCurrentTrack(url); // current (playing or paused)?
+WaveformBar.isCurrentlyPlaying(url);
+```
+
+### Repeat & volume
+
+```js
+WaveformBar.cycleRepeat();    // off → all → one → off
+WaveformBar.setRepeat('all'); // 'off' | 'all' | 'one' (invalid ignored)
+
+WaveformBar.setVolume(0.5);   // 0..1, persists, emits volumechange + onVolumeChange
+WaveformBar.getVolume();
+WaveformBar.toggleMute();     // remembers prior volume
+```
+
+### Favorites & cart
+
+```js
+WaveformBar.toggleFavorite();      // current track; syncs page classes + fires actions.favorite
+WaveformBar.addToCart();           // current track; flashes the button; fires actions.cart
+WaveformBar.isFavorited(id?);      // defaults to current track id/url
+WaveformBar.isInCart(id?);
+```
+
+There is no `removeFromCart` — the cart is an in-memory `Set` and is never persisted (your server is the source of truth; seed via `data-wb-in-cart`).
+
+### DJ markers
+
+```js
+WaveformBar.seekToMarker(2);                 // by index — seeks and plays
+WaveformBar.seekToMarkerByLabel('Drop');     // first label/title match, case-insensitive
+```
+
+### UI & lifecycle
+
+```js
+WaveformBar.show();   WaveformBar.hide();
+WaveformBar.toggleQueuePanel();  WaveformBar.openQueuePanel();  WaveformBar.closeQueuePanel();
+WaveformBar.toggleVolumePopup(); WaveformBar.openVolumePopup(); WaveformBar.closeVolumePopup();
+WaveformBar.collapse(); WaveformBar.expand(); WaveformBar.toggleCollapse();
+WaveformBar.getPlayer();  // the underlying WaveformPlayer instance
+WaveformBar.destroy();    // tear everything down, strip .wb-current/.wb-playing from the page
+```
+
+## Events
+
+DOM events bubble from the bar element (`#waveform-bar`), prefixed `waveformbar:`. **Listen on `document`.**
+
+| Event | Detail | Notes |
+| --- | --- | --- |
+| `waveformbar:play` | `{ track }` | Has `onPlay` callback. |
+| `waveformbar:pause` | `{ track }` | Has `onPause` callback. |
+| `waveformbar:trackchange` | `{ track, index }` | Has `onTrackChange` callback. |
+| `waveformbar:queuechange` | `{ queue, currentIndex }` | Has `onQueueChange` callback. |
+| `waveformbar:volumechange` | `{ volume }` | Has `onVolumeChange` callback. |
+| `waveformbar:favorite` | `{ track, favorited }` | Has `onFavorite` callback. |
+| `waveformbar:cart` | `{ track }` | Has `onCart` callback. |
+| `waveformbar:repeatchange` | `{ mode }` | `mode` is `'off'`/`'all'`/`'one'`. DOM-only. |
+| `waveformbar:markerchange` | `{ marker, index, track }` | DJ-mode boundary crossed. DOM-only. |
+| `waveformbar:error` | `{ track }` | Track failed to load/decode; auto-skips when `continuous`. DOM-only. |
+| `waveformbar:share` | `{ url, time, track }` | Share button copied a link. DOM-only. |
+| `waveformbar:collapse` | `{ collapsed }` | Emitted by `collapse()`/`expand()`. DOM-only. |
+
+```js
+document.addEventListener('waveformbar:trackchange', (e) => {
+  console.log('now playing', e.detail.track.title, 'at', e.detail.index);
+});
+document.addEventListener('waveformbar:error', (e) => {
+  console.warn('failed', e.detail.track.url);
+});
+```

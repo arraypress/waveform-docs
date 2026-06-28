@@ -1,0 +1,142 @@
+---
+title: Getting Started
+description: Install the CLI and generate peaks.
+sidebar:
+  order: 1
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+**WaveformGen** is a Node CLI and ESM library that decodes audio files and writes normalized waveform peak data as JSON. Pre-generating peaks at build time means the player renders instantly — no client-side audio decode, no fetch-and-analyze on page load.
+
+The JSON it produces drops straight into the player's [`waveform`](/player/options/) option (or `data-waveform` / `data-wb-waveform` attributes), so the bars look identical to a live in-browser decode.
+
+<CardGrid>
+
+  <Card title="CLI" icon="seti:powershell">
+    `waveform-gen ./audio/*.mp3 --output ./waveforms/` — batch-generate one JSON per file.
+  </Card>
+  <Card title="Library" icon="seti:javascript">
+    `generatePeaks(filePath, options)` — the single public export, returns a Promise.
+  </Card>
+
+</CardGrid>
+
+## Install
+
+Run it on demand with `npx`, install globally for a reusable `waveform-gen` command, or add it as a dev dependency to call the library from a build script.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+    # One-off, no install
+    npx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+
+    # Global CLI
+    npm install -g @arraypress/waveform-gen
+
+    # As a build dependency (library + CLI)
+    npm install -D @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+    pnpm dlx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+    pnpm add -g @arraypress/waveform-gen
+    pnpm add -D @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+    yarn dlx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+    yarn global add @arraypress/waveform-gen
+    yarn add -D @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+    bunx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+    bun add -g @arraypress/waveform-gen
+    bun add -d @arraypress/waveform-gen
+```
+
+</TabItem>
+
+</Tabs>
+
+**Requirements:** Node.js 18+, ESM only (`"type": "module"`). The only runtime dependency is `audio-decode`.
+
+## CLI
+
+```bash
+waveform-gen <files|directories...> [options]
+```
+
+Positional arguments are audio files and/or directories. Everything starting with `--` is an option; everything else is treated as an input path.
+
+```bash
+# Generate one JSON per file into ./waveforms/
+waveform-gen ./audio/*.mp3 --output ./waveforms/
+
+# Scan a directory tree
+waveform-gen ./audio/ --recursive --output ./waveforms/
+
+# Lower resolution + tempo detection
+waveform-gen song.mp3 --samples 400 --bpm
+
+# Print the peaks array to stdout for piping
+waveform-gen song.mp3 --format inline
+```
+
+<Aside type="note" title="Globs are the shell's job">
+WaveformGen does not expand globs itself — `./audio/*.mp3` is expanded by your shell into a list of paths before the tool sees them. The CLI only handles plain file and directory paths. On a shell that doesn't expand a pattern, pass the directory instead and use `--recursive`.
+</Aside>
+
+### Flags
+
+| Flag | Default | Type | Description |
+|------|---------|------|-------------|
+| `--samples <n>` | `1800` | integer | Number of peaks (array length) generated per file. Higher = finer detail, larger JSON. |
+| `--precision <n>` | `2` | integer | Decimal places each peak is rounded to. |
+| `--output <dir>` | _same dir as each input_ | path | Output directory. Created recursively before writing. |
+| `--format <type>` | `json` | `json` \| `inline` | `json` writes a `<name>.json` file; `inline` prints the peaks array to stdout. |
+| `--bpm` | `false` | flag | Run BPM detection and write an integer `"bpm"` into the JSON (only when a tempo is found). |
+| `--recursive` | `false` | flag | Scan passed directories recursively. Default scans the top level only. |
+| `--quiet` | `false` | flag | Suppress all progress, per-file, and warning logs. |
+| `--help`, `-h` | — | flag | Print help and `exit(0)`. Also shown when run with zero arguments. |
+
+<Aside type="caution" title="Numeric flags are not validated">
+`--samples` and `--precision` are parsed with `parseInt` and **no validation**. A non-numeric value (e.g. `--samples abc`) silently becomes `NaN`, which produces a broken peaks array. Always pass integers.
+</Aside>
+
+### Default samples differ between CLI and library
+
+This is the single most important thing to remember when scripting WaveformGen:
+
+| Context | Default `samples` |
+|---------|-------------------|
+| CLI `--samples` | **1800** |
+| Library `generatePeaks()` | **200** |
+
+<Aside type="caution" title="Always pass samples explicitly in the library">
+The library default (`200`) is **not** the CLI default (`1800`). If you call `generatePeaks()` without `samples`, you get 200 peaks — a much coarser waveform than the CLI produces. To match CLI output, always pass `samples` explicitly.
+</Aside>
+
+### Exit codes & error handling
+
+| Situation | Behavior |
+|-----------|----------|
+| `--help` / `-h` / no args | Prints help, `exit(0)`. |
+| No audio files resolved | `[WaveformGen] No audio files found.`, `exit(1)`. |
+| Fatal / uncaught error | `[WaveformGen] Fatal error: …`, `exit(1)`. |
+| A single file fails to decode | Counted and reported (`❌ name: message`), **run continues**, exit code unchanged. |
+| Unreadable / non-audio path | Skipped with a `[WaveformGen] Skipping …` warning (silenced by `--quiet`). |
+
+Per-file failures never abort a batch — a run over 100 files where 3 fail still writes the other 97 and exits `0`. Check the closing `Done: N generated, M failed` summary line. Every log and error is prefixed `[WaveformGen]`.

@@ -1,0 +1,112 @@
+---
+title: Getting Started
+description: Install WaveformBar and dock your first track.
+sidebar:
+  order: 1
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+**WaveformBar** is a persistent, Spotify-style transport that docks to the bottom (or top) of your page and keeps playing while visitors browse. It is a thin orchestration layer over [`@arraypress/waveform-player`](/player/options/): the bar owns a single embedded player and exposes a queue, volume, repeat, favorites, cart, DJ markers, share links, and cross-page persistence — driven almost entirely by `data-wb-*` attributes.
+
+`window.WaveformBar` is a **singleton instance** (the default export). The named export `WaveformBar` is the class — you rarely need it. All API calls go through the singleton: `WaveformBar.init(config)`, `WaveformBar.play(...)`, etc.
+
+## Install
+
+WaveformBar has a **peer dependency** on `@arraypress/waveform-player`. The player must load **before** the bar — both its CSS and JS. If `window.WaveformPlayer` is missing at `init()`, the bar logs `[WaveformBar] WaveformPlayer is required.` and bails.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-player @arraypress/waveform-bar
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-player @arraypress/waveform-bar
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-player @arraypress/waveform-bar
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-player @arraypress/waveform-bar
+```
+
+</TabItem>
+
+</Tabs>
+
+### Script tags (CDN)
+
+Order matters: **player CSS + JS first, then bar CSS + JS**.
+
+```html
+<!-- 1. Peer dependency — load FIRST -->
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.css">
+<script src="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.js"></script>
+
+<!-- 2. The bar -->
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-bar@latest/dist/waveform-bar.css">
+<script src="https://unpkg.com/@arraypress/waveform-bar@latest/dist/waveform-bar.js"></script>
+
+<!-- 3. Optional: page icon font (play/pause/heart/cart overlays on your own elements) -->
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-bar@latest/dist/waveform-bar-icons.css">
+```
+
+### Bundler (ESM)
+
+```js
+// Import the player first so window.WaveformPlayer exists before the bar boots.
+import '@arraypress/waveform-player';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+
+import WaveformBar from '@arraypress/waveform-bar';
+import '@arraypress/waveform-bar/dist/waveform-bar.css';
+
+WaveformBar.init({ continuous: true });
+```
+
+The default export is the singleton instance. If you need the class itself: `import { WaveformBar } from '@arraypress/waveform-bar'`.
+
+<Aside type="caution" title="Versions">
+`@arraypress/waveform-bar` v1.6.2 declares a peer dependency of `@arraypress/waveform-player@^1.7.2`. Keep the player at or above that range. The bar ships **no `.d.ts`** — typed wrappers (e.g. `waveform-bar-react` / `-astro`) hand-declare the config type.
+</Aside>
+
+## Quick start
+
+1. Add `data-wb-play` to any element, with at least a `data-url`.
+
+   ```html
+   <button data-wb-play
+           data-url="audio/track.mp3"
+           data-title="My Song"
+           data-artist="Artist Name"
+           data-bpm="128"
+           data-key="Am"
+           data-artwork="covers/song.jpg">
+     Play
+   </button>
+   ```
+
+2. Initialize the singleton once. Zero-config works.
+
+   ```js
+   WaveformBar.init();
+   ```
+
+Click the element → the bar slides up, the player loads the waveform, audio plays. Every `data-wb-play` element on the page shares the one bar.
+
+:::tip
+`init()` is idempotent. Calling it again silently runs `destroy()` and rebuilds — safe for SPA route changes or hot reload.
+:::

@@ -1,0 +1,94 @@
+---
+title: Features
+description: Queue, volume, repeat, favorites, cart, DJ markers, share links and cross-page persistence.
+sidebar:
+  order: 5
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Queue
+
+When `showQueue` is `true`, the bar renders a queue button and a `.wb-queue-panel` (appended to `document.body`). The panel groups entries into **Now Playing / Up Next / Previously Played**, with per-row remove buttons and a clear-all action. Build it from data attributes (`data-wb-queue`) or the API (`addToQueue`, `removeFromQueue`, `clearQueue`, `skipTo`). The current track can never be removed; `clearQueue()` keeps it.
+
+## Volume
+
+The volume wrapper renders when `showMute` or `showVolume` is true. The mute button toggles, and the popup exposes a vertical slider. Volume and mute persist to `localStorage` (`<storageKey>-vol`) when `persist` is on, so they survive navigation. `setVolume()` clamps to `0..1`, updates the mute flag, persists, and emits `volumechange` + `onVolumeChange`.
+
+## Repeat
+
+`repeat: 'off' | 'all' | 'one'`. `'all'` loops the queue (`next()` wraps to index 0, `previous()` wraps to the last track); `'one'` loops the current track. Cycle with the repeat button or `cycleRepeat()`, or set directly with `setRepeat()`. Every change emits `repeatchange`.
+
+:::note
+Error auto-skip never wraps via `repeat: 'all'` — this guards against an infinite loop on a dead first track.
+:::
+
+## Favorites & cart
+
+Favorites and cart power the heart and cart buttons (which render only when `actions.favorite` / `actions.cart` are configured), plus the `.wb-favorited` / `.wb-in-cart` page classes.
+
+- **Favorites** persist to `localStorage` (`<storageKey>-favs`, an id array). Seed server state with `data-wb-favorited="true"` — it is authoritative over `localStorage` on init.
+- **Cart** is an in-memory `Set`, **never persisted**. Seed it from `data-wb-in-cart="true"`; your server remains the source of truth. There is no removal API.
+
+Both call `actions.*` (if configured) and sync page attributes/classes across all matching trigger elements. The methods work even with the buttons hidden.
+
+## DJ markers
+
+Attach a JSON array of markers to a track to drive **DJ mode** — as playback crosses each marker boundary, the bar updates its displayed title/artist/artwork and emits `markerchange`. Each marker's `time` is coerced to a finite number; non-numeric entries are dropped.
+
+```html
+<button data-wb-play
+        data-url="mix.mp3"
+        data-title="Live Mix"
+        data-wb-markers='[
+          { "time": 0,   "label": "Intro",  "title": "Opener", "artist": "DJ A", "bpm": 124 },
+          { "time": 184, "label": "Drop",   "title": "Banger", "artist": "DJ B", "color": "#f43f5e" },
+          { "time": 372, "label": "Outro",  "title": "Closer", "artist": "DJ A" }
+        ]'>
+  Play Mix
+</button>
+```
+
+Marker fields: `time` (required), `label`, `title`, `artist`, `artwork`, `bpm`, `key`, `color`. Markers without a `color` use the `markerColor` config default. Navigate from script with `seekToMarker(index)` or `seekToMarkerByLabel(label)`. The active section is reflected on the player's marker elements via `.wb-marker-active`.
+
+## Share links
+
+With `share: true`, the bar renders a copy-link button. Clicking it copies the current page URL with the playback timestamp and track identity appended, then emits `waveformbar:share`. On init, the bar reads these same params and restores the shared track + position.
+
+| Param | Meaning |
+| --- | --- |
+| `?<shareParam>` (default `wt`) | Timestamp in seconds, e.g. `?wt=42`. |
+| `wid` | Track id. |
+| `wu` | Track URL (scheme-guarded by `isSafeHref`). |
+| `wtitle` | Title. |
+| `wartist` | Artist. |
+
+A bare `?wt=` with no track identity seeks whatever track loads first. A `wid`/`wu` cold-loads that specific track, paused at the timestamp — applied **after** queue restore, so a shared track always wins.
+
+:::caution[Security]
+Track `link` navigation and the share `wu` param are scheme-guarded — only `http`/`https`/relative URLs are allowed; `javascript:`, `data:`, and `blob:` are rejected. All user text is HTML-escaped before insertion.
+:::
+
+## Cross-page persistence
+
+When `persist` is `true` (the default), state is split across two stores under `storageKey` (default `'waveform-bar'`):
+
+| Store | Key | Holds |
+| --- | --- | --- |
+| `sessionStorage` | `<key>` | `{ queue, currentIndex, position, isPlaying }` |
+| `sessionStorage` | `<key>-collapsed` | Collapsed pill state. |
+| `localStorage` | `<key>-vol` | `{ v, m, b }` — volume, mute, base volume. |
+| `localStorage` | `<key>-favs` | Favorited id array. |
+
+On restore, `autoResume` resumes playback if the saved state was playing (falling back to paused if autoplay is blocked). Use distinct `storageKey` values to run independent bars across different site sections.
+
+```js
+WaveformBar.init({
+  persist: true,
+  storageKey: 'shop-player',
+  autoResume: true
+});
+```
+
+:::note
+The cart is **not** part of persistence — it lives in memory and seeds only from `data-wb-in-cart`.
+:::

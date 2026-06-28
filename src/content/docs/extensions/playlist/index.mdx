@@ -1,0 +1,130 @@
+---
+title: Getting Started
+description: Install WaveformPlaylist and the track/chapter markup.
+sidebar:
+  order: 1
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+`WaveformPlaylist` turns a list of tracks into a navigable playlist, album or chaptered episode — driving a single embedded [WaveformPlayer](/player/options/) underneath. It parses declarative `[data-track]` / `[data-chapter]` markup (or a JS config), renders the list UI, wires up keyboard navigation, and loads each track into the player on demand.
+
+It is a thin orchestration layer: it owns the **list/chapter UI and track switching**, and forwards everything else — height, waveform style, colours, controls — straight to the inner player.
+
+<Aside type="caution" title="Requires the core player">
+`WaveformPlaylist` is a hard dependency on `@arraypress/waveform-player`. `window.WaveformPlayer` **must** exist at construction time, or the constructor throws `[WaveformPlaylist] WaveformPlayer is required but not found`. Always load the player first.
+</Aside>
+
+## Install
+
+Install the playlist alongside the core player (the player is a peer dependency, `^1.7.2`).
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```sh
+npm install @arraypress/waveform-player @arraypress/waveform-playlist
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```sh
+pnpm add @arraypress/waveform-player @arraypress/waveform-playlist
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```sh
+yarn add @arraypress/waveform-player @arraypress/waveform-playlist
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```sh
+bun add @arraypress/waveform-player @arraypress/waveform-playlist
+```
+
+</TabItem>
+
+</Tabs>
+
+Or load both from a CDN — **player first**, then the playlist:
+
+```html
+<!-- Core player is REQUIRED and must load first -->
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.css">
+<script src="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.js"></script>
+
+<!-- Then the playlist -->
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-playlist@latest/dist/waveform-playlist.css">
+<script src="https://unpkg.com/@arraypress/waveform-playlist@latest/dist/waveform-playlist.js"></script>
+```
+
+The IIFE build exposes a global `WaveformPlaylist`; the package also ships an ESM build (`waveform-playlist.esm.js`) with a default export, plus a minified IIFE for `unpkg`.
+
+The playlist also requires the **[Tabler Icons](https://tabler.io/icons) font** if you use artwork — the play/pause overlay renders `ti ti-player-play` / `ti ti-player-pause` glyphs.
+
+## Quick start
+
+Mark a container with `data-waveform-playlist` and add `[data-track]` children. The playlist auto-initialises on `DOMContentLoaded` — zero JavaScript required.
+
+```html
+<div data-waveform-playlist data-continuous="true">
+  <div data-track
+       data-url="episode.mp3"
+       data-title="Episode 42"
+       data-subtitle="with Dr. Chen"
+       data-artwork="cover.jpg">
+    <div data-chapter data-time="0:00">Introduction</div>
+    <div data-chapter data-time="5:30">Main Topic</div>
+    <div data-chapter data-time="45:00">Q&A</div>
+  </div>
+</div>
+```
+
+<Aside type="note" title="Auto-init timing">
+Every `[data-waveform-playlist]` element is initialised on `DOMContentLoaded` (or immediately if the DOM is already parsed). If `window.WaveformPlayer` is not present yet, the playlist polls every 100ms for up to 5 seconds. Each element is guarded by `data-waveform-playlist-initialized="true"` so it is never initialised twice, and construction failures are caught and logged via `console.error` rather than thrown.
+</Aside>
+
+## The container contract
+
+A playlist is built from three nested markers:
+
+| Element | Role |
+| --- | --- |
+| `[data-waveform-playlist]` | The container. Its presence triggers auto-init (the attribute value is not read). Carries playlist options and forwarded player options as `data-*`. |
+| `[data-track]` | A track. Each `[data-track]` descendant becomes one track; document order is the track index. |
+| `[data-chapter]` | A chapter within a track. Each `[data-chapter]` inside a track becomes a chapter row; the chapter label is the element's trimmed `textContent`. |
+
+The original `[data-track]` markup is hidden (`display: none`) during init and restored on [`destroy()`](#public-methods).
+
+### Track attributes
+
+Set on each `[data-track]` element.
+
+| Attribute | Required | Description |
+| --- | --- | --- |
+| `data-url` | Yes | Audio file URL. If `data-title` is absent, the title is derived from this filename. |
+| `data-title` | No | Display title. Defaults to the `data-url` filename with `-`/`_` converted to spaces, or `Untitled` if no URL. |
+| `data-subtitle` | No | Artist / description line (default empty). |
+| `data-artwork` | No | Artwork image URL. Renders `.wp-artwork-container` and enables the play-state overlay on the active row. |
+| `data-album` | No | Album name, passed to the player for the Media Session metadata. |
+| `data-duration` | No | **Display-only** duration string, e.g. `3:45`. It is never parsed — only shown when `showDuration` is on. |
+| `data-markers` | No | JSON array of explicit waveform markers, e.g. `[{"time":30,"label":"Drop","color":"#f00"}]`. Explicit markers always take precedence over chapter-derived ones. |
+
+<Aside type="caution" title="data-markers must be valid JSON">
+`data-markers` is parsed with `JSON.parse` and **no** `try/catch` in the primary track parser — malformed JSON throws and aborts that track's parse. Validate it server-side before emitting it.
+</Aside>
+
+### Chapter attributes
+
+Set on each `[data-chapter]` element.
+
+| Attribute | Required | Description |
+| --- | --- | --- |
+| _label_ (text content) | Yes | The chapter label is the element's trimmed `textContent`, not an attribute. |
+| `data-time` | No | Timestamp as `M:SS`, `MM:SS`, or bare seconds (e.g. `90`). Default `0:00`. |
+| `data-color` | No | Optional per-chapter marker colour. Falls back to `chapterMarkerColor`. |

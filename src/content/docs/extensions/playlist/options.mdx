@@ -1,0 +1,83 @@
+---
+title: Options & layouts
+description: Layouts, options, and continuous playback.
+sidebar:
+  order: 2
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Layouts
+
+The playlist picks one of three UIs automatically based on content and the `layout` option:
+
+1. **Chapters-only** — exactly **one** track that **has chapters** renders a chapters list (`.wp-chapters-only`) with no track row. Ideal for a single podcast episode or long-form lecture.
+
+2. **Minimal** — `layout: 'minimal'` renders a compact row of pill buttons (`.wp-controls` / `.wp-track-btn`), one per track. Good for album switchers and tight footers.
+
+3. **List** (default) — everything else renders the full track-row list (`.wp-list`), each row showing artwork/number, title, subtitle and duration, with chapters as expandable nested sub-lists under the active track.
+
+```html
+<!-- Minimal pill-button switcher -->
+<div data-waveform-playlist data-layout="minimal">
+  <div data-track data-url="track-1.mp3" data-title="One"></div>
+  <div data-track data-url="track-2.mp3" data-title="Two"></div>
+  <div data-track data-url="track-3.mp3" data-title="Three"></div>
+</div>
+```
+
+## Playlist options
+
+These options control the playlist itself. Set them as constructor options **or** as `data-*` on the container.
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `layout` | `data-layout` | `'list' \| 'minimal'` | `'list'` | UI layout. `'minimal'` renders pill buttons instead of full rows. |
+| `continuous` | `data-continuous` | `boolean` | `false` | Auto-advance to the next track when one ends. Container value reads the string `'true'`. |
+| `expandChapters` | `data-expand-chapters` | `boolean` | `true` | In multi-track lists, render each track's chapters as a nested expandable sub-list under the active track. `data-expand-chapters="false"` disables. |
+| `showDuration` | `data-show-duration` | `boolean` | `true` | Render the per-track `data-duration` string in the row. `data-show-duration="false"` disables. |
+| `showChapterMarkers` | `data-show-chapter-markers` | `boolean \| null` | `null` | Render a track's chapters as markers on the waveform. `null` = smart default (see below). The attribute accepts `'true'` / `'false'`; absent leaves it `null`. |
+| `chapterMarkerColor` | `data-chapter-marker-color` | `string` | `'rgba(161, 161, 170, 0.85)'` | Fallback colour for chapter-derived markers when a chapter has no `data-color`. |
+| `showPlayState` | `data-show-play-state` | `boolean` | `true` | Show a play/pause icon overlay on the active track's artwork (artwork tracks only). `data-show-play-state="false"` disables. |
+
+<Aside type="note" title="Default colour: source vs README">
+The runtime default for `chapterMarkerColor` is grey `rgba(161, 161, 170, 0.85)` (authoritative — the source value). Older README copy lists a purple `rgba(168, 85, 247, 0.8)`; the source value wins at runtime.
+</Aside>
+
+### Forwarded player options
+
+Every core **WaveformPlayer** option is forwarded to the inner player — `height`, `waveformStyle`, `colorPreset`, `barWidth`, `barSpacing`, `barRadius`, `buttonAlign`, `autoplay`, `showControls`, `showInfo`, `showTime`, `showHoverTime`, `showBPM`, `singlePlay`, `playOnSeek`, `showPlaybackSpeed`, `enableMediaSession`, `showMarkers`, `accessibleSeek`, `playbackRate`, `playbackRates`, `preload`, `samples`, all `*Color` options, `seekLabel`, `errorText`, `playIcon`, `pauseIcon`, and so on. See the full [player options reference](/player/options/).
+
+Set them either as a constructor option or as a container `data-*`. The playlist inherits the player's complete `data-*` contract through `WaveformPlayer.utils.parseDataAttributes`, so it never drifts as the player gains options.
+
+```html
+<div data-waveform-playlist
+     data-waveform-style="mirror"
+     data-height="80"
+     data-bar-width="3"
+     data-color-preset="ocean">
+  <div data-track data-url="a.mp3" data-title="A"></div>
+  <div data-track data-url="b.mp3" data-title="B"></div>
+</div>
+```
+
+<Aside type="caution" title="Container data-* wins over constructor options">
+When the same option is provided both ways, the **container `data-*` overrides the constructor option** — the container's parsed `data-*` surface is applied with `Object.assign` after the provided options are spread. For example, `data-height="80"` on the container beats `{ height: 120 }` passed to the constructor.
+</Aside>
+
+#### Stripped attributes
+
+These keys are deleted from the container's inherited `data-*` surface and **cannot** be set at the container level — the playlist owns them and sets them per-track:
+
+```text
+audioMode  url  title  subtitle  album  artwork  markers  waveform
+```
+
+`data-audio-mode`, `data-url`, `data-title`, `data-subtitle`, `data-album`, `data-artwork`, `data-markers`, and `data-waveform` on the container are ignored. The playlist always drives a **self-mode** player and populates the content fields from each track. (`data-markers` is still read on individual `[data-track]` elements — only the container-level key is stripped.)
+
+## Continuous playback
+
+With `continuous` enabled, the playlist advances to the next track when the current one ends. This is driven by the player's `onEnd` callback: it resets chapter highlighting to the start, then — if `continuous` is on and the current track is not the last — calls `selectTrack(currentTrackIndex + 1)`.
+
+```js
+const playlist = new WaveformPlaylist('#album', { continuous: true });
+```

@@ -1,0 +1,102 @@
+---
+title: Triggers & state
+description: data-wb-* triggers and the state classes the bar reflects back onto them.
+sidebar:
+  order: 3
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## `data-wb-*` triggers
+
+Any element becomes a trigger by adding `data-wb-play` (play now) or `data-wb-queue` (append to queue). `data-wb-queue` takes precedence when both are present or nested.
+
+Track data fields accept **both** `data-wb-<x>` and bare `data-<x>` — the `data-wb-` form wins on conflict. Only `url` is required; a trigger without a URL is ignored.
+
+| Attribute | Description |
+| --- | --- |
+| `data-wb-url` / `data-url` | Audio URL. **Required.** |
+| `data-wb-id` / `data-id` | Unique id. Defaults to the URL. |
+| `data-wb-title` / `data-title` | Title. Defaults to a title derived from the URL filename. |
+| `data-wb-artist` / `data-artist` | Artist / subtitle. |
+| `data-wb-artwork` / `data-artwork` | Artwork image URL. |
+| `data-wb-album` / `data-album` | Album (Media Session). |
+| `data-wb-link` / `data-link` | Product/navigation URL for clicking the track info (scheme-guarded). |
+| `data-wb-duration` / `data-duration` | Display duration string (shown as a tag). |
+| `data-wb-bpm` / `data-bpm` | BPM (shown as a tag). |
+| `data-wb-key` / `data-key` | Musical key (shown as a tag). |
+| `data-wb-meta` / `data-meta` | JSON object of custom tags, e.g. `'{"genre":"Trap"}'` (non-object coerced to `{}`). |
+| `data-wb-markers` / `data-markers` | JSON array of marker objects for DJ mode (see [DJ markers](#dj-markers)). |
+| `data-wb-waveform` / `data-waveform` | Pre-generated peaks as an **inline JSON array**. |
+| `data-wb-favorited="true"` | Pre-seed favorite state (authoritative over `localStorage`; persisted). |
+| `data-wb-in-cart="true"` | Pre-seed cart state (in-memory only; cart is never persisted). |
+
+```html
+<!-- Play now -->
+<button data-wb-play data-url="a.mp3" data-title="A" data-bpm="140">Play</button>
+
+<!-- Append to queue -->
+<button data-wb-queue data-url="b.mp3" data-title="B" data-key="Gm">Queue</button>
+
+<!-- Pre-seeded favorite (server-rendered) -->
+<button data-wb-play data-url="c.mp3" data-title="C" data-wb-favorited="true">Play</button>
+```
+
+<Aside type="caution" title="data-wb-waveform only accepts inline JSON arrays">
+At the bar layer, `parseTrackFromElement` keeps the value only if it `JSON.parse`s to an **Array**. A `.json` file-URL string or a CSV string fails that parse and is dropped (`waveform` becomes `null`). To pass peaks via the bar, inline a JSON array. For file-URL or CSV peak sources, configure them on an [inline player](/player/options/) instead.
+</Aside>
+
+## State classes on triggers
+
+On every state change the bar syncs four classes onto **every** `[data-wb-play]` element whose URL matches — so your cards, list rows, and grid tiles light up in lockstep with the bar.
+
+| Class | Toggled when |
+| --- | --- |
+| `.wb-current` | The element's track is the current track (playing or paused). |
+| `.wb-playing` | The element's track is current **and** actively playing. |
+| `.wb-favorited` | The track is favorited. |
+| `.wb-in-cart` | The track is in the cart. |
+
+The bar also writes `data-wb-favorited` and `data-wb-in-cart` (`"true"`/`"false"`) back onto matching elements as state changes — handy for server reconciliation or CSS attribute selectors.
+
+### Styling them
+
+```css
+/* Highlight the row that's currently loaded */
+.wb-current { background: var(--row-active, #f3f4f6); }
+
+/* Swap a play glyph for a pause glyph while playing */
+[data-wb-play] .icon-pause { display: none; }
+.wb-playing  .icon-pause { display: inline; }
+.wb-playing  .icon-play  { display: none; }
+
+/* Filled heart when favorited, full cart when added */
+.wb-favorited .heart { color: var(--wb-fav-color); }
+.wb-in-cart   .cart-add  { display: none; }
+.wb-in-cart   .cart-done { display: inline; }
+```
+
+The bar ships helper CSS for common patterns. Apply these classes to your own page elements and the stylesheet does the work:
+
+- `.wb-icon-swap` with `.wb-show-play` / `.wb-show-pause` — flip play/pause glyphs.
+- `.wb-eq-bars` — animated equalizer bars on the playing row.
+- `.wb-card-highlight`, `.wb-accent-current` — highlight the active card.
+- `.wb-hide-if-fav` / `.wb-show-if-fav` / `.wb-hide-if-cart` / `.wb-show-if-cart` — toggle UI by favorite/cart state.
+
+The optional `waveform-bar-icons.css` adds an icon font: `.wbi` base plus `.wbi-play`, `-pause`, `-heart`, `-heart-filled`, `-cart`, `-cart-check`, `-queue`, `-skip-back`, `-skip-forward`, `-volume-high`, `-volume-low`, `-volume-mute`, `-repeat`, `-repeat-one`, `-close`, `-check`, `-link`, `-download`, `-share`, `-music-note`, with size variants `.wbi-sm` / `-lg` / `-xl` / `-2x` / `-3x`.
+
+## Inline player integration
+
+The bar discovers `@arraypress/waveform-player` instances mounted with `audioMode: 'external'` and treats them as synchronized visual surfaces — no bar config required. The bar listens at the document level for `waveformplayer:request-play` / `:request-pause` / `:request-seek` / `:destroy`, and pushes `setPlayingState()` / `setProgress()` into the inline player whose `options.url` matches the current track. One audio source (the bar), many progress-aware visualizations.
+
+```html
+<!-- This element is BOTH a bar trigger and an inline visual surface -->
+<div data-waveform-player
+     data-audio-mode="external"
+     data-url="song.mp3"
+     data-waveform-style="bars"
+     data-wb-play
+     data-wb-url="song.mp3"
+     data-wb-title="My Song"></div>
+```
+
+See [WaveformPlayer options](/player/options/) for the inline player's full attribute surface and the [installation guide](/getting-started/installation/) for the shared setup.

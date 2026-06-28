@@ -1,0 +1,68 @@
+---
+title: Theming & example
+description: Styling the bar, a full example, and related packages.
+sidebar:
+  order: 6
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Theming
+
+The bar root carries both `.waveform-bar` and `#waveform-bar`; light mode adds `.wb-light`. When `theme` is `null`, detection runs in order: explicit `html`/`body` class or `data-theme` → body background brightness → `prefers-color-scheme`. It re-detects live via a `MutationObserver` (watching `class`/`data-theme`/`data-color-scheme`/`style` on `html` and `body`) plus `matchMedia`. Set `theme` explicitly to opt out of all auto-detection.
+
+Override these custom properties on `.waveform-bar` **and** `.wb-queue-panel`:
+
+```css
+.waveform-bar,
+.wb-queue-panel {
+  --wb-bg: #0b0b0f;
+  --wb-border: #1f2937;
+  --wb-text: #f9fafb;
+  --wb-text-muted: #9ca3af;
+  --wb-accent: #6366f1;
+  --wb-accent-light: #818cf8;
+  --wb-hover: #1f2937;
+  --wb-fav-color: #f43f5e;
+  --wb-cart-color: #10b981;
+}
+```
+
+Layout is controlled by `--wb-max-width` (set inline by `wide` / `maxWidth`); text auto-scroll uses `--wb-scroll-distance` and `--wb-scroll-duration`.
+
+## Full example
+
+```js
+WaveformBar.init({
+  continuous: true,
+  repeat: 'off',
+  position: 'bottom',
+  waveformStyle: 'mirror',
+  waveformHeight: 32,
+  defaultArtwork: '/img/fallback.jpg',
+  collapsible: true,
+  share: true,
+  shareParam: 'wt',
+  storageKey: 'shop-player',
+  actions: {
+    favorite: { endpoint: '/api/favorites', method: 'POST' },
+    cart:     { endpoint: (payload) => myCart.add(payload) }
+  },
+  onTrackChange: (track, index) => console.log('now playing', track.title, index),
+  onFavorite:    (track, favorited) => console.log('fav', track.id, favorited)
+});
+
+document.addEventListener('waveformbar:share', (e) => navigator.clipboard.writeText(e.detail.url));
+```
+
+## Related
+
+<CardGrid>
+
+  <Card title="WaveformPlayer options" icon="setting">
+    The full option surface of the embedded player the bar wraps. See [/player/options/](/player/options/).
+  </Card>
+  <Card title="Installation" icon="rocket">
+    Shared setup for the `@arraypress` waveform family. See [/getting-started/installation/](/getting-started/installation/).
+  </Card>
+
+</CardGrid>

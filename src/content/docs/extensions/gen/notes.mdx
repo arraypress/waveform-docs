@@ -1,0 +1,21 @@
+---
+title: Notes
+description: Gotchas and related packages.
+sidebar:
+  order: 4
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Notes & gotchas
+
+- **No DOM, no events, no CSS.** WaveformGen produces JSON only. Async results come back exclusively via the `generatePeaks()` Promise.
+- **Multi-channel audio** is mono-summed: each peak is the max amplitude across all channels for that bin.
+- **`inline` ignores `bpm` and `markers`** — it emits only the raw peaks array.
+- **Logs are prefixed `[WaveformGen]`** and can be fully silenced with `--quiet`.
+
+## Related
+
+- [Installation](/getting-started/installation/) — install the player itself.
+- [Player options](/player/options/) — the `waveform`, `bpm`, and `markers` options this JSON feeds.
+- [Markers](/player/markers/) — how the `markers` array renders.
+- [WaveformBar](/bar/getting-started/) — consuming the JSON via `data-wb-waveform`.

@@ -1,0 +1,60 @@
+---
+title: Configuration
+description: Endpoint, thresholds and handler config.
+sidebar:
+  order: 2
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Configuration
+
+All options are passed to `init(config)`. Every key is optional, but you must supply **either** `endpoint` **or** `handler` — with neither, `init()` emits a `console.warn` and no events are delivered.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `endpoint` | `string \| null` | `null` | URL that events are POSTed to as JSON. Required **unless** `handler` is set. |
+| `handler` | `function \| null` | `null` | Custom delivery callback `handler(payload)`. When set it **fully replaces** network delivery — `endpoint` is never called. Thrown errors are caught and logged, not propagated. |
+| `events` | `object` | `{ listen: 30 }` | Which events fire and their thresholds. Keys: `play`, `listen` (seconds of media-time), `complete` (percent 0–100). Any subset; omit a key to disable that event. |
+| `headers` | `object<string,string>` | `{}` | Extra headers merged into the `fetch` POST (e.g. `Authorization`). **Any custom header disables `sendBeacon`** (beacon can't set headers), so terminal events fall back to `fetch` + `keepalive`. |
+| `metadata` | `object` | `{}` | Key/value pairs spread into **every** payload (e.g. `user_id`, `post_id`). |
+| `session` | `boolean` | `true` | When `true`, a random anonymous session id is generated per `init()` and added to every payload as `session`. Pass `false` to omit it entirely. |
+| `debug` | `boolean` | `false` | When `true`, emits verbose `console.log('[WaveformTracker]', …)` tracing (ready/destroy, play/pause, sent payloads, beacon fallbacks). Does **not** suppress sending. |
+
+### The `events` thresholds
+
+```js
+WaveformTracker.init({
+  endpoint: '/api/track',
+  events: {
+    play: 3,       // fire 'play' once 3s of media-time accumulates
+    listen: 30,    // fire 'listen' once 30s of media-time accumulates
+    complete: 90   // fire 'complete' once playback reaches 90% of duration
+  }
+});
+```
+
+- `play` and `listen` are **seconds of accumulated media-time**.
+- `complete` is a **percent (0–100) of duration**. It fires when `(currentTime / duration) * 100` crosses the threshold during playback, **or** on the player's `ended` event (only when `duration > 0`).
+- Each event fires **at most once per playback**, tracked per player. The set re-arms only on `ended`, so a replay can fire them all again.
+- The default config — when you pass no `events` — fires only `listen` at 30 seconds.
+
+<Aside type="tip" title="Throttling vs. accumulation">
+  Media-time **accumulation** happens on *every* `timeupdate`, but the threshold **checks** that fire events are throttled to once per second. Fast bursts of updates still credit time accurately; you just won't get more than one firing-check per second.
+</Aside>
+
+### Metadata, session, and field precedence
+
+`metadata` is spread into the payload **before** the fixed `session` and `title` keys. That ordering matters:
+
+- `metadata` **can** override the five core fields — `event`, `url`, `time`, `duration`, `page`.
+- `metadata` **cannot** override `session` or `title` (they're added afterward).
+
+```js
+WaveformTracker.init({
+  endpoint: '/api/track',
+  metadata: { user_id: 42, post_id: 456 },
+  session: true // default; set false to drop the session id
+});
+```
+
+The session id is anonymous and in-memory only — a fresh random string (`Math.random().toString(36).slice(2) + Date.now().toString(36)`) generated each `init()` and regenerated on every reload. It correlates events within a single page session; it is not a persistent identifier.
