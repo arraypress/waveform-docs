@@ -1,0 +1,390 @@
+---
+title: Vue
+description: Use WaveformPlayer in Vue.
+sidebar:
+  order: 4
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+There is no official Vue wrapper for WaveformPlayer — and you don't need one. The core package is framework-agnostic vanilla JS. In Vue you have two clean integration paths:
+
+- **Ref-based (imperative):** mount the player against a template ref in `onMounted`, call `destroy()` in `onUnmounted`. Full access to options, methods, and events. Best for SPAs and anything dynamic.
+- **Declarative (auto-init):** render the `data-*` markup and let the library's `DOMContentLoaded` / `WaveformPlayer.init()` scan instantiate it. Zero JS glue. Best for mostly-static content.
+
+Both are covered below, along with SSR/Nuxt guidance.
+
+## Install
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+Import the stylesheet once, globally — typically in your app entry (`main.js` / `main.ts`):
+
+```js title="src/main.js"
+import { createApp } from 'vue';
+import App from './App.vue';
+
+import '@arraypress/waveform-player/dist/waveform-player.css';
+
+createApp(App).mount('#app');
+```
+
+:::tip
+The CSS is required for the player to render correctly. Import it once at the app root, not per-component — bundlers dedupe it, and a single import keeps the cascade predictable.
+:::
+
+## Ref-based component (recommended)
+
+Create a template ref, instantiate `WaveformPlayer` against the resolved element in `onMounted`, and tear it down in `onUnmounted`. Pass constructor options directly — they are the same options documented in [Options](/player/options/).
+
+```vue title="WaveformPlayer.vue"
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
+import WaveformPlayer from '@arraypress/waveform-player';
+
+const props = defineProps({
+  url: { type: String, required: true },
+  title: { type: String, default: null },
+  subtitle: { type: String, default: null },
+});
+
+const el = ref(null);
+let player = null;
+
+onMounted(() => {
+  player = new WaveformPlayer(el.value, {
+    url: props.url,
+    title: props.title,
+    subtitle: props.subtitle,
+    waveformStyle: 'mirror',
+    waveformColor: ['#fafafa', '#71717a'], // vertical gradient stops
+    showBPM: true,
+    onTimeUpdate: (currentTime, duration) => {
+      // wire into your own UI/state here
+    },
+  });
+});
+
+onUnmounted(() => {
+  player?.destroy();
+  player = null;
+});
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+<Aside type="caution" title="Always destroy">
+`destroy()` aborts every DOM/document listener (single `AbortController`), disconnects the `ResizeObserver`, stops the RAF loop, drops the instance from the static registry, and empties the container. Skipping it in `onUnmounted` leaks listeners and live instances across route changes and HMR reloads.
+</Aside>
+
+:::caution[Pass the element, not a selector]
+`new WaveformPlayer(container, options)` accepts a CSS selector **or** an `HTMLElement`. In Vue, pass the resolved `el.value` (an element). It guarantees you target *this* component instance — not the first match in the document — which matters when several players are mounted at once. A missing container throws `Error('[WaveformPlayer] Container element not found')`.
+:::
+
+### Listening to events
+
+Every instance dispatches DOM `CustomEvent`s on its container (they bubble), and mirrors the key ones as option callbacks. Use whichever fits your architecture — callbacks for local state, DOM events when a parent or sibling needs to react.
+
+```vue title="WaveformPlayer.vue"
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
+import WaveformPlayer from '@arraypress/waveform-player';
+
+const props = defineProps({ url: { type: String, required: true } });
+const emit = defineEmits(['ready', 'play', 'pause', 'ended']);
+
+const el = ref(null);
+let player = null;
+
+function onReady(e)  { emit('ready', e.detail); }
+function onPlay(e)   { emit('play', e.detail); }
+function onPause(e)  { emit('pause', e.detail); }
+function onEnded(e)  { emit('ended', e.detail); }
+
+onMounted(() => {
+  player = new WaveformPlayer(el.value, { url: props.url });
+
+  el.value.addEventListener('waveformplayer:ready', onReady);
+  el.value.addEventListener('waveformplayer:play', onPlay);
+  el.value.addEventListener('waveformplayer:pause', onPause);
+  el.value.addEventListener('waveformplayer:ended', onEnded);
+});
+
+onUnmounted(() => {
+  // Remove your own listeners before destroying.
+  el.value?.removeEventListener('waveformplayer:ready', onReady);
+  el.value?.removeEventListener('waveformplayer:play', onPlay);
+  el.value?.removeEventListener('waveformplayer:pause', onPause);
+  el.value?.removeEventListener('waveformplayer:ended', onEnded);
+  player?.destroy();
+  player = null;
+});
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+:::note
+`destroy()` tears down the player's *own* listeners (via its `AbortController`) but not listeners **you** attached to the container. Remove those yourself in `onUnmounted` to be safe, even though Vue will also remove the element from the DOM.
+:::
+
+The full event surface:
+
+| Event | `detail` | Notes |
+| --- | --- | --- |
+| `waveformplayer:ready` | `{ player, url }` | Fires ~100ms after construction. |
+| `waveformplayer:play` | `{ player, url }` | Both audio modes. |
+| `waveformplayer:pause` | `{ player, url }` | Both audio modes. |
+| `waveformplayer:ended` | `{ player, url, currentTime, duration }` | Synthesized in external mode at progress &gt;= 1. |
+| `waveformplayer:timeupdate` | `{ player, currentTime, duration, progress, url }` | `progress` is `0..1`. |
+| `waveformplayer:destroy` | `{ player, url }` | Emitted at the start of `destroy()`. |
+
+Cancelable `waveformplayer:request-*` events fire only in `external` mode — see [Audio modes](/player/audio-modes/). See [Events](/player/events/) for the complete reference.
+
+### Reacting to prop changes
+
+Props are not reactively bound into the player — pass them at construction. When a prop changes after mount, drive the player imperatively with its methods. Use `loadTrack()` to swap the source at runtime (it pauses, resets per-track state, and loads):
+
+```vue title="WaveformPlayer.vue"
+<script setup>
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import WaveformPlayer from '@arraypress/waveform-player';
+
+const props = defineProps({
+  url:      { type: String, required: true },
+  title:    { type: String, default: null },
+  subtitle: { type: String, default: null },
+});
+
+const el = ref(null);
+let player = null;
+
+onMounted(() => {
+  player = new WaveformPlayer(el.value, { url: props.url, title: props.title });
+});
+
+// Swap the track when the URL prop changes. Pass { autoplay: false }
+// to suppress loadTrack's default auto-play behaviour.
+watch(() => props.url, (next, prev) => {
+  if (player && next && next !== prev) {
+    player.loadTrack(next, props.title, props.subtitle, { autoplay: false });
+  }
+});
+
+onUnmounted(() => {
+  player?.destroy();
+  player = null;
+});
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+<Aside type="note" title="loadTrack auto-plays by default">
+`loadTrack(url, title?, subtitle?, options?)` auto-plays the new track **unless** you pass `{ autoplay: false }`. It also resets per-track state — `markers`, `waveform`, subtitle, artwork — so a track loaded without pre-computed peaks won't redraw the previous track's waveform.
+</Aside>
+
+Useful methods to drive from Vue: `play()`, `pause()`, `togglePlay()`, `seekTo(seconds)`, `seekToPercent(percent)`, `setVolume(volume)`, `setPlaybackRate(rate)`, `setWaveformData(data)`, `loadTrack(...)`. Full list in [Methods](/player/methods/).
+
+## Declarative (auto-init)
+
+If you just need the player rendered from static data, skip the imperative wiring entirely. The library auto-initializes any `[data-waveform-player]` element on `DOMContentLoaded`, and `WaveformPlayer.init()` is idempotent (it marks initialized nodes with `data-waveform-initialized="true"`).
+
+Because Vue renders after the initial `DOMContentLoaded`, call `WaveformPlayer.init()` once in `onMounted` to scan the freshly rendered markup:
+
+```vue title="StaticPlayer.vue"
+<script setup>
+import { onMounted } from 'vue';
+import WaveformPlayer from '@arraypress/waveform-player';
+
+onMounted(() => {
+  WaveformPlayer.init(); // idempotent — only touches uninitialised nodes
+});
+</script>
+
+<template>
+  <div
+    data-waveform-player
+    data-src="/audio/track.mp3"
+    data-style="mirror"
+    data-show-bpm="true"
+    data-waveform-color='["#fafafa","#71717a"]'
+  ></div>
+</template>
+```
+
+Every option has a `data-*` equivalent — see [Data attributes](/player/data-attributes/). Note the alias and naming quirks:
+
+| Attribute | Maps to | Note |
+| --- | --- | --- |
+| `data-src` / `data-url` | `url` | `data-url` (canonical) wins if both set. |
+| `data-style` / `data-waveform-style` | `waveformStyle` | `data-waveform-style` wins if both set. |
+| `data-show-bpm` | `showBPM` | dataKey differs from the option key. |
+| `data-color` | `waveformColor` | Legacy alias. |
+| `data-theme` | `colorPreset` | Legacy alias. |
+| `data-waveform-color` | `waveformColor` | CSS colour **or** a JSON array of gradient stops. |
+
+<Aside type="caution" title="Auto-init does not auto-destroy">
+Auto-initialized players are tracked in the static `WaveformPlayer.instances` registry but are **not** tied to Vue's lifecycle. If the component unmounts, call `WaveformPlayer.getInstance(el).destroy()` yourself (or `WaveformPlayer.destroyAll()` on teardown). For components that mount and unmount repeatedly, prefer the ref-based approach — its `onUnmounted` cleanup is unambiguous.
+</Aside>
+
+## SSR & Nuxt
+
+WaveformPlayer is a browser component — it touches `document`, the DOM, canvas, and (in `self` mode) Web Audio / `<audio>`. None of that exists during server-side rendering, so **all instantiation must be client-only**.
+
+The ref-based pattern is already SSR-safe in Vue 3: `onMounted` runs **only on the client**, never on the server. The template renders an empty `<div ref="el">` on the server, and the player is constructed after hydration. No extra guarding is needed for the imperative path — keep `new WaveformPlayer(...)` inside `onMounted`, never at module top level or in `setup`'s synchronous body.
+
+For Nuxt, wrap the component (or render it inside `<ClientOnly>`) to skip server rendering entirely and avoid hydration mismatches:
+
+```vue title="pages/track.vue"
+<template>
+  <ClientOnly>
+    <WaveformPlayer url="/audio/track.mp3" title="Midnight Drive" />
+    <template #fallback>
+      <div class="waveform-placeholder" />
+    </template>
+  </ClientOnly>
+</template>
+
+<script setup>
+import WaveformPlayer from '~/components/WaveformPlayer.vue';
+</script>
+```
+
+<Aside type="tip" title="Import the static helper safely">
+The default export and static helpers (`WaveformPlayer.getPeaksUrl()`, `WaveformPlayer.utils`) are safe to *import* on the server — importing the module does not touch the DOM. Only **constructing** an instance or calling `init()` must be client-side. If you call a browser-dependent helper at request time, guard it with <code>import.meta.client</code> (Nuxt) or <code>typeof window !== 'undefined'</code>.
+</Aside>
+
+:::caution[Don't run `WaveformPlayer.init()` on the server]
+For the declarative path under SSR, keep `WaveformPlayer.init()` inside `onMounted` (or `<ClientOnly>`). Running it during server render has no DOM to scan and will not produce a hydrated player.
+:::
+
+## Pre-computed peaks (skip the decode)
+
+To avoid a Web Audio decode on the client — and render instantly — supply pre-computed peaks via the `waveform` option. It accepts an inline `number[]`, a comma-separated string, a JSON-array string, or a `.json` URL (fetched; embedded markers honoured). Use the static `getPeaksUrl()` helper to derive a sibling `.json` URL from your audio URL:
+
+```vue title="WaveformPlayer.vue"
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
+import WaveformPlayer from '@arraypress/waveform-player';
+
+const props = defineProps({ url: { type: String, required: true } });
+const el = ref(null);
+let player = null;
+
+onMounted(() => {
+  player = new WaveformPlayer(el.value, {
+    url: props.url,
+    // '/audio/track.mp3' -> '/audio/track.json' (undefined if no known extension)
+    waveform: WaveformPlayer.getPeaksUrl(props.url),
+  });
+});
+
+onUnmounted(() => {
+  player?.destroy();
+  player = null;
+});
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+See [Pre-computed peaks](/player/peaks/) for generating and serving `.json` peak files.
+
+## TypeScript
+
+The package ships hand-written types. Import `WaveformPlayerOptions` for prop typing and event-map types for typed listeners:
+
+```vue title="WaveformPlayer.vue"
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+import WaveformPlayer, { type WaveformPlayerOptions } from '@arraypress/waveform-player';
+
+const props = defineProps<{
+  url: string;
+  options?: Omit<WaveformPlayerOptions, 'url'>;
+}>();
+
+const el = ref<HTMLDivElement | null>(null);
+let player: WaveformPlayer | null = null;
+
+onMounted(() => {
+  if (!el.value) return;
+  player = new WaveformPlayer(el.value, { url: props.url, ...props.options });
+});
+
+onUnmounted(() => {
+  player?.destroy();
+  player = null;
+});
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+<Aside type="note" title="Known type drift">
+A few `index.d.ts` defaults lag the runtime: the type file says `height` `60`, `samples` `200`, `barRadius` `0`, but the runtime defaults are `64`, `256`, and `1`. `themes.js` `DEFAULT_OPTIONS` is the source of truth. This affects only the documented `@default` values, not behaviour.
+</Aside>
+
+## Which approach?
+
+<CardGrid>
+
+<Card title="Ref-based" icon="seti:vue">
+Dynamic apps, route changes, prop-driven track swaps, event wiring, repeated mount/unmount. Deterministic `onUnmounted` cleanup. **Use this by default.**
+</Card>
+<Card title="Declarative" icon="document">
+Mostly-static markup, no per-instance JS. Render `data-*`, call `WaveformPlayer.init()` once in `onMounted`. Remember to destroy on teardown.
+</Card>
+
+</CardGrid>
+
+## Related
+
+- [Options](/player/options/) — the full option surface.
+- [Methods](/player/methods/) — imperative API.
+- [Events](/player/events/) — DOM events and callbacks.
+- [Data attributes](/player/data-attributes/) — the declarative contract.
+- [Audio modes](/player/audio-modes/) — `self` vs `external`.
+- [Getting started](/getting-started/installation/) — base install and concepts.

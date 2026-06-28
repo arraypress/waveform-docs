@@ -1,0 +1,230 @@
+---
+title: External / visualization-only mode
+description: Drive the waveform from your own audio.
+sidebar:
+  order: 8
+---
+
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+By default a `WaveformPlayer` owns its own `<audio>` element — it loads the file, plays it, and paints progress from the element's clock. That is `audioMode: 'self'`, and it's all you need for a standalone player.
+
+**External mode** (`audioMode: 'external'`) splits those responsibilities. The player still renders the waveform, handles clicks and keyboard seeking, and shows the play/pause/time UI — but it owns **no audio**. You feed it state through `setPlayingState()` and `setProgress()`, and it tells you when the user wants something by emitting cancelable `waveformplayer:request-*` events. One audio source can drive any number of waveforms.
+
+:::note
+External mode is also why the test suite runs without Web Audio: jsdom has no `AudioContext`, so tests instantiate players in `'external'` mode to avoid the decode path entirely.
+:::
+
+## When to use it
+
+Reach for external mode whenever the **audio and the visualization are not 1:1**:
+
+- **One shared player, many inline waveforms.** A playlist page where every row shows a waveform, but only a single `<audio>` is ever playing. This is exactly how [`waveform-bar`](/bar/overview/) works — a persistent bottom bar embeds one `audioMode: 'self'` player and drives the inline `external`-mode players on the page.
+- **You already have an audio pipeline.** Web Audio graphs, HLS/DASH players, a `<video>` element, `<media-controller>`, Howler, etc. The waveform becomes a pure view over a clock you already own.
+- **Multiple synchronized views of the same track** (e.g. a compact bar plus a large hero waveform) that must stay in lockstep.
+
+If you just want a single self-contained player, stay in the default `'self'` mode — see [Options](/player/options/).
+
+## What changes in external mode
+
+In `'external'` mode `this.audio` stays `null`, so every audio-bound method becomes a no-op and control flows through events instead:
+
+| Concern | `'self'` (default) | `'external'` |
+| --- | --- | --- |
+| Owns an `<audio>` | Yes | **No** (`this.audio === null`) |
+| `play()` / `pause()` | Calls `audio.play()` / `audio.pause()` | Dispatches **cancelable** `waveformplayer:request-play` / `request-pause` |
+| Canvas click / keyboard seek | Seeks the owned audio | Dispatches **cancelable** `waveformplayer:request-seek` (`detail.percent`) |
+| Progress / time display | Driven by the audio's `timeupdate` | You call `setProgress(currentTime, duration)` |
+| Play/pause visual state | Driven by audio events | You call `setPlayingState(playing)` |
+| `seekTo` / `seekToPercent` / `setVolume` / `setPlaybackRate` | Act on the audio | **No-op** |
+| Media Session, speed menu | Active | **No-op** |
+| `waveformplayer:ended` | From the audio `ended` event | **Synthesized** once when `progress >= 1` |
+
+The waveform itself still needs peaks. External-mode players never decode audio for you, so supply pre-computed peaks via the [`waveform`](/player/waveform-data/) option (inline array, CSV/JSON string, or a `.json` URL) — or let the controller redraw them per track with `setWaveformData()` / `loadTrack()`.
+
+## The two pumps
+
+External mode is driven by exactly two methods. Call them from your audio source's events.
+
+### `setPlayingState(playing: boolean)`
+
+Flips the play/pause **visual** state without touching audio. Idempotent — safe to call on every tick. It only emits `waveformplayer:play` / `waveformplayer:pause` (and runs `onPlay` / `onPause`) on an actual **transition**, and starts/stops the smooth-update loop accordingly.
+
+```js
+audio.addEventListener('play',  () => player.setPlayingState(true));
+audio.addEventListener('pause', () => player.setPlayingState(false));
+```
+
+### `setProgress(currentTime: number, duration: number)`
+
+Updates the progress overlay and the current/total time displays from your external clock, stores `duration` (so the accessible slider and keyboard seeking know the track length), redraws the canvas, emits `waveformplayer:timeupdate`, and **synthesizes a one-shot** `waveformplayer:ended` when `progress` reaches `1`. It is a **no-op when `duration <= 0`**, so it's safe to call before metadata is known.
+
+```js
+audio.addEventListener('timeupdate', () => {
+  player.setProgress(audio.currentTime, audio.duration);
+});
+```
+
+<Aside type="tip">
+`onTimeUpdate(currentTime, duration, player)` uses the **same argument order** in both modes, so a single handler works whether the player owns its audio or not.
+</Aside>
+
+## The request events
+
+When the user interacts with an external-mode player, it doesn't act — it **asks**. All three request events are **cancelable** and fire **only in external mode**. Their `detail` is the track-detail object (shape below); `request-seek` adds a `percent`.
+
+| Event | Trigger | `detail` | If not vetoed |
+| --- | --- | --- | --- |
+| `waveformplayer:request-play` | `play()` / `togglePlay()` while paused | track detail | (nothing local — you start your audio) |
+| `waveformplayer:request-pause` | `pause()` / `togglePlay()` while playing | track detail | (nothing local — you pause your audio) |
+| `waveformplayer:request-seek` | canvas click + keyboard slider | track detail + `percent` (0..1) | local overlay advances **optimistically** |
+
+Call `event.preventDefault()` to **veto** the action (e.g. the track isn't loaded yet, or you want to route it differently).
+
+### Track-detail shape
+
+`detail` mirrors the input shape `WaveformBar.play()` accepts, so a controller can forward it verbatim:
+
+```js
+player.container.addEventListener('waveformplayer:request-play', (e) => {
+  // e.detail = { url, title, subtitle, artist, artwork, markers, waveform, id, player }
+  WaveformBar.play(e.detail); // forward straight through
+});
+```
+
+| Field | Source |
+| --- | --- |
+| `url` | `options.url` |
+| `title` | `options.title` |
+| `subtitle` | `options.subtitle` |
+| `artist` | `options.artist`, falling back to `subtitle` |
+| `artwork` | `options.artwork` |
+| `markers` | `options.markers` |
+| `waveform` | `options.waveform` (the peaks you supplied) |
+| `id` | the player's instance id |
+| `player` | the `WaveformPlayer` instance itself |
+
+<Aside type="caution">
+Core has no built-in `artist` option, so `detail.artist` is `undefined` unless you set `artist` yourself — it then falls back to `subtitle`. There's no separate `artist` default in `DEFAULT_OPTIONS`.
+</Aside>
+
+## Full wiring example
+
+One shared `<audio>` element driving several inline external-mode waveforms — the pattern `waveform-bar` automates. Each player is given pre-computed peaks via [`getPeaksUrl()`](/player/waveform-data/#sibling-json-peaks) so nothing decodes audio.
+
+```html
+<audio id="shared-audio"></audio>
+
+<div class="row" data-url="/audio/one.mp3"   data-title="One"></div>
+<div class="row" data-url="/audio/two.mp3"   data-title="Two"></div>
+<div class="row" data-url="/audio/three.mp3" data-title="Three"></div>
+```
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+
+const audio = document.getElementById('shared-audio');
+let active = null; // the player whose track is currently loaded into `audio`
+
+// 1. Build one external-mode player per row.
+const players = [...document.querySelectorAll('.row')].map((el) => {
+  const url = el.dataset.url;
+  return new WaveformPlayer(el, {
+    audioMode: 'external',
+    url,
+    title: el.dataset.title,
+    waveform: WaveformPlayer.getPeaksUrl(url), // /audio/one.mp3 -> /audio/one.json
+    waveformStyle: 'mirror',
+  });
+});
+
+// 2. Helper: make `audio` point at a given player's track.
+function activate(player) {
+  if (active === player) return;
+  if (active) active.setPlayingState(false); // clear the previous waveform's button
+  active = player;
+  audio.src = player.options.url;
+}
+
+// 3. The user clicked play on a row -> point shared audio at it and play.
+players.forEach((player) => {
+  player.container.addEventListener('waveformplayer:request-play', (e) => {
+    activate(player);
+    audio.play();
+  });
+
+  player.container.addEventListener('waveformplayer:request-pause', () => {
+    audio.pause();
+  });
+
+  // Seek: detail.percent is 0..1. The local overlay already moved
+  // optimistically; we reconcile by moving the real clock.
+  player.container.addEventListener('waveformplayer:request-seek', (e) => {
+    if (active !== player) activate(player);
+    if (audio.duration) audio.currentTime = e.detail.percent * audio.duration;
+  });
+});
+
+// 4. Pump shared-audio state back into whichever player is active.
+audio.addEventListener('play',  () => active?.setPlayingState(true));
+audio.addEventListener('pause', () => active?.setPlayingState(false));
+audio.addEventListener('timeupdate', () => {
+  active?.setProgress(audio.currentTime, audio.duration);
+});
+audio.addEventListener('ended', () => active?.setPlayingState(false));
+```
+
+What's happening:
+
+
+1. Clicking a row's button fires `request-play`. We point the shared `<audio>` at that row's URL and start it.
+
+2. The element's `play` event flows back through `setPlayingState(true)`, which flips the button and emits `waveformplayer:play`.
+
+3. Each `timeupdate` calls `setProgress()`, redrawing that one waveform and updating its time display. When the clock reaches the end, `setProgress()` synthesizes `waveformplayer:ended` for you.
+
+4. Clicking elsewhere on the canvas (or arrow-key seeking) fires `request-seek` with a `percent`; we move the real clock and the overlay reconciles on the next `timeupdate`.
+
+
+<Aside type="tip">
+Because only the **active** player receives `setProgress()`, the other waveforms naturally sit idle at their last position. Call `previous.setProgress(0, duration)` (or reset via `loadTrack`) if you want them to visually rewind when superseded.
+</Aside>
+
+## Swapping the track in one player
+
+If instead of many static waveforms you have **one** external-mode player whose track changes (the bottom-bar case), use `loadTrack()` to swap URL, title, subtitle, artwork, markers, and peaks at runtime:
+
+```js
+await bar.loadTrack('/audio/next.mp3', 'Next Track', 'Some Artist', {
+  waveform: WaveformPlayer.getPeaksUrl('/audio/next.mp3'),
+  autoplay: false, // loadTrack auto-plays unless this is explicitly false
+});
+```
+
+<Aside type="caution">
+`loadTrack` resets per-track options — `markers`, `waveformData`, and (since 1.8.1) `options.waveform` — so a new track loaded **without** peaks won't redraw the previous track's waveform. Always pass fresh `waveform` peaks (or `markers`) for the new track. See [Loading tracks at runtime](/player/loading-tracks/).
+</Aside>
+
+## Accessibility in external mode
+
+The accessible seek slider works the same as self mode (`accessibleSeek` defaults to `true`). Because keyboard seeking reads the duration you publish through `setProgress()`, arrow / Page / Home / End keys emit `waveformplayer:request-seek` with the right `percent` once a positive duration has been pushed at least once. Until then there's no known duration and seeking stays inert. See [Accessibility](/player/accessibility/).
+
+## Related
+
+<CardGrid>
+
+  <Card title="Waveform data & peaks" icon="seti:audio">
+    Supply pre-computed peaks so external players never decode audio. [Read more](/player/waveform-data/)
+  </Card>
+  <Card title="WaveformBar" icon="bars">
+    The singleton that automates this whole pattern. [Read more](/bar/overview/)
+  </Card>
+  <Card title="Events" icon="random">
+    Every event and callback, including the `request-*` family. [Read more](/player/events/)
+  </Card>
+  <Card title="Loading tracks at runtime" icon="setting">
+    `loadTrack()` and the per-track reset rules. [Read more](/player/loading-tracks/)
+  </Card>
+
+</CardGrid>

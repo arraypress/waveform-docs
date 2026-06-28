@@ -1,0 +1,411 @@
+---
+title: WaveformGen
+description: Pre-generate peaks at build time.
+sidebar:
+  order: 4
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+**WaveformGen** is a Node CLI and ESM library that decodes audio files and writes normalized waveform peak data as JSON. Pre-generating peaks at build time means the player renders instantly — no client-side audio decode, no fetch-and-analyze on page load.
+
+The JSON it produces drops straight into the player's [`waveform`](/player/options/) option (or `data-waveform` / `data-wb-waveform` attributes), so the bars look identical to a live in-browser decode.
+
+<CardGrid>
+
+  <Card title="CLI" icon="seti:powershell">
+    `waveform-gen ./audio/*.mp3 --output ./waveforms/` — batch-generate one JSON per file.
+  </Card>
+  <Card title="Library" icon="seti:javascript">
+    `generatePeaks(filePath, options)` — the single public export, returns a Promise.
+  </Card>
+
+</CardGrid>
+
+## Install
+
+Run it on demand with `npx`, install globally for a reusable `waveform-gen` command, or add it as a dev dependency to call the library from a build script.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+    # One-off, no install
+    npx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+
+    # Global CLI
+    npm install -g @arraypress/waveform-gen
+
+    # As a build dependency (library + CLI)
+    npm install -D @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+    pnpm dlx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+    pnpm add -g @arraypress/waveform-gen
+    pnpm add -D @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+    yarn dlx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+    yarn global add @arraypress/waveform-gen
+    yarn add -D @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+    bunx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
+    bun add -g @arraypress/waveform-gen
+    bun add -d @arraypress/waveform-gen
+```
+
+</TabItem>
+
+</Tabs>
+
+**Requirements:** Node.js 18+, ESM only (`"type": "module"`). The only runtime dependency is `audio-decode`.
+
+## CLI
+
+```bash
+waveform-gen <files|directories...> [options]
+```
+
+Positional arguments are audio files and/or directories. Everything starting with `--` is an option; everything else is treated as an input path.
+
+```bash
+# Generate one JSON per file into ./waveforms/
+waveform-gen ./audio/*.mp3 --output ./waveforms/
+
+# Scan a directory tree
+waveform-gen ./audio/ --recursive --output ./waveforms/
+
+# Lower resolution + tempo detection
+waveform-gen song.mp3 --samples 400 --bpm
+
+# Print the peaks array to stdout for piping
+waveform-gen song.mp3 --format inline
+```
+
+<Aside type="note" title="Globs are the shell's job">
+WaveformGen does not expand globs itself — `./audio/*.mp3` is expanded by your shell into a list of paths before the tool sees them. The CLI only handles plain file and directory paths. On a shell that doesn't expand a pattern, pass the directory instead and use `--recursive`.
+</Aside>
+
+### Flags
+
+| Flag | Default | Type | Description |
+|------|---------|------|-------------|
+| `--samples <n>` | `1800` | integer | Number of peaks (array length) generated per file. Higher = finer detail, larger JSON. |
+| `--precision <n>` | `2` | integer | Decimal places each peak is rounded to. |
+| `--output <dir>` | _same dir as each input_ | path | Output directory. Created recursively before writing. |
+| `--format <type>` | `json` | `json` \| `inline` | `json` writes a `<name>.json` file; `inline` prints the peaks array to stdout. |
+| `--bpm` | `false` | flag | Run BPM detection and write an integer `"bpm"` into the JSON (only when a tempo is found). |
+| `--recursive` | `false` | flag | Scan passed directories recursively. Default scans the top level only. |
+| `--quiet` | `false` | flag | Suppress all progress, per-file, and warning logs. |
+| `--help`, `-h` | — | flag | Print help and `exit(0)`. Also shown when run with zero arguments. |
+
+<Aside type="caution" title="Numeric flags are not validated">
+`--samples` and `--precision` are parsed with `parseInt` and **no validation**. A non-numeric value (e.g. `--samples abc`) silently becomes `NaN`, which produces a broken peaks array. Always pass integers.
+</Aside>
+
+### Default samples differ between CLI and library
+
+This is the single most important thing to remember when scripting WaveformGen:
+
+| Context | Default `samples` |
+|---------|-------------------|
+| CLI `--samples` | **1800** |
+| Library `generatePeaks()` | **200** |
+
+<Aside type="caution" title="Always pass samples explicitly in the library">
+The library default (`200`) is **not** the CLI default (`1800`). If you call `generatePeaks()` without `samples`, you get 200 peaks — a much coarser waveform than the CLI produces. To match CLI output, always pass `samples` explicitly.
+</Aside>
+
+### Exit codes & error handling
+
+| Situation | Behavior |
+|-----------|----------|
+| `--help` / `-h` / no args | Prints help, `exit(0)`. |
+| No audio files resolved | `[WaveformGen] No audio files found.`, `exit(1)`. |
+| Fatal / uncaught error | `[WaveformGen] Fatal error: …`, `exit(1)`. |
+| A single file fails to decode | Counted and reported (`❌ name: message`), **run continues**, exit code unchanged. |
+| Unreadable / non-audio path | Skipped with a `[WaveformGen] Skipping …` warning (silenced by `--quiet`). |
+
+Per-file failures never abort a batch — a run over 100 files where 3 fail still writes the other 97 and exits `0`. Check the closing `Done: N generated, M failed` summary line. Every log and error is prefixed `[WaveformGen]`.
+
+## Output JSON shape
+
+In `json` format, each input file produces `<nameNoExt>.json` in the output directory. The object is pretty-printed (2-space indent) with a trailing newline. Key order is always `peaks`, then `bpm`, then `markers`:
+
+```json
+{
+  "peaks": [0.2, 0.37, 0.41, 0.55, 1.0, 0.82],
+  "bpm": 120,
+  "markers": [
+    { "time": 0, "label": "Intro" },
+    { "time": 30, "label": "Chorus" }
+  ]
+}
+```
+
+| Key | Always present? | Shape | Notes |
+|-----|-----------------|-------|-------|
+| `peaks` | Yes | `number[]` | Normalized amplitudes, `0..1`, loudest peak is exactly `1.0`. Length = `--samples`. |
+| `bpm` | Only with `--bpm` **and** a detected tempo | `number` | Integer. Omitted entirely if detection returns `null`. |
+| `markers` | Only if a sidecar file exists | `{ time: number, label: string }[]` | `time` in seconds. Omitted if no markers parsed. |
+
+### How peaks are computed
+
+
+1. **Decode** the file (`audio-decode`) into channel data.
+2. **Bin** the samples into `samples` equal-width buckets.
+3. **Scan every frame** in each bucket — unlike the live player, which skips ~9/10 frames for real-time speed — taking `max(|max|, |min|)` per bucket so no transient is missed.
+4. **Mono-sum across channels**: each peak is the max amplitude across all channels for that bucket.
+5. **Normalize** by dividing every peak by the loudest, so the maximum is exactly `1.0`.
+6. **Round** to `precision` decimals (`precision >= 0`). A negative `precision` returns unrounded normalized peaks.
+
+
+<Aside type="tip" title="Identical amplitude to a live decode">
+Normalization divides by the max peak (loudest = `1.0`), deliberately matching the core player's `audio.js`. Pre-generated JSON renders at the exact same height as an in-browser decode of the same file. (An earlier release scaled to a `0.95` ceiling, which rendered ~5% shorter.)
+</Aside>
+
+### `inline` format
+
+`--format inline` prints `JSON.stringify(peaks)` — the raw array, one line per file — to stdout and **writes no file**. It ignores `bpm` and `markers` entirely. Use it for piping or inlining into another build step:
+
+```bash
+# Capture peaks into a variable / file
+waveform-gen song.mp3 --format inline > song.peaks.json
+
+# → [0.2,0.37,0.41,0.55,1,0.82]
+```
+
+## Markers (sidecar files)
+
+Markers are **auto-detected — there is no flag.** For `song.mp3`, WaveformGen looks for `song.markers.txt` (basename without extension + `.markers.txt`) in the **same directory** as the audio.
+
+```txt title="song.markers.txt"
+# Lines starting with # are ignored
+0:00 Intro
+0:30 Verse 1
+1:15 Chorus
+1:02:30 Bridge
+```
+
+- **Line format:** `<timestamp> <label>` — the first run of whitespace splits timestamp from label.
+- **Timestamps:** `SS`, `MM:SS`, or `H:MM:SS`. All are converted to seconds.
+- Blank lines and lines starting with `#` are ignored.
+- Invalid / `NaN` timestamps are silently skipped.
+
+The parsed markers land in the JSON's `markers` array and feed the player's marker rendering — see [Markers](/player/markers/).
+
+## Supported audio formats
+
+| Format | Decodes? | Picked up as input? |
+|--------|----------|---------------------|
+| MP3 | ✅ | ✅ |
+| WAV | ✅ | ✅ |
+| FLAC | ✅ | ✅ |
+| OGG | ✅ | ✅ |
+| M4A | ❌ | ✅ (then errors) |
+| AAC | ❌ | ✅ (then errors) |
+
+<Aside type="caution" title="M4A / AAC are matched but cannot be decoded">
+The input scanner's extension set includes `.m4a` and `.aac`, so those files are picked up as inputs — but the bundled decoder cannot handle them. WaveformGen turns the cryptic decoder crash into a clear, actionable error and advises converting first:
+
+```bash
+ffmpeg -i in.m4a out.wav
+```
+
+This is a per-file error: it's counted and reported, but the rest of the batch still runs.
+</Aside>
+
+## File resolution
+
+- Each positional path is resolved. **Files** are kept if their extension is a known audio type. **Directories** are scanned.
+- Directories are scanned **top level only** unless `--recursive` is passed.
+- The final file list is **de-duplicated**.
+- Output path is `<output-dir or input-dir>/<nameNoExt>.json`. With `--output`, the directory is created recursively up front. Without it, each JSON is written **next to its source audio file**.
+
+## Library API
+
+The package exports exactly one function — `generatePeaks` — re-exported from `lib/index.js`.
+
+```javascript
+import { generatePeaks } from '@arraypress/waveform-gen';
+
+const { peaks, bpm } = await generatePeaks('./song.mp3', {
+  samples: 1800,   // pass explicitly — library default is 200, not 1800
+  precision: 2,
+  detectBPM: true,
+});
+
+// peaks → number[] normalized 0..1 (loudest = 1.0)
+// bpm   → number | null
+```
+
+### `generatePeaks(filePath, options?)`
+
+`(filePath: string, options?: { samples?: number; precision?: number; detectBPM?: boolean }) => Promise<{ peaks: number[]; bpm: number | null }>`
+
+Reads and decodes the file, extracts max-amplitude peaks per bin across all channels, normalizes so the loudest peak is `1.0`, and rounds to `precision`.
+
+| Option | Default | Type | Description |
+|--------|---------|------|-------------|
+| `samples` | `200` | number | Number of peaks. Falsy (`0` / `undefined`) falls back to `200` via `options.samples \|\| 200`. |
+| `precision` | `2` | number | Decimal places. `>= 0` rounds; `< 0` returns unrounded normalized peaks. |
+| `detectBPM` | `false` | boolean | When `true`, also run BPM detection and return `bpm` (`number \| null`). |
+
+**Returns** a Promise resolving to `{ peaks, bpm }`. `bpm` is `null` unless `detectBPM` is `true` **and** a stable tempo was found.
+
+```javascript
+import { generatePeaks } from '@arraypress/waveform-gen';
+import { writeFile } from 'node:fs/promises';
+
+const result = await generatePeaks('./track.wav', { samples: 1800 });
+
+// Build the same JSON shape the CLI writes
+const output = { peaks: result.peaks };
+if (result.bpm != null) output.bpm = result.bpm;
+
+await writeFile('./waveforms/track.json', JSON.stringify(output, null, 2) + '\n');
+```
+
+<Aside type="note" title="Markers are CLI-only">
+The `.markers.txt` sidecar parsing lives in the CLI, not the library. `generatePeaks()` returns only `{ peaks, bpm }` — if you need markers from the library path, parse the sidecar yourself and merge it into the output object.
+</Aside>
+
+### BPM detection
+
+BPM is energy/onset based (window `2048`, hop `1024`): it detects transients, buckets the intervals into tempos `60 < bpm < 200`, picks the most common, applies octave-doubling/halving correction, and subtracts a `-1` calibration offset. It returns:
+
+- an **integer** when a stable tempo is found,
+- **`null`** when there are fewer than 2 onsets or no bucket matched.
+
+It's a heuristic, not exact metadata — verify critical values. When `null`, the CLI omits `bpm` from the JSON entirely.
+
+## Feeding the player
+
+The generated JSON is consumed by the player and bar via attributes (no WaveformGen-specific attributes exist — these belong to the consuming libraries):
+
+<Tabs syncKey="consumer">
+
+<TabItem label="WaveformPlayer">
+
+```html
+    <div data-waveform-player
+         data-url="song.mp3"
+         data-waveform="waveforms/song.json"></div>
+```
+    Or via JS — see [Options](/player/options/):
+```javascript
+    new WaveformPlayer(el, {
+      url: 'song.mp3',
+      waveform: 'waveforms/song.json',
+    });
+```
+
+</TabItem>
+<TabItem label="WaveformBar">
+
+```html
+    <div data-wb-play
+         data-url="song.mp3"
+         data-wb-waveform="waveforms/song.json"></div>
+```
+    See [WaveformBar](/bar/getting-started/).
+
+</TabItem>
+
+</Tabs>
+
+When a player is given pre-generated peaks, it skips client-side decoding entirely and renders the waveform immediately. If the JSON also carries `bpm` and `markers`, those flow through to the player's tempo display and marker track.
+
+## Build-pipeline usage
+
+### Batch a folder into a `waveforms/` directory
+
+```bash
+waveform-gen ./public/audio/ --recursive --output ./public/waveforms/ --samples 1800 --bpm
+```
+
+Every supported file under `./public/audio/` becomes `./public/waveforms/<name>.json` with peaks, detected `bpm`, and any sidecar markers.
+
+### npm script
+
+```json title="package.json"
+{
+  "scripts": {
+    "waveforms": "waveform-gen ./src/audio/ --recursive --output ./public/waveforms/ --samples 1800 --bpm --quiet",
+    "prebuild": "npm run waveforms"
+  }
+}
+```
+
+`--quiet` keeps CI logs clean; wiring it to `prebuild` regenerates peaks before every production build.
+
+### Programmatic batch with a manifest
+
+When you need more control — a manifest, custom file names, or merged metadata — drive the library directly:
+
+```javascript
+import { generatePeaks } from '@arraypress/waveform-gen';
+import { readdir, writeFile, mkdir } from 'node:fs/promises';
+import { join, basename, extname } from 'node:path';
+
+const SRC = './src/audio';
+const OUT = './public/waveforms';
+const SAMPLES = 1800; // match the CLI default explicitly
+
+await mkdir(OUT, { recursive: true });
+
+const manifest = {};
+for (const file of await readdir(SRC)) {
+  if (!/\.(mp3|wav|flac|ogg)$/i.test(file)) continue;
+
+  const name = basename(file, extname(file));
+  try {
+    const { peaks, bpm } = await generatePeaks(join(SRC, file), {
+      samples: SAMPLES,
+      precision: 2,
+      detectBPM: true,
+    });
+
+    const output = { peaks };
+    if (bpm != null) output.bpm = bpm;
+
+    await writeFile(join(OUT, `${name}.json`), JSON.stringify(output, null, 2) + '\n');
+    manifest[file] = { waveform: `waveforms/${name}.json`, bpm };
+  } catch (err) {
+    console.error(`[build] ${file}: ${err.message}`); // don't abort the batch
+  }
+}
+
+await writeFile(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+```
+
+<Aside type="tip" title="Keep samples consistent across a project">
+Pick one `samples` value and reuse it everywhere (build script, CI, ad-hoc CLI runs). Mixing `1800` and `200` across files produces visually inconsistent waveforms even for tracks of identical length.
+</Aside>
+
+## Notes & gotchas
+
+- **No DOM, no events, no CSS.** WaveformGen produces JSON only. Async results come back exclusively via the `generatePeaks()` Promise.
+- **Multi-channel audio** is mono-summed: each peak is the max amplitude across all channels for that bin.
+- **`inline` ignores `bpm` and `markers`** — it emits only the raw peaks array.
+- **Logs are prefixed `[WaveformGen]`** and can be fully silenced with `--quiet`.
+
+## Related
+
+- [Installation](/getting-started/installation/) — install the player itself.
+- [Player options](/player/options/) — the `waveform`, `bpm`, and `markers` options this JSON feeds.
+- [Markers](/player/markers/) — how the `markers` array renders.
+- [WaveformBar](/bar/getting-started/) — consuming the JSON via `data-wb-waveform`.

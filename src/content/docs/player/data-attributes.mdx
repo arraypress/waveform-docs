@@ -1,0 +1,377 @@
+---
+title: Data attributes
+description: The complete data-* markup contract.
+sidebar:
+  order: 2
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Every WaveformPlayer option has a declarative `data-*` equivalent. Add the attributes to an element, drop the library on the page, and the player initialises itself — no JavaScript required. This is the zero-build path, and it is exactly what the framework wrappers (`waveform-player-astro`) emit under the hood.
+
+This page is the authoritative list: every attribute, its JS-option equivalent, accepted values, and the parsing rules that turn a string in your HTML into a typed option.
+
+## How auto-init works
+
+On `DOMContentLoaded` the library scans the document for elements carrying the `data-waveform-player` marker attribute and instantiates a `WaveformPlayer` on each one.
+
+```html
+<!-- This is enough. The marker attribute needs no value. -->
+<div
+  data-waveform-player
+  data-src="/audio/track.mp3"
+  data-style="mirror"
+  data-show-bpm="true"
+></div>
+```
+
+```html
+<!-- Get the library on the page (CDN / no-build) -->
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.css">
+<script src="https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.min.js"></script>
+```
+
+Using a bundler instead? Install the package and import it once — the import registers the same `DOMContentLoaded` scan.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+```js
+import '@arraypress/waveform-player';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+// Auto-init runs on DOMContentLoaded; nothing else to wire up.
+```
+
+### Re-scanning after the initial load
+
+If you inject markup after `DOMContentLoaded` (AJAX, a modal, a client-side route change), call the static initializer to pick up new elements:
+
+```js
+WaveformPlayer.init();
+```
+
+`init()` is **idempotent**. The first time the library initialises an element it stamps it with `data-waveform-initialized="true"`; subsequent scans skip any element that already carries that flag, so calling `init()` repeatedly never double-instantiates a player.
+
+:::note
+`data-waveform-initialized` is written **by** the library — it is not an attribute you author. Leave it off your markup.
+:::
+
+## Configuration precedence
+
+When a player is built, options are merged from three sources, last writer winning:
+
+
+1. **Built-in defaults** — `DEFAULT_OPTIONS` (the option surface).
+2. **`data-*` attributes** — parsed off the host element.
+3. **JS constructor options** — the second argument to `new WaveformPlayer()`.
+
+
+So a constructor option always overrides the matching `data-*` attribute, which always overrides the default. After merging, the resolved color preset and per-style bar sizing (`STYLE_DEFAULTS`) are applied. The merge skips `null`/`undefined`, so a later source can leave an earlier value untouched rather than clobbering it.
+
+```js
+// data-style="bars" on the element, but the constructor wins:
+new WaveformPlayer('#player', { waveformStyle: 'mirror' }); // → mirror
+```
+
+## How values are parsed
+
+`data-*` attributes are strings. The parser coerces each one according to its type, and **only copies attributes that are actually present** — an omitted attribute never overrides a default.
+
+| Kind | Rule |
+| --- | --- |
+| **String** | Passed through verbatim. |
+| **Number (int)** | `parseInt(value, 10)` — e.g. `data-height`, `data-bar-width`, `data-bpm`. Empty value is skipped. |
+| **Number (float)** | `parseFloat(value)` — `data-playback-rate`, and `data-button-size` when given a bare number. |
+| **Boolean** | Compared against the literal string `'true'`. Any other value (including `"false"`, `""`, `"1"`) resolves to `false`. |
+| **JSON** | `JSON.parse(value)` — `data-markers`, `data-playback-rates`. Malformed JSON is **warned about and skipped** (the attribute is ignored, never thrown). |
+| **Color** | `data-waveform-color` / `data-progress-color` accept a CSS color string **or** a JSON array of gradient stops. A value starting with `[` is parsed as JSON; on parse failure it falls back to the raw string. |
+
+:::caution[Booleans need the exact string `true`]
+To **disable** a flag that defaults to on, you must write the value explicitly:
+
+```html
+<div data-waveform-player data-show-time="false" data-single-play="false"></div>
+```
+
+`data-show-time` alone (valueless) yields the empty string, which is **not** `'true'`, so it reads as `false`. Only `="true"` enables a flag.
+:::
+
+## Complete attribute reference
+
+Defaults shown are the runtime `DEFAULT_OPTIONS` values (`themes.js` is the source of truth). See [Options](/player/options/) for the full prose on each setting.
+
+### Source & loading
+
+| Attribute | Option | Type / values | Default |
+| --- | --- | --- | --- |
+| `data-url` | `url` | string (audio URL) | `''` |
+| `data-src` | `url` *(alias)* | string | — |
+| `data-waveform` | `waveform` | peaks: CSV string, JSON-array string, or `.json` URL | — |
+| `data-samples` | `samples` | int (source peak resolution decoded) | `256` |
+| `data-preload` | `preload` | `auto` \| `metadata` \| `none` | `metadata` |
+| `data-audio-mode` | `audioMode` | `self` \| `external` | `self` |
+| `data-autoplay` | `autoplay` | boolean | `false` |
+
+`data-audio-mode="external"` makes the player visualization-only — it owns no `<audio>` element and is driven by `setPlayingState()` / `setProgress()`. See [Audio modes](/player/audio-modes/).
+
+### Layout & sizing
+
+| Attribute | Option | Type / values | Default |
+| --- | --- | --- | --- |
+| `data-height` | `height` | int (px) | `64` |
+| `data-layout` | `layout` | `default` \| `preview` | `default` |
+| `data-button-align` | `buttonAlign` | `auto` \| `top` \| `center` \| `bottom` | `auto` |
+| `data-button-style` | `buttonStyle` | `circle` \| `minimal` | `circle` |
+| `data-button-size` | `buttonSize` | int (px) **or** unit string (`4rem`) | `null` |
+
+`data-button-size`: a bare number (`data-button-size="64"`) is treated as pixels; a value with a unit (`data-button-size="4rem"`) is kept verbatim and assigned to the `--wfp-btn-size` CSS variable.
+
+### Waveform style
+
+| Attribute | Option | Type / values | Default |
+| --- | --- | --- | --- |
+| `data-waveform-style` | `waveformStyle` | `bars` \| `mirror` \| `line` \| `blocks` \| `dots` \| `seekbar` | `mirror` |
+| `data-style` | `waveformStyle` *(alias)* | same values | — |
+| `data-bar-width` | `barWidth` | int (px) | `2` |
+| `data-bar-spacing` | `barSpacing` | int (px) | `0` |
+| `data-bar-radius` | `barRadius` | int (px); `0` = square caps | `1` |
+
+The singular forms `bar` / `block` / `dot` are also accepted by the drawer and alias the plural styles; an unknown style falls back to `bars`. `barRadius` applies to `bars` and `mirror` only, and `seekbar` ignores peaks entirely.
+
+:::tip[Per-style bar defaults]
+If you do **not** set `barWidth`/`barSpacing` (via option or attribute), each style seeds its own sizing: `bars {3,1}`, `mirror {2,2}`, `line {2,0}`, `blocks {4,2}`, `dots {3,3}`, `seekbar {1,0}`. Setting either attribute opts that style out of its seed. See [Waveform styles](/player/waveform-styles/).
+:::
+
+### Colors & theme
+
+| Attribute | Option | Type / values | Default |
+| --- | --- | --- | --- |
+| `data-color-preset` | `colorPreset` | `dark` \| `light` | `null` (auto-detect) |
+| `data-waveform-color` | `waveformColor` | CSS color **or** JSON gradient array | `null` (preset) |
+| `data-progress-color` | `progressColor` | CSS color **or** JSON gradient array | `null` (preset) |
+| `data-button-color` | `buttonColor` | CSS color | `null` (preset) |
+| `data-button-hover-color` | `buttonHoverColor` | CSS color | `null` (preset) |
+| `data-text-color` | `textColor` | CSS color | `null` (preset) |
+| `data-text-secondary-color` | `textSecondaryColor` | CSS color | `null` (preset) |
+| `data-background-color` | `backgroundColor` | CSS color | `null` (preset) |
+| `data-border-color` | `borderColor` | CSS color | `null` (preset) |
+| `data-color` | `waveformColor` *(legacy alias)* | CSS color | — |
+| `data-theme` | `colorPreset` *(legacy alias)* | `dark` \| `light` | — |
+
+Leaving a color `null` lets it follow the resolved preset, and any color you leave `null` participates in **auto-theme** re-detection. Setting an explicit `colorPreset` (or hand-setting a color) opts that aspect out of re-detection. See [Theming](/player/theming/).
+
+### Behavior flags
+
+| Attribute | Option | Type | Default |
+| --- | --- | --- | --- |
+| `data-show-controls` | `showControls` | boolean | `true` |
+| `data-show-info` | `showInfo` | boolean | `true` |
+| `data-show-time` | `showTime` | boolean | `true` |
+| `data-show-hover-time` | `showHoverTime` | boolean | `false` |
+| `data-single-play` | `singlePlay` | boolean | `true` |
+| `data-play-on-seek` | `playOnSeek` | boolean | `true` |
+| `data-enable-media-session` | `enableMediaSession` | boolean | `true` |
+| `data-accessible-seek` | `accessibleSeek` | boolean | `true` |
+
+:::note
+`data-show-hover-time` is parsed and stored, but there is currently no hover-tooltip implementation in core — it is effectively a no-op today.
+:::
+
+### Content & metadata
+
+| Attribute | Option | Type | Default |
+| --- | --- | --- | --- |
+| `data-title` | `title` | string (`null` derives from URL filename) | `null` |
+| `data-subtitle` | `subtitle` | string | `null` |
+| `data-artwork` | `artwork` | string (40×40 image URL + Media Session art) | `null` |
+| `data-album` | `album` | string (Media Session metadata only) | `''` |
+| `data-error-text` | `errorText` | string (shown in the error overlay, escaped) | `Unable to load audio` |
+
+### BPM
+
+| Attribute | Option | Type | Default |
+| --- | --- | --- | --- |
+| `data-show-bpm` | `showBPM` | boolean | `false` |
+| `data-bpm` | `bpm` | int (known BPM; wins over auto-detection) | `null` |
+
+:::caution[Attribute name differs from the option key]
+The option is `showBPM`, but the attribute is **`data-show-bpm`** (the parser maps the `showBpm` dataset key to the `showBPM` option). This is the one case where the attribute name doesn't mechanically match the camelCase option.
+:::
+
+### Markers
+
+| Attribute | Option | Type | Default |
+| --- | --- | --- | --- |
+| `data-markers` | `markers` | JSON array of `{time, label, color?}` | `[]` |
+| `data-show-markers` | `showMarkers` | boolean | `true` |
+
+```html
+<div
+  data-waveform-player
+  data-src="/audio/mix.mp3"
+  data-markers='[{"time":0,"label":"Intro"},{"time":48,"label":"Drop","color":"#ef4444"}]'
+></div>
+```
+
+Use single quotes around the attribute so the JSON's double quotes survive in HTML. Invalid JSON is logged with a `[WaveformPlayer]` warning and skipped — the player still loads, just without markers. See [Markers](/player/markers/).
+
+### Playback speed
+
+| Attribute | Option | Type | Default |
+| --- | --- | --- | --- |
+| `data-playback-rate` | `playbackRate` | float (initial rate) | `1` |
+| `data-show-playback-speed` | `showPlaybackSpeed` | boolean | `false` |
+| `data-playback-rates` | `playbackRates` | JSON array of numbers | `[0.5,0.75,1,1.25,1.5,1.75,2]` |
+
+```html
+<div
+  data-waveform-player
+  data-src="/audio/lecture.mp3"
+  data-show-playback-speed="true"
+  data-playback-rates="[1, 1.25, 1.5, 2]"
+></div>
+```
+
+### Accessibility
+
+| Attribute | Option | Type | Default |
+| --- | --- | --- | --- |
+| `data-accessible-seek` | `accessibleSeek` | boolean | `true` |
+| `data-seek-label` | `seekLabel` | string (slider accessible name) | `null` |
+
+With `accessibleSeek` on (the default), the waveform becomes a `role=slider` with arrow/page/home/end keyboard seeking. `seekLabel` falls back to the title, then to `"Seek"`. See [Accessibility](/player/accessibility/).
+
+### Custom icons
+
+| Attribute | Option | Type | Default |
+| --- | --- | --- | --- |
+| `data-play-icon` | `playIcon` | raw SVG markup | built-in play glyph |
+| `data-pause-icon` | `pauseIcon` | raw SVG markup | built-in pause glyph |
+
+```html
+<div
+  data-waveform-player
+  data-src="/audio/track.mp3"
+  data-play-icon='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'
+></div>
+```
+
+## Aliases
+
+Several attributes are shorthand or legacy forms of a canonical option. When both the alias and the canonical attribute are present, **the canonical form wins** (it is applied last).
+
+| Alias | Canonical | Notes |
+| --- | --- | --- |
+| `data-src` | `data-url` | Shorthand for the audio URL. |
+| `data-style` | `data-waveform-style` | Shorthand for the visual style. |
+| `data-color` | `data-waveform-color` | Legacy. |
+| `data-theme` | `data-color-preset` | Legacy. |
+
+```html
+<!-- data-url wins over data-src -->
+<div data-waveform-player data-src="/old.mp3" data-url="/new.mp3"></div>
+<!-- → loads /new.mp3 -->
+```
+
+The `src → url` and `style → waveformStyle` aliases are normalised identically in the JS constructor, so the two configuration paths stay in sync.
+
+## JSON-valued attributes
+
+Four attributes accept structured data encoded as a string:
+
+| Attribute | Shape |
+| --- | --- |
+| `data-markers` | JSON array of `{time, label, color?}` objects. |
+| `data-playback-rates` | JSON array of numbers. |
+| `data-waveform-color` / `data-progress-color` | CSS color string, or JSON array of gradient stops (vertical, top → bottom). |
+| `data-waveform` | A comma-separated peak string, a JSON-array string, or a `.json` URL. |
+
+```html
+<!-- Vertical gradient via a JSON stop array -->
+<div
+  data-waveform-player
+  data-src="/audio/track.mp3"
+  data-waveform-color='["#fafafa", "#71717a"]'
+  data-progress-color="#6366f1"
+></div>
+```
+
+A single-element array collapses to one color. For `data-markers` and `data-playback-rates`, malformed JSON is warned and skipped; for the color attributes, an unparseable `[`-prefixed value falls back to being treated as a raw CSS string.
+
+### Pre-computed peaks
+
+`data-waveform` lets you skip Web Audio decoding entirely by supplying peaks directly — handy when you generate waveforms at build time.
+
+```html
+<!-- Sidecar JSON file (fetched; embedded markers honoured) -->
+<div data-waveform-player data-src="/audio/track.mp3" data-waveform="/audio/track.json"></div>
+
+<!-- Inline comma-separated peaks -->
+<div data-waveform-player data-src="/audio/track.mp3" data-waveform="0.1,0.4,0.9,0.6,0.2"></div>
+```
+
+If your `.json` sidecar follows the audio filename (`track.mp3` → `track.json`), the static helper `WaveformPlayer.getPeaksUrl('/audio/track.mp3')` derives that URL for you in JS. See [Waveform data](/player/waveform-data/).
+
+## What has no attribute
+
+The lifecycle **callbacks** are JS-only — functions can't be expressed in HTML, so there is no `data-*` for `onLoad`, `onPlay`, `onPause`, `onEnd`, `onError`, or `onTimeUpdate`. For declarative players, listen for the equivalent DOM events instead:
+
+```js
+document.addEventListener('waveformplayer:ended', (e) => {
+  console.log('finished', e.detail.url);
+});
+```
+
+See [Events](/player/events/) for the full event map and detail shapes.
+
+## Mixing markup and JS
+
+A declarative player is a real `WaveformPlayer` instance. Look it up after auto-init and call methods on it:
+
+```js
+const el = document.querySelector('[data-waveform-player]');
+const player = WaveformPlayer.getInstance(el);
+player?.play();
+```
+
+Or skip auto-init and pass the same settings as constructor options — the two paths are equivalent, and constructor options win on any key set in both. See [Options](/player/options/) and [Getting started](/getting-started/installation/).
+
+<CardGrid>
+
+  <Card title="Options" icon="setting">
+    The same surface as a JS object — full prose on every setting. [Read more →](/player/options/)
+  </Card>
+  <Card title="Events" icon="random">
+    DOM events and callbacks for declarative players. [Read more →](/player/events/)
+  </Card>
+
+</CardGrid>

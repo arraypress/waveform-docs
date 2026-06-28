@@ -1,0 +1,242 @@
+---
+title: Accessibility
+description: Keyboard, ARIA and reduced motion.
+sidebar:
+  order: 7
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Every player is keyboard-operable and screen-reader-aware out of the box. The waveform is exposed as a native [`role="slider"`](#the-accessibleseek-slider), the play button and cue markers carry accessible names, focus is visible, animation honours `prefers-reduced-motion`, and self-mode players register system [Media Session](#media-session) controls. Nothing on this page requires configuration — it is on by default.
+
+## Two focusable surfaces
+
+A player exposes two distinct keyboard targets, each with its own keys:
+
+| Element | CSS class | In tab order? | Handles |
+| --- | --- | --- | --- |
+| The **seek slider** | `.waveform-container` | Yes (`tabindex="0"`) | Arrow / Page / Home / End seeking — both audio modes |
+| The **player root** | `.waveform-player` | Only after a click (`tabindex` flips `-1` → `0`) | Space, digits `0`–`9`, volume, mute — self mode |
+
+The slider is reachable with <kbd>Tab</kbd>. The root becomes focusable when the user clicks anywhere on the player, which also pulls focus off sibling players so transport keys only ever drive one instance.
+
+<Aside type="note">
+The slider's key handler calls `stopPropagation()`, so when the canvas surface is focused the arrow keys seek (they do not fall through to the root's volume handler). The two surfaces never double-fire.
+</Aside>
+
+## Keyboard controls
+
+### The seek slider
+
+Focus the waveform with <kbd>Tab</kbd>, then:
+
+| Key | Action |
+| --- | --- |
+| <kbd>→</kbd> / <kbd>↑</kbd> | Seek forward 5 s |
+| <kbd>←</kbd> / <kbd>↓</kbd> | Seek back 5 s |
+| <kbd>Page Up</kbd> | Seek forward 10 s |
+| <kbd>Page Down</kbd> | Seek back 10 s |
+| <kbd>Home</kbd> | Jump to start (0 s) |
+| <kbd>End</kbd> | Jump to the end |
+
+These work in **both** audio modes. In self mode they call `seekTo()` directly; in [external mode](/player/audio-modes/) they dispatch a cancelable `waveformplayer:request-seek` event (the controller may `preventDefault()` to veto it; otherwise the local overlay advances optimistically). Seeking is a no-op until a duration is known.
+
+### The player root
+
+Click a player to give its root focus, then:
+
+| Key | Action | Mode |
+| --- | --- | --- |
+| <kbd>Space</kbd> | Toggle play / pause | Both |
+| <kbd>0</kbd>–<kbd>9</kbd> | Seek to that tenth of the track (<kbd>0</kbd> = start, <kbd>5</kbd> = halfway, <kbd>9</kbd> = 90%) | Self |
+| <kbd>→</kbd> | Seek forward 5 s | Self |
+| <kbd>←</kbd> | Seek back 5 s | Self |
+| <kbd>↑</kbd> | Volume +0.1 | Self |
+| <kbd>↓</kbd> | Volume −0.1 | Self |
+| <kbd>m</kbd> / <kbd>M</kbd> | Toggle mute | Self |
+
+<kbd>Space</kbd> works in external mode too — `togglePlay()` routes through the `request-play` / `request-pause` events so the controller decides what happens. The remaining keys depend on an owned `<audio>` element, so they are inert in external mode (the external controller owns volume, mute and fine seeking).
+
+## The accessibleSeek slider
+
+When `accessibleSeek` is `true` (the default), `.waveform-container` is upgraded to a standard ARIA slider. The library sets and continuously updates these attributes:
+
+| Attribute | Value |
+| --- | --- |
+| `role` | `"slider"` |
+| `tabindex` | `"0"` |
+| `aria-valuemin` | `"0"` |
+| `aria-valuemax` | Duration in seconds, rounded |
+| `aria-valuenow` | Current time in seconds, rounded |
+| `aria-valuetext` | Human-readable position, e.g. `"1:23 of 3:45"` |
+| `aria-label` | The slider's accessible name (see below) |
+| `aria-busy` | `"true"` while the track is loading, `"false"` once ready |
+
+`aria-valuenow` / `aria-valuetext` refresh on every progress tick in both modes, so a screen reader always announces the live position. `aria-busy` lets assistive tech know a track is still decoding.
+
+Set `accessibleSeek: false` to opt out entirely — the slider role, tab stop and keyboard seeking are all removed (click-to-seek on the canvas still works).
+
+```js title="Disable the keyboard slider"
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  accessibleSeek: false,
+});
+```
+
+### Naming the slider
+
+`seekLabel` sets the slider's accessible name. When unset it falls back to the track `title`, and finally to the literal string `"Seek"`. The name is re-applied whenever the track changes, so a [`loadTrack()`](/player/methods/) swap keeps the label in sync.
+
+```js title="Explicit slider label"
+new WaveformPlayer('#player', {
+  url: '/audio/interview.mp3',
+  title: 'Episode 42',
+  seekLabel: 'Seek within Episode 42',
+});
+```
+
+```html title="Declarative equivalent"
+<div
+  data-waveform-player
+  data-src="/audio/interview.mp3"
+  data-title="Episode 42"
+  data-seek-label="Seek within Episode 42"
+></div>
+```
+
+## Other ARIA labelling
+
+Beyond the slider, the rendered DOM is labelled throughout:
+
+| Element | CSS class | Accessibility |
+| --- | --- | --- |
+| Play / pause button | `.waveform-btn` | `aria-label="Play/Pause"` |
+| Speed menu trigger | `.speed-btn` | `aria-label="Playback speed"` |
+| Cue markers | `.waveform-marker` | `aria-label` set to each marker's `label` |
+| Error overlay | `.waveform-error` | `role="alert"` — announced when load fails |
+
+Marker labels come straight from your [`markers`](/player/markers/) data, so give each cue a meaningful `label`. The error overlay text comes from `errorText` (escaped) and is announced live via `role="alert"`.
+
+## Visible focus
+
+Focus is never suppressed for keyboard users. The stylesheet ships `:focus-visible` rings on each interactive surface, so a mouse click stays quiet while <kbd>Tab</kbd> navigation shows a clear indicator:
+
+| Selector | Ring |
+| --- | --- |
+| `.waveform-container:focus-visible` | `2px solid currentColor` (the seek slider) |
+| `.waveform-btn:focus-visible` | `2px solid currentColor`, `2px` offset |
+| `.waveform-marker:focus-visible` | `2px solid currentColor`, `1px` offset |
+| `.waveform-player:focus-visible` | `1px solid var(--wfp-accent)`, `1px` offset |
+
+The ring colour is driven by `--wfp-accent` (and `currentColor` for the slider/button/markers), so it tracks your theme automatically. Override it per player or globally:
+
+```css title="Custom focus accent"
+.waveform-player {
+  --wfp-accent: #6366f1;
+}
+```
+
+<Aside type="tip">
+There is also a `.waveform-focused` class hook on the root for authors who want class-based focus styling, but the default stylesheet relies on `:focus-visible` so keyboard and pointer focus stay visually distinct.
+</Aside>
+
+## prefers-reduced-motion
+
+The stylesheet respects the OS "reduce motion" setting. Under `@media (prefers-reduced-motion: reduce)`, every transition and animation inside `.waveform-player` is neutralised:
+
+```css title="Shipped in waveform-player.css"
+@media (prefers-reduced-motion: reduce) {
+  .waveform-player *,
+  .waveform-player *::before,
+  .waveform-player *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+```
+
+State still changes instantly (play icon, progress fill, markers) — only the easing and the loading spinner's motion are removed. No configuration is required; this applies as soon as you import the stylesheet.
+
+## Media Session
+
+In **self mode**, a player registers with the [Media Session API](https://developer.mozilla.org/en-US/docs/Web/API/Media_Session_API) so the OS lock screen, notification shade, keyboard media keys, headset buttons and browser media hub can control and label playback. This is gated on `enableMediaSession` (default `true`) and on the browser actually supporting `navigator.mediaSession`.
+
+The player publishes metadata from your existing options:
+
+| Media Session field | Source option |
+| --- | --- |
+| `title` | `title` (falls back to `"Unknown Track"`) |
+| `artist` | `subtitle` |
+| `album` | `album` |
+| `artwork` | `artwork` (advertised at `512x512`) |
+
+And wires these action handlers:
+
+| Action | Behaviour |
+| --- | --- |
+| `play` / `pause` | `play()` / `pause()` |
+| `seekbackward` | Seek back 10 s |
+| `seekforward` | Seek forward 10 s |
+| `seekto` | Seek to the requested absolute time |
+
+```js title="Rich system controls"
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  title: 'Midnight City',
+  subtitle: 'M83',
+  album: 'Hurry Up, We\u2019re Dreaming',
+  artwork: '/art/m83.jpg',
+  enableMediaSession: true, // default
+});
+```
+
+<Aside type="caution">
+Media Session is **self mode only**. In external mode `this.audio` is `null`, so registration is skipped — the controller (for example [`waveform-bar`](/ecosystem/waveform-bar/)) owns playback and registers its own Media Session handlers; registering ours too would conflict. Set `enableMediaSession: false` if a host page manages Media Session itself.
+</Aside>
+
+## External mode and assistive tech
+
+[External mode](/player/audio-modes/) keeps full accessibility even without an owned `<audio>` element:
+
+- The seek slider still renders with `role="slider"` and full ARIA values, driven by the external clock via `setProgress()`.
+- Arrow / Page / Home / End seeking and <kbd>Space</kbd> still work — they dispatch cancelable `waveformplayer:request-seek` / `request-play` / `request-pause` events for the controller to honour.
+- `aria-valuenow` / `aria-valuetext` update from `setProgress(currentTime, duration)`, so announcements stay accurate against the external source of truth.
+
+What does **not** apply in external mode: digit-key seeking, arrow-key volume, `m` mute, and Media Session — those need a player-owned `<audio>` element.
+
+## Options reference
+
+<Tabs syncKey="pkg">
+
+<TabItem label="Constructor">
+
+| Option | Type | Default | Purpose |
+| --- | --- | --- | --- |
+| `accessibleSeek` | `boolean` | `true` | Expose the waveform as a keyboard-seekable `role="slider"`. |
+| `seekLabel` | `string \| null` | `null` | Slider accessible name; falls back to `title`, then `"Seek"`. |
+| `enableMediaSession` | `boolean` | `true` | Register system Media Session controls (self mode only). |
+| `title` | `string \| null` | `null` | Media Session title + slider name fallback. |
+| `subtitle` | `string \| null` | `null` | Media Session `artist`. |
+| `album` | `string` | `''` | Media Session `album` metadata. |
+| `artwork` | `string \| null` | `null` | Media Session artwork (and the `40×40` info image). |
+| `errorText` | `string` | `'Unable to load audio'` | Message announced in the `role="alert"` overlay. |
+
+</TabItem>
+<TabItem label="data-* attributes">
+
+| Attribute | Maps to |
+| --- | --- |
+| `data-accessible-seek` | `accessibleSeek` (`"true"` / `"false"`) |
+| `data-seek-label` | `seekLabel` |
+| `data-enable-media-session` | `enableMediaSession` |
+| `data-title` | `title` |
+| `data-subtitle` | `subtitle` |
+| `data-album` | `album` |
+| `data-artwork` | `artwork` |
+| `data-error-text` | `errorText` |
+
+</TabItem>
+
+</Tabs>
+
+See [Options](/player/options/) for the full surface and [Audio modes](/player/audio-modes/) for how external-mode events drive the slider.

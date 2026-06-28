@@ -1,0 +1,300 @@
+---
+title: Styling & theming
+description: Colors, presets, and CSS variables.
+sidebar:
+  order: 5
+---
+import { Tabs, TabItem, Steps } from '@astrojs/starlight/components';
+
+The player ships a complete, themeable look out of the box and gives you three layers of control on top of it:
+
+1. **Presets** — a `dark` / `light` token set, chosen automatically from the surrounding page (and re-detected live when the page flips).
+2. **Explicit colors** — per-instance overrides for any individual token, including vertical gradients on the waveform.
+3. **CSS custom properties** — structural knobs (`--wfp-btn-size`, `--wfp-accent`, spacing) that live in the stylesheet so you can re-tint or re-scale without touching JavaScript.
+
+:::note
+The CSS variables and class hooks below only exist once the stylesheet is loaded — `import '@arraypress/waveform-player/dist/waveform-player.css'` (bundler) or a `<link>` in zero-build setups. See [Installation](/getting-started/installation/).
+:::
+
+## Color presets
+
+Every player resolves to one of two built-in presets. Each preset is a flat map of eight color tokens, deliberately translucent black/white so they sit on any host background:
+
+| Token (option)        | `dark`                       | `light`                  |
+| --------------------- | ---------------------------- | ------------------------ |
+| `waveformColor`       | `rgba(255, 255, 255, 0.3)`   | `rgba(0, 0, 0, 0.2)`     |
+| `progressColor`       | `rgba(255, 255, 255, 0.9)`   | `rgba(0, 0, 0, 0.8)`     |
+| `buttonColor`         | `rgba(255, 255, 255, 0.9)`   | `rgba(0, 0, 0, 0.8)`     |
+| `buttonHoverColor`    | `rgba(255, 255, 255, 1)`     | `rgba(0, 0, 0, 0.9)`     |
+| `textColor`           | `#ffffff`                    | `#333333`                |
+| `textSecondaryColor`  | `rgba(255, 255, 255, 0.6)`   | `rgba(0, 0, 0, 0.6)`     |
+| `backgroundColor`     | `rgba(255, 255, 255, 0.03)`  | `rgba(0, 0, 0, 0.02)`    |
+| `borderColor`         | `rgba(255, 255, 255, 0.1)`   | `rgba(0, 0, 0, 0.1)`     |
+
+Select a preset with `colorPreset` (`'dark'` | `'light'` | `null`). The default, `null`, triggers auto-detection.
+
+```js
+const player = new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  colorPreset: 'dark', // force dark; disables auto re-detection
+});
+```
+
+```html
+<!-- Declarative equivalent -->
+<div data-waveform-player data-src="/audio/track.mp3" data-color-preset="dark"></div>
+```
+
+:::note
+`data-theme` is a legacy alias for `data-color-preset`, and `data-color` is a legacy alias for `data-waveform-color`. The canonical attributes win when both are present.
+:::
+
+### Automatic light/dark detection
+
+When `colorPreset` is `null` (or an unrecognized value), the player calls `detectColorScheme()` and picks the matching preset. Resolution order, first match wins:
+
+
+1. **Explicit theme hints** on `<html>` / `<body>` — a class of `dark` / `light`, `dark-mode` / `light-mode`, or `theme-dark` / `theme-light`; or a `data-theme` / `data-color-scheme` attribute set to `dark` or `light`.
+
+2. **Computed `<body>` background brightness** — perceived brightness `> 128` resolves to `light`, `< 128` to `dark`. Exactly `128` or an unparseable color is ambiguous and falls through.
+
+3. **OS preference** — the `prefers-color-scheme` media query.
+
+4. **Fallback** — `'dark'` (most audio players are dark).
+
+
+This means a player dropped into a Tailwind `dark`-class page, a `data-theme="light"` page, or a page that simply has a dark `<body>` background will theme itself correctly with no configuration.
+
+### Live theme re-detection
+
+The player adapts to runtime light/dark switches, not just the value present at load. A single shared, event-driven watcher (a `MutationObserver` on `<html>`/`<body>` watching `class`, `data-theme`, `data-color-scheme`, and `style`, plus a `prefers-color-scheme` `matchMedia` listener) calls `refreshTheme()` on every live instance whenever the page theme changes.
+
+You can also trigger it yourself:
+
+```js
+// Re-detect the page theme and re-apply auto colors + redraw.
+player.refreshTheme();
+```
+
+`refreshTheme()` only re-applies tokens the user **left unset** — the keys that originally inherited from the preset. It is a **no-op** when the player opted out of auto-theming, which happens if either:
+
+- `colorPreset` is set to an explicit valid value (`'dark'` or `'light'`), or
+- the relevant color was hand-set via an option / `data-*` attribute.
+
+:::tip
+Mix and match: leave `colorPreset` on auto, but pin `progressColor` to your brand color. The progress fill stays fixed while the waveform, text, and button colors continue to follow the page's light/dark state.
+:::
+
+## Explicit colors
+
+Every preset token has a matching option. Set any of them to override the preset for that token only; leave it `null` to inherit.
+
+| Option                | Type                       | Controls                                  | `data-*` attribute            |
+| --------------------- | -------------------------- | ----------------------------------------- | ----------------------------- |
+| `waveformColor`       | `string \| string[] \| null` | Unplayed waveform fill                  | `data-waveform-color`         |
+| `progressColor`       | `string \| string[] \| null` | Played-through fill                     | `data-progress-color`         |
+| `buttonColor`         | `string \| null`           | Play-button border + icon                 | `data-button-color`           |
+| `buttonHoverColor`    | `string \| null`           | Play-button hover color                   | `data-button-hover-color`     |
+| `textColor`           | `string \| null`           | Title color                               | `data-text-color`             |
+| `textSecondaryColor`  | `string \| null`           | Subtitle / time / BPM color               | `data-text-secondary-color`   |
+| `backgroundColor`     | `string \| null`           | Player background token                   | `data-background-color`       |
+| `borderColor`         | `string \| null`           | Player border token                       | `data-border-color`           |
+
+```js
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  waveformColor: '#3f3f46',
+  progressColor: '#f97316',
+  buttonColor: '#f97316',
+  textColor: '#fafafa',
+  textSecondaryColor: '#a1a1aa',
+});
+```
+
+:::caution
+`backgroundColor` and `borderColor` are resolved color **tokens**, but the base stylesheet keeps the `.waveform-player` root transparent and borderless — so setting them alone will not paint a card. To render a visible surface, style `.waveform-player` yourself (see [CSS custom properties](#css-custom-properties)). The waveform/progress/button/text tokens are applied directly to the canvas and DOM.
+:::
+
+### Gradients
+
+`waveformColor` and `progressColor` accept an **array of stops** instead of a single string. The stops form a vertical gradient, top → bottom. A single-element array collapses to one flat color.
+
+```js
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  waveformColor: ['#fafafa', '#71717a'], // light at top, fading down
+  progressColor: ['#f97316', '#b91c1c'],
+});
+```
+
+In markup, pass a JSON array string:
+
+```html
+<div
+  data-waveform-player
+  data-src="/audio/track.mp3"
+  data-waveform-color='["#fafafa", "#71717a"]'
+  data-progress-color='["#f97316", "#b91c1c"]'
+></div>
+```
+
+:::note
+Cue markers carry their own per-marker `color` (defaulting to a translucent white), independent of the theme tokens. See [Markers](/player/markers/).
+:::
+
+## CSS custom properties
+
+For look-and-feel that the stylesheet owns, override CSS variables rather than passing options. The two you will reach for most:
+
+| Variable             | Default    | Effect                                                                 |
+| -------------------- | ---------- | ---------------------------------------------------------------------- |
+| `--wfp-btn-size`     | `36px`     | Scales **both** play-button styles — box and glyph — proportionally.   |
+| `--wfp-accent`       | `#71717a`  | Keyboard focus-ring outline + active-state accent (monochrome default).|
+| `--waveform-line-height` | `1.4`  | Root `line-height` of the player.                                      |
+| `--waveform-body-gap`    | `8px`  | Vertical gap between the track row and the info block.                 |
+| `--waveform-track-gap`   | `12px` | Horizontal gap between the play button and the waveform.               |
+
+Set them on `.waveform-player` (or any ancestor) — and this is also where you'd add a visible card background/border, since the root ships transparent:
+
+```css
+.waveform-player {
+  --wfp-accent: #f97316;       /* brand-tinted focus ring */
+  --waveform-track-gap: 16px;  /* more breathing room */
+
+  /* Optional visible surface */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+}
+```
+
+The full set of class hooks (`.waveform-btn`, `.waveform-container`, `.waveform-title`, `.waveform-meta`, …) is documented under [CSS classes](/player/options/#css-classes) if you need finer-grained targeting.
+
+## The play button
+
+### Style
+
+`buttonStyle` switches the play/pause control between two looks:
+
+| Value       | Result                                                          | Class added            |
+| ----------- | -------------------------------------------------------------- | ---------------------- |
+| `'circle'`  | Bordered circle (default).                                     | —                      |
+| `'minimal'` | Bare play/pause glyph, no circle — the sample-pack grid look.  | `.waveform-btn-minimal` |
+
+### Size
+
+`buttonSize` drives the `--wfp-btn-size` CSS variable, and every button dimension derives from it, so a single value scales the box and glyph together:
+
+- `null` *(default)* — the stylesheet default of `36px`.
+- a **number** — treated as pixels (e.g. `48` → `48px`).
+- a **string** — used verbatim (e.g. `'4rem'`).
+
+Internally the glyph tracks the box: the circle's SVG is `0.45 ×` the size; in minimal mode the box is `1.1 ×` and the glyph `0.94 ×`. You never set those — just set the one knob.
+
+<Tabs syncKey="config">
+
+<TabItem label="JavaScript">
+
+```js
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  buttonStyle: 'minimal',
+  buttonSize: 48, // px
+});
+```
+
+</TabItem>
+<TabItem label="data-*">
+
+```html
+<div
+  data-waveform-player
+  data-src="/audio/track.mp3"
+  data-button-style="minimal"
+  data-button-size="4rem"
+></div>
+```
+
+</TabItem>
+<TabItem label="CSS">
+
+```css
+/* Equivalent to buttonSize, applied to a group of players */
+.preview-grid .waveform-player {
+  --wfp-btn-size: 48px;
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+:::note
+`data-button-size` parses a bare number as a px float (`48` → `48px`) and keeps a unit string verbatim (`4rem`).
+:::
+
+The button's vertical alignment is a separate knob, `buttonAlign` (`'auto'` | `'top'` | `'center'` | `'bottom'`); `'auto'` resolves to `bottom` for the `bars` style and `center` for everything else, surfaced as `.waveform-align-*` on `.waveform-track`.
+
+## Layout: default vs preview
+
+`layout` selects the overall composition:
+
+| Value       | Result                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| `'default'` | Play button + waveform with a left-aligned info row (artwork / title / subtitle / meta) below. |
+| `'preview'` | Compact: the title is centered under the waveform and the meta row (time / speed / BPM) is trimmed. Adds `.waveform-layout-preview` to the root — ideal for sample-pack previews and dense grids. |
+
+```js
+new WaveformPlayer('#player', {
+  url: '/audio/loop.mp3',
+  layout: 'preview',
+  buttonStyle: 'minimal',
+  waveformStyle: 'bars',
+});
+```
+
+## Waveform geometry
+
+The visual style is chosen with `waveformStyle` — `'bars'`, `'mirror'` (default), `'line'`, `'blocks'`, `'dots'`, or `'seekbar'`. See [Waveform styles](/player/waveform-styles/) for what each looks like; this section covers the geometry that tunes them.
+
+Three options size the bars:
+
+| Option       | Default | Effect                                                                |
+| ------------ | ------- | --------------------------------------------------------------------- |
+| `barWidth`   | `2`     | Bar width in px.                                                      |
+| `barSpacing` | `0`     | Gap between bars in px.                                               |
+| `barRadius`  | `1`     | Rounded bar-cap radius in px (`0` = square). Applies to `bars`/`mirror` only. |
+
+### Per-style defaults
+
+When you do **not** set `barWidth` / `barSpacing` (neither the option nor the `data-*` attribute), each style seeds its own natural geometry so it renders at sensible proportions:
+
+| `waveformStyle` | `barWidth` | `barSpacing` |
+| --------------- | ---------- | ------------ |
+| `bars`          | `3`        | `1`          |
+| `mirror`        | `2`        | `2`          |
+| `line`          | `2`        | `0`          |
+| `blocks`        | `4`        | `2`          |
+| `dots`          | `3`        | `3`          |
+| `seekbar`       | `1`        | `0`          |
+
+The moment you set either value explicitly, that style default is skipped for the value you set and your value is used as-is.
+
+```js
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  waveformStyle: 'bars',
+  barWidth: 4,    // overrides the bars default of 3
+  barSpacing: 2,  // overrides the bars default of 1
+  barRadius: 2,   // soft caps
+});
+```
+
+:::note
+`seekbar` ignores peak data entirely — it draws a flat progress bar, so `barRadius` and peak fidelity have no effect on it. The `samples` and `height` options control source peak resolution and canvas height respectively; see [Options](/player/options/).
+:::
+
+---
+
+For the complete option surface, `data-*` contract, and event map, see [Options & data attributes](/player/options/).

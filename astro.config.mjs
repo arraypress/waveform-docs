@@ -27,7 +27,7 @@ export default defineConfig({
 				{ label: 'Getting Started', items: [{ autogenerate: { directory: 'getting-started' } }] },
 				{ label: 'Player', items: [{ autogenerate: { directory: 'player' } }] },
 				{ label: 'Extensions', items: [{ autogenerate: { directory: 'extensions' } }] },
-				{ label: 'Frameworks', items: [{ autogenerate: { directory: 'frameworks' } }] },
+				{ label: 'Frameworks & Platforms', items: [{ autogenerate: { directory: 'frameworks' } }] },
 			],
 		}),
 	],

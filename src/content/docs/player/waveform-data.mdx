@@ -1,0 +1,267 @@
+---
+title: Pre-computed peaks
+description: Instant render with pre-generated waveform data.
+sidebar:
+  order: 6
+---
+
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+By default, the player decodes the audio file with the Web Audio API to extract the waveform — it downloads the file, runs `decodeAudioData()`, and walks the samples to build peaks. That is accurate but expensive: it costs a full download plus a decode pass (roughly 1–5s per track on a slow connection) before anything draws.
+
+**Pre-computed peaks** sidestep all of it. You generate the peak data once (at build time, on upload, or in a worker), store it as a small JSON file next to the audio, and hand it to the player. The player skips the decode entirely and draws the waveform the instant the JSON arrives.
+
+This is the single biggest performance lever in the library, and the recommended default for any catalogue of more than a handful of tracks.
+
+## The `waveform` option
+
+Point the player at peak data through the `waveform` option (or the `data-waveform` attribute). It accepts four shapes:
+
+| Shape | Example | When to use |
+| --- | --- | --- |
+| `.json` URL | `'/audio/track.json'` | The standard path — fetched, peaks + markers applied, decode skipped. |
+| Inline `number[]` | `[0.2, 0.37, 0.41, 0.55]` | Peaks already in memory (e.g. embedded in a JS payload). |
+| JSON-array string | `'[0.2,0.37,0.41,0.55]'` | Peaks serialized into a single attribute value. |
+| Comma-separated string | `'0.2,0.37,0.41,0.55'` | Compact inline form, no brackets. |
+
+In every case the Web Audio decode pass is **skipped** — the player normalizes whatever you give it straight onto the canvas.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+    npm install @arraypress/waveform-player @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+    pnpm add @arraypress/waveform-player @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+    yarn add @arraypress/waveform-player @arraypress/waveform-gen
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+    bun add @arraypress/waveform-player @arraypress/waveform-gen
+```
+
+</TabItem>
+
+</Tabs>
+
+### JavaScript
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+
+const player = new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  waveform: '/audio/track.json', // .json URL → fetched, no decode
+});
+```
+
+### Declarative (`data-waveform`)
+
+```html
+<div
+  data-waveform-player
+  data-url="/audio/track.mp3"
+  data-waveform="/audio/track.json"
+></div>
+```
+
+The auto-initialiser scans for `[data-waveform-player]` on `DOMContentLoaded`, so the declarative form needs no JS at all. See [Data attributes](/player/data-attributes/) for the full attribute contract.
+
+## The JSON shape
+
+The fetched file is a single object. Only `peaks` is required:
+
+```json
+{
+  "peaks": [0.2, 0.37, 0.41, 0.55, 0.48, 0.31],
+  "markers": [
+    { "time": 0,  "label": "Intro" },
+    { "time": 30, "label": "Chorus" }
+  ]
+}
+```
+
+- **`peaks`** — `number[]`, each value a normalized amplitude in `0..1`. This is the waveform.
+- **`markers`** — optional `Array<{ time: number, label: string, color?: string }>`. Embedded markers are applied automatically **only if you have not already set `markers`** on the player — an explicit `markers` option/attribute wins. See [Markers](/player/markers/).
+
+A bare top-level array is also accepted (`[0.2, 0.37, ...]`) and treated as the peaks list, but the object form is preferred because it carries markers.
+
+<Aside type="note">
+  The player reads `peaks` and `markers` from the fetched JSON. It does **not** read an embedded `bpm` field — if WaveformGen wrote one, surface it through the [`bpm` option](/player/bpm/) or `data-bpm` instead. A known `bpm` shows even when peaks are pre-supplied (it wins over auto-detection).
+</Aside>
+
+## Generating peaks with WaveformGen
+
+[`@arraypress/waveform-gen`](https://www.npmjs.com/package/@arraypress/waveform-gen) is the companion CLI that produces these JSON files. Run it once over your audio, commit or deploy the output next to the source files, and you are done.
+
+
+1. **Generate a JSON file per track**
+
+   ```bash
+   npx @arraypress/waveform-gen ./audio/*.mp3 --output ./public/audio/
+   ```
+
+   This writes `track.json` beside each `track.mp3`.
+
+2. **Scan a directory (optionally recursive)**
+
+   ```bash
+   npx @arraypress/waveform-gen ./audio/ --recursive --output ./public/audio/
+   ```
+
+3. **Point the player at the output** — via the `waveform` option or `data-waveform`, as shown above.
+
+
+### CLI options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--samples <n>` | `1800` | Number of peaks written to the file. |
+| `--precision <n>` | `2` | Decimal places each peak is rounded to. |
+| `--output <dir>` | Same as input | Directory for the generated JSON. |
+| `--format <type>` | `json` | `json` (file) or `inline` (peaks to stdout). |
+| `--bpm` | off | Detect tempo and write a `bpm` field. |
+| `--recursive` | off | Scan sub-directories. |
+| `--quiet` | off | Suppress progress output. |
+
+<Aside type="tip">
+  `--samples` here is the **stored resolution** — how many peaks live in the file (default `1800`, plenty of fidelity). It is distinct from the player's [`samples` option](/player/options/), which controls the source resolution decoded at runtime. When you supply pre-computed peaks, the player resamples your stored peaks to fit the visible bars, so a high `--samples` count gives the waveform headroom at any width without re-generating.
+</Aside>
+
+### Sidecar markers
+
+Drop a `*.markers.txt` file next to the audio and WaveformGen folds the markers into the JSON automatically — no flag needed:
+
+```text
+# song.markers.txt
+0:00 Intro
+0:30 Verse 1
+1:15 Chorus
+1:02:30 Bridge
+```
+
+Timestamps accept `SS`, `MM:SS`, and `H:MM:SS`. Lines starting with `#` are ignored. The resulting `markers` array lands in the JSON and is applied by the player on fetch (unless you set `markers` explicitly).
+
+### Piping inline peaks
+
+`--format inline` prints the peaks array to stdout instead of writing a file — handy for embedding peaks directly in a server template or a JS payload, then passing them as an inline array / string `waveform` value:
+
+```bash
+npx @arraypress/waveform-gen song.mp3 --format inline
+```
+
+## The `getPeaksUrl` helper
+
+If your peaks JSON lives **alongside** the audio with a matching name (`track.mp3` → `track.json`), you do not need to track two URLs. `WaveformPlayer.getPeaksUrl()` derives the JSON URL from the audio URL by swapping the extension:
+
+```js
+WaveformPlayer.getPeaksUrl('/audio/track.mp3');     // '/audio/track.json'
+WaveformPlayer.getPeaksUrl('/audio/track.wav?v=2'); // '/audio/track.json?v=2'
+WaveformPlayer.getPeaksUrl('/stream/track');        // undefined (no recognised extension)
+WaveformPlayer.getPeaksUrl(undefined);              // undefined
+```
+
+It recognises `mp3`, `wav`, `ogg`, `flac`, `m4a`, and `aac`, and preserves any `?query` and `#hash`. When the input has no recognised audio extension it returns `undefined` — which is exactly the right value to pass straight through:
+
+```js
+const player = new WaveformPlayer('#player', {
+  url: track.audioUrl,
+  waveform: WaveformPlayer.getPeaksUrl(track.audioUrl),
+});
+```
+
+Because `undefined` is treated as "no pre-computed peaks", a track whose URL doesn't match the pattern (or has no sidecar JSON) transparently falls back to live decoding. You can wire this up unconditionally across a whole catalogue without branching.
+
+<Aside type="caution">
+  `getPeaksUrl` is a pure string transform — it does **not** verify that the JSON exists. It assumes you generated and deployed the peaks at build time. If the derived URL 404s, the fetch fails silently and the waveform simply doesn't draw from peaks (the player does not auto-fall-back to decode in this case). Generate the files first.
+</Aside>
+
+## Loading peaks at runtime
+
+Two methods bring peaks in after construction:
+
+### `setWaveformData(data)`
+
+Normalize and redraw with new peaks on a live player. Accepts the same four shapes as the `waveform` option — array, JSON/CSV string, or `.json` URL (fetched async). Malformed input collapses to an empty waveform rather than throwing.
+
+```js
+player.setWaveformData('/audio/other.json');     // fetch + redraw
+player.setWaveformData([0.1, 0.4, 0.6, 0.3]);    // inline + redraw
+```
+
+When the argument is a `.json` URL, embedded markers are applied (again, only if you haven't already set markers).
+
+### `loadTrack(...)`
+
+When swapping tracks, pass `waveform` in the per-track options so the new track gets its own peaks:
+
+```js
+player.loadTrack('/audio/next.mp3', 'Next Track', null, {
+  waveform: WaveformPlayer.getPeaksUrl('/audio/next.mp3'),
+});
+```
+
+<Aside type="caution">
+  `loadTrack` resets `waveform` (and `markers`) per track. If you load a track **without** supplying peaks, it decodes live — it will not reuse the previous track's waveform. This is deliberate (the 1.8.1 fix). Always pass `waveform` for each track that has pre-computed peaks.
+</Aside>
+
+## Generating peaks without a player
+
+Need peaks but no player instance (e.g. to cache them yourself)? `WaveformPlayer.generateWaveformData()` decodes a URL and resolves to the peaks array:
+
+```js
+const peaks = await WaveformPlayer.generateWaveformData('/audio/track.mp3', 256);
+// peaks: number[]
+```
+
+This still performs a Web Audio decode — it is the runtime counterpart to the build-time WaveformGen CLI. For production catalogues, prefer generating ahead of time.
+
+<Aside type="note">
+  The hand-written `index.d.ts` declares `generateWaveformData` as `Promise<{ peaks, bpm }>`, but the runtime resolves to a plain `number[]`. Treat the return value as the peaks array.
+</Aside>
+
+## Why it matters
+
+<CardGrid>
+
+  <Card title="No decode pass">
+    Skips `decodeAudioData()` entirely — the most expensive step. Saves roughly 1–5s per track on slow connections.
+  </Card>
+  <Card title="Tiny payloads">
+    A peaks JSON is a few KB. You fetch numbers, not megabytes of audio, to draw the waveform.
+  </Card>
+  <Card title="Render before audio">
+    The waveform paints from JSON while the audio is still `preload="metadata"` — the UI is ready before playback is.
+  </Card>
+  <Card title="Scales to catalogues">
+    Lists of dozens of players each skipping a decode is the difference between instant and janky.
+  </Card>
+
+</CardGrid>
+
+<Aside type="tip">
+  Pair pre-computed peaks with `preload="metadata"` (the default) so the audio file isn't downloaded until the user hits play. The waveform comes from the small JSON; the audio bytes load on demand. See the [`preload` option](/player/options/).
+</Aside>
+
+## See also
+
+- [Options](/player/options/) — the full option surface, including `samples` and `preload`.
+- [Data attributes](/player/data-attributes/) — the declarative `data-waveform` contract.
+- [Markers](/player/markers/) — how embedded JSON markers interact with the `markers` option.
+- [BPM](/player/bpm/) — surfacing tempo alongside pre-computed peaks.

@@ -1,0 +1,302 @@
+---
+title: Plain HTML / CDN
+description: No build step — script tag + markup.
+sidebar:
+  order: 1
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+The fastest way to ship a waveform player: one stylesheet, one script, and a `<div>` with `data-*` attributes. No bundler, no build step, no framework. The library scans the page on load, finds every `[data-waveform-player]` element, and turns it into a player automatically.
+
+## Quick start
+
+
+1. **Add the stylesheet** in your `<head>`. The CSS is required — without it the player renders unstyled.
+
+2. **Add the script** anywhere on the page. It exposes a global `WaveformPlayer` and auto-initialises on load.
+
+3. **Mark up a player** with `data-waveform-player` plus a `data-src` pointing at your audio.
+
+
+```html title="index.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css"
+    />
+  </head>
+  <body>
+    <div
+      data-waveform-player
+      data-src="/audio/track.mp3"
+      data-title="Midnight Drive"
+      data-subtitle="The Synthwave Collective"
+      data-waveform-style="mirror"
+      data-show-bpm="true"
+    ></div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js"
+    ></script>
+  </body>
+</html>
+```
+
+That's a complete, working player. The `data-waveform-player` attribute is the marker the library scans for; everything else is optional configuration. See [Data attributes](/player/data-attributes/) for the full list.
+
+<Aside type="tip">
+Every constructor option has a `data-*` equivalent. The two paths are kept in sync, so anything you can do in JavaScript you can do declaratively in HTML. The [Options reference](/player/options/) documents both names side by side.
+</Aside>
+
+## How auto-init works
+
+When the script loads it runs `WaveformPlayer.init()` for you:
+
+- On `DOMContentLoaded` if the document is still parsing, or **immediately** if the document is already interactive (so placement in `<head>` or end-of-`<body>` both work).
+- It selects every `[data-waveform-player]` element and constructs a `WaveformPlayer` for each one that isn't already initialised.
+- After initialising an element it sets `data-waveform-initialized="true"` on it. This makes re-scanning **idempotent** — calling `WaveformPlayer.init()` again never double-initialises.
+
+<Aside type="caution">
+`data-waveform-initialized` is written **by the library**. Don't set it yourself — doing so makes auto-init skip the element entirely.
+</Aside>
+
+### Re-scanning after dynamic inserts
+
+If you inject markup after the initial load (AJAX, a modal, a client-side route change), call `init()` again to pick up the new elements. Already-initialised players are left untouched.
+
+```html
+<script>
+  // After inserting new [data-waveform-player] markup into the DOM:
+  WaveformPlayer.init();
+</script>
+```
+
+### Script placement & `defer`
+
+The bundle is a self-contained IIFE that assigns `window.WaveformPlayer`. Both of these are valid:
+
+```html
+<!-- End of <body>: document is parsed, init runs immediately -->
+<script src="…/waveform-player.min.js"></script>
+
+<!-- In <head> with defer: runs after parse, before DOMContentLoaded -->
+<script defer src="…/waveform-player.min.js"></script>
+```
+
+## Reaching players from script
+
+After auto-init, every player is reachable through static lookups on the global — no need to hold a reference. Pass an element, an element `id`, or the instance id.
+
+```html
+<div id="hero" data-waveform-player data-src="/audio/track.mp3"></div>
+
+<script>
+  const player = WaveformPlayer.getInstance('hero');
+
+  player.container.addEventListener('waveformplayer:ended', (e) => {
+    console.log('finished', e.detail.url);
+  });
+
+  document.querySelector('#next').addEventListener('click', () => {
+    player.loadTrack('/audio/next.mp3', 'Next Up');
+  });
+</script>
+```
+
+| Static helper | Returns |
+| --- | --- |
+| `WaveformPlayer.getInstance(idOrElement)` | The matching instance, or `undefined`. |
+| `WaveformPlayer.getAllInstances()` | Every live instance. |
+| `WaveformPlayer.init()` | Re-scans the DOM and initialises new players. |
+| `WaveformPlayer.destroyAll()` | Tears down every instance. |
+| `WaveformPlayer.utils` | Shared pure helpers (`formatTime`, `extractTitleFromUrl`, `escapeHtml`, `isSafeHref`, `parseDataAttributes`). |
+
+See [Methods](/player/methods/) and [Events](/player/events/) for the complete surface.
+
+### Constructing manually
+
+You don't have to use `data-*`. The same global works as a constructor — useful when you want options computed in JavaScript:
+
+```html
+<div id="player"></div>
+
+<script>
+  const player = new WaveformPlayer('#player', {
+    url: '/audio/track.mp3',
+    waveformStyle: 'mirror',
+    waveformColor: ['#fafafa', '#71717a'], // vertical gradient stops
+    showBPM: true,
+    onTimeUpdate: (currentTime, duration, p) => {
+      /* … */
+    },
+  });
+</script>
+```
+
+Options merge in precedence order **defaults &lt; `data-*` &lt; constructor options**, so a JS option always wins over the same `data-*` attribute on the element.
+
+## CDN providers
+
+The package publishes a minified IIFE bundle and a stylesheet. Pin to a major version (`@1`) for automatic patch/minor updates, or pin an exact version for fully reproducible builds.
+
+<Tabs syncKey="cdn">
+
+<TabItem label="jsDelivr">
+
+```html
+<link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css" />
+<script
+  src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js"></script>
+```
+
+</TabItem>
+<TabItem label="unpkg">
+
+```html
+<link rel="stylesheet"
+  href="https://unpkg.com/@arraypress/waveform-player@1/dist/waveform-player.css" />
+<script
+  src="https://unpkg.com/@arraypress/waveform-player@1/dist/waveform-player.min.js"></script>
+```
+
+</TabItem>
+
+</Tabs>
+
+<Aside type="caution">
+For production, pin an **exact** version (for example `@1.14.0`) rather than `@1`. A floating major range means a CDN-cached patch can change behaviour without a deploy on your side.
+</Aside>
+
+### Files in `dist/`
+
+| File | Use |
+| --- | --- |
+| `waveform-player.min.js` | Minified IIFE for `<script>` / CDN. Exposes `window.WaveformPlayer`. The package's `unpkg` default. |
+| `waveform-player.js` | Unminified IIFE (same global) — handy while debugging. |
+| `waveform-player.css` | Required stylesheet. Also exported as `@arraypress/waveform-player/styles.css`. |
+| `waveform-player.esm.js` | ES module build for bundlers / `import`. |
+| `waveform-player.cjs` | CommonJS build for `require`. |
+
+The ESM and CJS builds are for [bundler installs](/getting-started/installation/) — for plain HTML you want `waveform-player.min.js` plus the CSS.
+
+## Loading order with extensions
+
+The bar and playlist extensions are **thin layers over the core player**. At load time each one checks for `window.WaveformPlayer` and aborts if it's missing:
+
+- `@arraypress/waveform-bar` logs `[WaveformBar] WaveformPlayer is required.`
+- `@arraypress/waveform-playlist` throws `[WaveformPlaylist] WaveformPlayer is required but not found`.
+
+So the rule is simple: **load the core player first, then any extension.**
+
+```html title="Core first, then extensions"
+<head>
+  <!-- Core player styles + any extension styles -->
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css" />
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-bar@1/dist/waveform-bar.css" />
+</head>
+<body>
+  <!-- … your players / triggers … -->
+
+  <!-- 1. Core player — defines window.WaveformPlayer -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js"></script>
+
+  <!-- 2. Extension — consumes window.WaveformPlayer -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-bar@1/dist/waveform-bar.min.js"></script>
+</body>
+```
+
+<Aside type="note">
+Ordinary `<script>` tags execute in document order, so listing the core first is enough. If you load scripts with `async`, that ordering guarantee is lost — use `defer` (which preserves order) or plain scripts when combining packages.
+</Aside>
+
+Stylesheet order doesn't matter for correctness, but keep the core stylesheet present whenever any extension is on the page — the extensions render core players and rely on its classes. Continue with [Bottom bar](/bar/getting-started/) or [Playlist](/playlist/getting-started/) for each extension's markup and triggers.
+
+## Self-hosting the dist files
+
+Prefer not to depend on a third-party CDN? Vendor the files into your own project. Install the package, then copy the two files you need out of `dist/`.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+```bash title="Copy the runtime files into your assets folder"
+mkdir -p public/vendor/waveform-player
+cp node_modules/@arraypress/waveform-player/dist/waveform-player.min.js public/vendor/waveform-player/
+cp node_modules/@arraypress/waveform-player/dist/waveform-player.css    public/vendor/waveform-player/
+```
+
+Then reference the local copies — identical markup, local paths:
+
+```html
+<link rel="stylesheet" href="/vendor/waveform-player/waveform-player.css" />
+<!-- … -->
+<script src="/vendor/waveform-player/waveform-player.min.js"></script>
+```
+
+No package manager? Download the same files straight from a CDN (these URLs serve the raw artifacts):
+
+```bash
+curl -O https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1.14.0/dist/waveform-player.min.js
+curl -O https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1.14.0/dist/waveform-player.css
+```
+
+<Aside type="tip">
+When self-hosting, treat the version as part of your build: re-copy the files on each upgrade and verify against the [changelog](/getting-started/installation/). Stale vendored copies are the most common cause of "the docs say X but my player does Y".
+</Aside>
+
+## Next steps
+
+<CardGrid>
+
+  <Card title="Data attributes" icon="document">
+    Every `data-*` attribute, its option, and its type. [Reference →](/player/data-attributes/)
+  </Card>
+  <Card title="Options" icon="setting">
+    The full configuration surface, JS and declarative. [Reference →](/player/options/)
+  </Card>
+  <Card title="Methods" icon="seti:javascript">
+    `loadTrack`, `seekTo`, static lookups, and more. [Reference →](/player/methods/)
+  </Card>
+  <Card title="Events" icon="rss">
+    `waveformplayer:*` events and option callbacks. [Reference →](/player/events/)
+  </Card>
+
+</CardGrid>

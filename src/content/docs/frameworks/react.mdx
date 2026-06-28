@@ -1,0 +1,524 @@
+---
+title: React
+description: Typed React components.
+sidebar:
+  order: 2
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+The `@arraypress` waveform family ships three React wrappers, each a thin, typed component over its vanilla core:
+
+| Package | Component(s) | Wraps |
+| --- | --- | --- |
+| `@arraypress/waveform-player-react` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
+| `@arraypress/waveform-bar-react` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/bar/) |
+| `@arraypress/waveform-playlist-react` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/playlist/) |
+
+Every wrapper follows the same design:
+
+- **Prop types are derived from the core's `WaveformPlayerOptions`**, not re-declared — so they never drift as the core evolves.
+- **The core JS is dynamically `import()`ed inside `useEffect`**, so the audio + canvas + `fetch` surface never runs during SSR / RSC.
+- **The instance is exposed through `forwardRef`** as a typed imperative handle for `loadTrack`, `seekTo`, playlist navigation, and the rest.
+- **CSS is never auto-loaded** — you import each core's stylesheet once at your app entry.
+
+:::caution[Use `waveformStyle`, not `style`]
+On all three components, the `style` prop is the standard React `CSSProperties` applied to the host `<div>` (for reserving layout height, etc.). The core's `style` alias for the *visual* waveform style is intentionally omitted from the prop type. To pick a visual style use **`waveformStyle`** (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`).
+:::
+
+---
+
+## Player — `<WaveformPlayer>`
+
+### Install
+
+`react` and `@arraypress/waveform-player` are peer dependencies (React `^18 || ^19`; core player `^1.8.0`).
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-player-react @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-player-react @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-player-react @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-player-react @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+Import the core stylesheet **once** at your app entry:
+
+```ts
+// main.tsx / app entry
+import '@arraypress/waveform-player/dist/waveform-player.css';
+```
+
+### Quick start
+
+```tsx
+import { WaveformPlayer } from '@arraypress/waveform-player-react';
+
+export default function Track() {
+  return (
+    <WaveformPlayer
+      url="/audio/track.mp3"
+      title="My Track"
+      waveformStyle="mirror"
+      waveformColor={['#fafafa', '#71717a']} // gradient stops
+      showBPM
+      onTimeUpdate={(currentTime, duration) => {
+        /* live progress */
+      }}
+    />
+  );
+}
+```
+
+### Props
+
+`WaveformPlayerProps` extends the core's `WaveformPlayerOptions` so **every player option is accepted as a typed prop** — `height`, `samples`, `barRadius`, `colorPreset`, `accessibleSeek`, `markers`, gradient-array colours, and so on. See [Player → Options](/player/options/) for the full inherited surface.
+
+The core's `url`, `style`, and the six callbacks are omitted from the inherited set and re-declared with React shapes:
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | Audio file URL. Optional, because the core's `src` shorthand alias is also accepted — provide one of `url` or `src`. |
+| `onLoad` | `(instance) => void` | Fired after the waveform is drawn. Receives the typed `WaveformPlayer` instance. |
+| `onPlay` | `(instance) => void` | Playback started (both audio modes). |
+| `onPause` | `(instance) => void` | Playback paused (both modes). |
+| `onEnd` | `(instance) => void` | Track ended (external mode synthesizes it at progress ≥ 1). |
+| `onTimeUpdate` | `(currentTime, duration, instance) => void` | Progress tick. Same argument order in both modes. |
+| `onError` | `(error, instance) => void` | Load / decode / audio error. |
+| `id` | `string` | Forwarded to the container `<div>`. |
+| `className` | `string` | Appended to the always-present base class `wfp-host`. |
+| `style` | `React.CSSProperties` | Inline style on the container — e.g. `min-height` to reserve space before draw. |
+
+:::tip[Inline callbacks are safe]
+The callbacks are wired as *stable* wrappers that read the latest handler on each call. Passing a fresh inline function every render does **not** tear the player down — only construction-time props (`url`, `audioMode`, visualization options, …) trigger a re-mount.
+:::
+
+:::note[Re-mount semantics]
+When an identity prop changes, the component destroys the instance and constructs a new one rather than diffing options. Same-`url` re-mounts are cheap because the core caches decoded peaks keyed by URL. For runtime track swaps without a re-mount, use the imperative `loadTrack()` handle below.
+:::
+
+### Imperative handle
+
+Grab the instance with a `ref` typed as `WaveformPlayerHandle`:
+
+```tsx
+import { useRef } from 'react';
+import {
+  WaveformPlayer,
+  type WaveformPlayerHandle,
+} from '@arraypress/waveform-player-react';
+
+function Controlled() {
+  const ref = useRef<WaveformPlayerHandle>(null);
+
+  return (
+    <>
+      <WaveformPlayer ref={ref} url="/audio/track.mp3" />
+      <button onClick={() => ref.current?.togglePlay()}>Play / Pause</button>
+      <button onClick={() => ref.current?.seekTo(60)}>Jump to 1:00</button>
+      <button
+        onClick={() =>
+          ref.current?.loadTrack('/audio/next.mp3', 'Next Track', 'Artist')
+        }
+      >
+        Load next
+      </button>
+    </>
+  );
+}
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `play` | `() => Promise<void> \| undefined` | Returns the native `play()` promise in self mode; `undefined` in external mode. |
+| `pause` | `() => void` | |
+| `togglePlay` | `() => void` | |
+| `seekTo` | `(seconds: number) => void` | Self mode only. |
+| `seekToPercent` | `(percent: number) => void` | Fraction `0..1`. Self mode only. |
+| `setVolume` | `(volume: number) => void` | `0..1`. Self mode only. |
+| `setPlaybackRate` | `(rate: number) => void` | Clamped `0.5..2`. Self mode only. |
+| `setPlayingState` | `(playing: boolean) => void` | **External mode** — push play/pause visual state. |
+| `setProgress` | `(currentTime, duration) => void` | **External mode** — push the progress overlay from your own clock. |
+| `loadTrack` | `(url, title?, subtitle?, options?) => Promise<void>` | Swap track at runtime; auto-plays unless `options.autoplay === false`. |
+| `instance` | `readonly WaveformPlayer` | Escape hatch — full core API (`load`, `setWaveformData`, `refreshTheme`, `container`, statics, …). |
+
+Calls before the async import resolves are safe no-ops.
+
+:::tip[DOM events]
+Prefer the callback props for lifecycle. If you need the raw `waveformplayer:*` [events](/player/events/) (e.g. `waveformplayer:request-seek` in external mode), attach via the instance: `ref.current?.instance.container.addEventListener(...)`.
+:::
+
+---
+
+## Bar — `<WaveformBar>` + `<WaveformBarTrigger>`
+
+The bar is a **singleton**: render `<WaveformBar>` once in your root layout, then scatter `<WaveformBarTrigger>` elements anywhere to play or queue tracks.
+
+### Install
+
+Peer deps: `@arraypress/waveform-bar` (`^1.3.1`), `@arraypress/waveform-player` (`^1.7.2`), React `^18 || ^19`.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-bar-react @arraypress/waveform-bar @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-bar-react @arraypress/waveform-bar @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-bar-react @arraypress/waveform-bar @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-bar-react @arraypress/waveform-bar @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+:::caution[Load order matters]
+The bar has a hard runtime dependency on the player global. Import the **player before the bar** at your app entry, or `window.WaveformBar` will be undefined:
+
+```ts
+import '@arraypress/waveform-player/dist/waveform-player.css';
+import '@arraypress/waveform-bar/dist/waveform-bar.css';
+import '@arraypress/waveform-player'; // registers window.WaveformPlayer  (first)
+import '@arraypress/waveform-bar';    // registers window.WaveformBar     (second)
+```
+:::
+
+### Mount the bar
+
+```tsx
+import { WaveformBar } from '@arraypress/waveform-bar-react';
+
+export default function RootLayout({ children }) {
+  return (
+    <>
+      {children}
+      <WaveformBar
+        config={{
+          persist: true,
+          continuous: true,
+          showQueue: true,
+          actions: {
+            favorite: { endpoint: '/api/favorites' },
+            cart: { endpoint: '/api/cart' },
+          },
+        }}
+      />
+    </>
+  );
+}
+```
+
+On mount the component dynamically imports the core and calls `window.WaveformBar.init(config)`. When `config` changes it re-runs `init()` (idempotent — the library destroys and recreates internally); on unmount it calls `destroy()` so StrictMode double-mounts and route changes don't leak listeners.
+
+| `<WaveformBar>` prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `config` | `WaveformBarConfig` | `undefined` | Passed verbatim to `init()`. See table below. |
+| `persist` | `boolean` | `true` | Relocate the `.waveform-bar` element under the host `<div>` so it survives route changes. |
+| `hostId` | `string` | `'waveform-bar-host'` | DOM `id` of the persist host. |
+| `className` | `string` | — | Appended to the base class `wb-host`. |
+| `style` | `React.CSSProperties` | — | Inline style on the host. |
+
+:::note[Config change detection]
+The config is compared by a `JSON.stringify` key. Function endpoints (`actions.*.endpoint`) serialize to a placeholder, so if you pass a function endpoint, memoize the whole `config` object (`useMemo`) to avoid re-init churn.
+:::
+
+#### `WaveformBarConfig`
+
+Bar-react hand-declares this type (the bar core ships no `.d.ts`), so this is the source of truth for the typed config surface. Every field is optional.
+
+| Group | Fields |
+| --- | --- |
+| Behaviour | `persist`, `autoResume`, `continuous`, `repeat` (`'off' \| 'all' \| 'one'`) |
+| UI toggles | `showQueue`, `showPrevNext`, `showRepeat`, `showVolume`, `showMute`, `showTime`, `showTrackLink`, `showMeta`, `maxMeta` (number) |
+| Layout | `wide`, `maxWidth` (`string \| null`), `position` (`'bottom' \| 'top'`), `collapsible` |
+| Theming | `defaultArtwork` (`string \| null`), `theme` (`'dark' \| 'light' \| null`) |
+| Waveform | `waveform` (boolean), `waveformStyle`, `waveformHeight`, `barWidth`, `barSpacing`, `waveformColor`, `progressColor`, `markerColor` |
+| Sharing / errors | `share`, `shareParam`, `errorText` |
+| Volume / storage | `volume`, `storageKey` |
+| Server actions | `actions` (`{ favorite?, cart? }`, each `{ endpoint, method?, headers? }`) |
+
+### Trigger a track
+
+`<WaveformBarTrigger>` emits the `data-wb-*` attribute contract the bar scans for. It is polymorphic — a `<button>` by default — and forwards every standard DOM prop (`onClick`, `data-testid`, `role`, `ref`, …) to the rendered element.
+
+```tsx
+import { WaveformBarTrigger } from '@arraypress/waveform-bar-react';
+
+function ProductCard({ track }) {
+  return (
+    <article>
+      <h3>{track.title}</h3>
+
+      {/* Default: a <button> with auto play/pause icons */}
+      <WaveformBarTrigger
+        url={track.url}
+        id={track.id}
+        title={track.title}
+        artist={track.artist}
+        artwork={track.cover}
+      />
+
+      {/* Append to the queue with custom content */}
+      <WaveformBarTrigger mode="queue" url={track.url} title={track.title}>
+        + Queue
+      </WaveformBarTrigger>
+
+      {/* Wrap a whole card as the trigger */}
+      <WaveformBarTrigger as="div" url={track.url} noDefaultIcons>
+        <div className="card-body">{/* … */}</div>
+      </WaveformBarTrigger>
+    </article>
+  );
+}
+```
+
+**Track data props** (`WaveformBarTrackData`):
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | **Required** — play target + identity. |
+| `id` | `string` | Defaults to `url`. |
+| `title`, `artist`, `album`, `artwork`, `link` | `string` | Display metadata. |
+| `duration`, `bpm` | `string \| number` | |
+| `musicalKey` | `string` | → `data-wb-key`. |
+| `meta` | `string[]` | Extra metadata chips. |
+| `waveform` | `number[] \| string` | Pre-computed peaks or `.json` URL. |
+| `markers` | `WaveformBarMarker[]` | DJ-mode cue markers (`{ time, label, title?, artist?, artwork?, bpm?, key?, color? }`). |
+| `favorited`, `inCart` | `boolean` | Initial action state. |
+
+**Trigger-specific props:**
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `mode` | `'play' \| 'queue'` | `'play'` | Immediate play vs. append to queue. |
+| `as` | `'button' \| 'a' \| 'div' \| 'span'` | `'button'` | Rendered tag. |
+| `href` | `string` | — | Used when `as="a"`. |
+| `aria-label` | `string` | auto | Auto-generated from `title` when absent. |
+| `className` | `string` | — | Appended to the base class `wb-icon-swap`. |
+| `noDefaultIcons` | `boolean` | `false` | Suppress the injected play/pause SVGs. |
+| `children` | `ReactNode` | — | Custom content; overrides the default icons. |
+
+:::note[No callback props on the bar]
+The bar deliberately exposes no callback props — an inline function each render would re-init the singleton. The core dispatches every state change as a bubbling `waveformbar:*` `CustomEvent`; listen via `addEventListener` in your own effect. That stays framework-agnostic and avoids re-init churn.
+:::
+
+---
+
+## Playlist — `<WaveformPlaylist>`
+
+A declarative `tracks` array with optional chapters, an embedded player, and imperative track / chapter navigation.
+
+### Install
+
+Peer deps: `@arraypress/waveform-playlist` (`^1.3.0`), `@arraypress/waveform-player` (`^1.8.0`), React `^18 || ^19`.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-playlist-react @arraypress/waveform-playlist @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-playlist-react @arraypress/waveform-playlist @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-playlist-react @arraypress/waveform-playlist @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-playlist-react @arraypress/waveform-playlist @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+Import both stylesheets, and import the player core for its global side effect — the playlist constructs `new window.WaveformPlayer(...)` for the active track:
+
+```ts
+import '@arraypress/waveform-player/dist/waveform-player.css';
+import '@arraypress/waveform-playlist/dist/waveform-playlist.css';
+import '@arraypress/waveform-player'; // registers window.WaveformPlayer
+```
+
+### Quick start
+
+```tsx
+import { WaveformPlaylist } from '@arraypress/waveform-playlist-react';
+
+export default function Album() {
+  return (
+    <WaveformPlaylist
+      continuous
+      waveformStyle="bars"
+      tracks={[
+        { url: '/audio/a.mp3', title: 'Track A', subtitle: 'Artist' },
+        {
+          url: '/audio/b.mp3',
+          title: 'Track B',
+          chapters: [
+            { time: 0, label: 'Intro' },
+            { time: '1:30', label: 'Verse' },
+            { time: 180, label: 'Chorus', color: '#22d3ee' },
+          ],
+        },
+      ]}
+    />
+  );
+}
+```
+
+Each track renders into the `[data-track]` / `[data-chapter]` markup the playlist constructor parses on mount. The host carries the base class `wfp-host`.
+
+### `tracks` (required)
+
+`WaveformPlaylistTrackInput[]`:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | **Required** → `data-url`. |
+| `title` | `string` | Falls back to the filename if omitted. |
+| `subtitle` | `string` | Subtitle row. |
+| `artwork` | `string` | Artwork URL. |
+| `album` | `string` | Media Session metadata. |
+| `duration` | `string` | Display duration, e.g. `'3:45'`. |
+| `markers` | `WaveformPlaylistMarker[]` | JSON-encoded into `data-markers`. |
+| `chapters` | `WaveformPlaylistChapterInput[]` | `{ time: number \| string, label, color? }` — `time` accepts seconds or `'M:SS'`. |
+
+### Props
+
+`WaveformPlaylistProps` combines three groups:
+
+1. **Playlist options** picked from `WaveformPlaylistOptions`: `continuous`, `expandChapters`, `showDuration`, `showChapterMarkers`, `chapterMarkerColor`, `showPlayState`.
+2. **Pass-through player options** — the full `WaveformPlayerOptions` visualization / colour / behaviour surface, **minus** per-track content (`url`, `src`, `title`, `subtitle`, `artwork`, `album`, `markers`, `waveform`), the `style` alias, the player's own `layout`, and the lifecycle callbacks.
+3. **React extras** — the required `tracks`, plus `id`, `className`, `style`.
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `tracks` | `WaveformPlaylistTrackInput[]` | — | **Required.** An empty array renders an empty playlist (the core skips init). |
+| `layout` | `'list' \| 'minimal'` | `'list'` | Full track list vs. compact button switcher. **Overrides** the player's own `layout`. |
+| `id` | `string` | — | Forwarded to the host `<div>`. |
+| `className` | `string` | — | Appended to `wfp-host`. |
+| `style` | `React.CSSProperties` | — | Inline style on the host. |
+
+Common pass-through player props include `waveformStyle`, `height`, `colorPreset`, `waveformColor`, `progressColor`, `showBPM`, `accessibleSeek`, and `autoplay` — see [Player → Options](/player/options/) for the complete list.
+
+### Imperative handle
+
+```tsx
+import { useRef } from 'react';
+import {
+  WaveformPlaylist,
+  type WaveformPlaylistHandle,
+} from '@arraypress/waveform-playlist-react';
+
+function NavExample({ tracks }) {
+  const ref = useRef<WaveformPlaylistHandle>(null);
+
+  return (
+    <>
+      <WaveformPlaylist ref={ref} tracks={tracks} continuous />
+      <button onClick={() => ref.current?.previousTrack()}>Prev</button>
+      <button onClick={() => ref.current?.nextTrack()}>Next</button>
+      <button onClick={() => ref.current?.selectTrack(0)}>First</button>
+    </>
+  );
+}
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `selectTrack` | `(index: number) => void` | Select + load a track by index. |
+| `seekToChapter` | `(trackIndex, time) => void` | Loads the target track first if needed, then seeks. |
+| `nextTrack` | `() => void` | |
+| `previousTrack` | `() => void` | |
+| `getPlayer` | `() => unknown \| null` | The embedded `WaveformPlayer` instance (full player API). |
+| `getCurrentTrackIndex` | `() => number` | |
+| `getTracks` | `() => WaveformPlaylistTrack[]` | Parsed tracks (with resolved `element` / `index`). |
+| `instance` | `readonly WaveformPlaylist \| null` | Escape hatch for anything else. |
+
+Calls before the async import resolves are no-ops.
+
+:::note[Re-mount semantics]
+Changing `tracks` (compared by serialized value) or any construction-time option tears the playlist down and rebuilds it against the freshly rendered markup. For navigation without a re-mount, use the handle above.
+:::
+
+---
+
+## Server-side rendering
+
+All three components are SSR / RSC safe by construction: the host markup renders on the server, and the browser-only core is dynamically `import()`ed inside `useEffect` so it only evaluates client-side. The interactive UI hydrates in once the library loads. Reserve layout space with the `style` prop (e.g. `style={{ minHeight: 96 }}`) to avoid a content shift before the waveform draws.
+
+## Related
+
+<CardGrid>
+
+  <Card title="Player options" icon="setting">
+    Full inherited option surface — [Player → Options](/player/options/).
+  </Card>
+  <Card title="Events" icon="rss">
+    The `waveformplayer:*` DOM events — [Player → Events](/player/events/).
+  </Card>
+  <Card title="Astro" icon="astro">
+    The declarative `data-*` wrappers — [Astro](/astro/).
+  </Card>
+  <Card title="Installation" icon="download">
+    Bundler, CDN, and CSS setup — [Getting started](/getting-started/installation/).
+  </Card>
+
+</CardGrid>

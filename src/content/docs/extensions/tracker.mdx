@@ -1,0 +1,354 @@
+---
+title: WaveformTracker
+description: Privacy-first listen analytics.
+sidebar:
+  order: 3
+---
+
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+**WaveformTracker** is a headless, ~2KB analytics add-on for [WaveformPlayer](/player/options/). It measures how much of your audio people *actually listen to* — real media-time, not wall-clock — and POSTs a compact JSON event to your endpoint (or hands it to your own callback) when a listener crosses a threshold you define.
+
+It renders no DOM, ships no CSS, sets no cookies, and collects no PII. Drop it on a page, call `init()` once, and it auto-discovers every player.
+
+<CardGrid>
+
+  <Card title="Media-time, not wall-clock" icon="seti:audio">
+    Engagement accumulates from `currentTime` deltas. 1.5x/2x playback is fully credited; paused and idle time is not.
+  </Card>
+  <Card title="Seeks ignored" icon="random">
+    Any forward jump of 5s or more is treated as a seek and dropped — scrubbing never inflates your numbers.
+  </Card>
+  <Card title="Privacy-first" icon="approve-check">
+    No cookies, no `localStorage`, no PII. The optional session id is a random in-memory string, regenerated every reload.
+  </Card>
+  <Card title="Survives unload" icon="rocket">
+    Terminal events use `navigator.sendBeacon` (with `fetch` + `keepalive` fallback) so they land even as the page navigates away.
+  </Card>
+
+</CardGrid>
+
+## What it measures
+
+WaveformTracker credits **media-time consumed**, derived from the player's `waveformplayer:timeupdate` events. On every update it computes the delta between the current and previous `currentTime` and accumulates it as `elapsedTime` — but only when the delta is a genuine forward step:
+
+| Delta between updates | Credited? | Why |
+| --- | --- | --- |
+| `0 < delta < 5s` | Yes | Normal playback, including 1.5x / 2x (faster playback still advances `currentTime`) |
+| `delta <= 0` | No | A loop, rewind, or non-advance — nothing was consumed |
+| `delta >= 5s` | No | Treated as a **seek** (see `SEEK_THRESHOLD` below) and dropped |
+
+The result is an honest "seconds of content heard" number. Pausing stops crediting and clears the delta baseline, but it does **not** reset the accumulated total — resuming continues where you left off. The accumulated total and the fired-event set reset only when the track `ended` fires, which re-arms every event for a replay.
+
+:::note[Engagement is content, not attention]
+Thresholds for `play` and `listen` are **seconds of accumulated media-time**, not seconds spent on the page. Someone who plays a 30-second clip at 2x speed crosses a 15s `listen` threshold but not a 30s one — they only consumed 15 seconds of audio.
+:::
+
+### The seek threshold
+
+```js
+WaveformTracker.SEEK_THRESHOLD // static class constant = 5
+```
+
+`SEEK_THRESHOLD` is the maximum forward `currentTime` jump (in seconds) still credited as playback. It is a **class-level constant, not a config option** — it lives on the class, so `window.WaveformTracker.SEEK_THRESHOLD` (the exported singleton) is `undefined`. There is no runtime knob to change it; 5 seconds is the fixed boundary between "playback" and "seek". The player fires `timeupdate` far more often than once every 5 seconds, so real playback never trips it.
+
+## Install
+
+WaveformTracker has a peer dependency on `@arraypress/waveform-player@^1.8.0`. Load and initialize the **player first** — it dispatches the events the tracker consumes — then load the tracker.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```sh
+    npm install @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```sh
+    pnpm add @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```sh
+    yarn add @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```sh
+    bun add @arraypress/waveform-player @arraypress/waveform-tracker
+```
+
+</TabItem>
+
+</Tabs>
+
+The default export is a **singleton instance**, not the class — never `new` it. It is also assigned to `window.WaveformTracker` in browser builds.
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player';
+import WaveformTracker from '@arraypress/waveform-tracker';
+
+// Players exist on the page (auto-mounted via data-waveform-player, or constructed)…
+WaveformTracker.init({ endpoint: '/api/track' });
+```
+
+<Aside type="note" title="Script tags">
+  With the IIFE builds, load `waveform-player.js` before `waveform-tracker.js`. Both expose globals (`window.WaveformPlayer`, `window.WaveformTracker`), so you can call `WaveformTracker.init(...)` directly with no import. No TypeScript declarations are shipped.
+</Aside>
+
+## Attaching it to players
+
+You don't attach the tracker to a player by hand. Calling `init()` does three things:
+
+
+1. **Reads existing players.** It immediately calls `WaveformPlayer.getAllInstances()` and tracks every player already on the page.
+
+2. **Listens for new players.** It adds capturing-phase listeners for `waveformplayer:ready` on `document`, so any player created later (lazy-mounted, SPA route change) is tracked automatically.
+
+3. **Cleans up destroyed players.** It listens for `waveformplayer:destroy` and untracks the player, removing its listeners — this prevents the tracker's internal `Map` from leaking players (and their DOM) in single-page apps. Requires player **v1.8.0+**.
+
+
+```js
+// Call this exactly once, as early as players may appear.
+WaveformTracker.init({
+  endpoint: 'https://api.example.com/track',
+  events: { play: 3, listen: 30, complete: 90 },
+  metadata: { post_id: 456 }
+});
+```
+
+:::caution[Call `init()` once]
+Each `init()` re-adds the `document`-level `ready`/`destroy` capturing listeners, and they are **never removed** — `reset()` clears trackers, config, and session id but leaves those document listeners attached. Calling `init()` repeatedly stacks duplicate listeners. Initialize a single time per page.
+:::
+
+## Configuration
+
+All options are passed to `init(config)`. Every key is optional, but you must supply **either** `endpoint` **or** `handler` — with neither, `init()` emits a `console.warn` and no events are delivered.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `endpoint` | `string \| null` | `null` | URL that events are POSTed to as JSON. Required **unless** `handler` is set. |
+| `handler` | `function \| null` | `null` | Custom delivery callback `handler(payload)`. When set it **fully replaces** network delivery — `endpoint` is never called. Thrown errors are caught and logged, not propagated. |
+| `events` | `object` | `{ listen: 30 }` | Which events fire and their thresholds. Keys: `play`, `listen` (seconds of media-time), `complete` (percent 0–100). Any subset; omit a key to disable that event. |
+| `headers` | `object<string,string>` | `{}` | Extra headers merged into the `fetch` POST (e.g. `Authorization`). **Any custom header disables `sendBeacon`** (beacon can't set headers), so terminal events fall back to `fetch` + `keepalive`. |
+| `metadata` | `object` | `{}` | Key/value pairs spread into **every** payload (e.g. `user_id`, `post_id`). |
+| `session` | `boolean` | `true` | When `true`, a random anonymous session id is generated per `init()` and added to every payload as `session`. Pass `false` to omit it entirely. |
+| `debug` | `boolean` | `false` | When `true`, emits verbose `console.log('[WaveformTracker]', …)` tracing (ready/destroy, play/pause, sent payloads, beacon fallbacks). Does **not** suppress sending. |
+
+### The `events` thresholds
+
+```js
+WaveformTracker.init({
+  endpoint: '/api/track',
+  events: {
+    play: 3,       // fire 'play' once 3s of media-time accumulates
+    listen: 30,    // fire 'listen' once 30s of media-time accumulates
+    complete: 90   // fire 'complete' once playback reaches 90% of duration
+  }
+});
+```
+
+- `play` and `listen` are **seconds of accumulated media-time**.
+- `complete` is a **percent (0–100) of duration**. It fires when `(currentTime / duration) * 100` crosses the threshold during playback, **or** on the player's `ended` event (only when `duration > 0`).
+- Each event fires **at most once per playback**, tracked per player. The set re-arms only on `ended`, so a replay can fire them all again.
+- The default config — when you pass no `events` — fires only `listen` at 30 seconds.
+
+<Aside type="tip" title="Throttling vs. accumulation">
+  Media-time **accumulation** happens on *every* `timeupdate`, but the threshold **checks** that fire events are throttled to once per second. Fast bursts of updates still credit time accurately; you just won't get more than one firing-check per second.
+</Aside>
+
+### Metadata, session, and field precedence
+
+`metadata` is spread into the payload **before** the fixed `session` and `title` keys. That ordering matters:
+
+- `metadata` **can** override the five core fields — `event`, `url`, `time`, `duration`, `page`.
+- `metadata` **cannot** override `session` or `title` (they're added afterward).
+
+```js
+WaveformTracker.init({
+  endpoint: '/api/track',
+  metadata: { user_id: 42, post_id: 456 },
+  session: true // default; set false to drop the session id
+});
+```
+
+The session id is anonymous and in-memory only — a fresh random string (`Math.random().toString(36).slice(2) + Date.now().toString(36)`) generated each `init()` and regenerated on every reload. It correlates events within a single page session; it is not a persistent identifier.
+
+## Event payload
+
+Every fired event sends the same shape. Field order is deterministic: `{ event, url, time, duration, page, ...metadata }`, then `session`, then `title`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `event` | `string` | `'play'`, `'listen'`, or `'complete'`. |
+| `url` | `string` | The player's `options.url` (typically from `data-url`). **Required** — events without it are dropped with a warning. |
+| `time` | `number` | For `play` / `listen`: `floor(accumulated media-time)`. For `complete`: `floor(currentTime)`. |
+| `duration` | `number` | `floor(duration)` of the track, in seconds. |
+| `page` | `string` | `window.location.pathname` — path only, no query string or host. |
+| *…metadata* | `any` | Each key from your `metadata` config. |
+| `session` | `string` | Present only when `session` is enabled. |
+| `title` | `string` | Present only when the player has `options.title` (typically from `data-title`). |
+
+```json
+{
+  "event": "listen",
+  "url": "audio/ep-42.mp3",
+  "time": 30,
+  "duration": 180,
+  "page": "/podcast/ep-42",
+  "post_id": 456,
+  "session": "k3f9q2abc1",
+  "title": "Episode 42"
+}
+```
+
+### Delivery semantics
+
+| Event | Terminal? | Transport |
+| --- | --- | --- |
+| `play` | No | Plain `fetch` POST, `keepalive: false`. |
+| `listen` | Yes | `navigator.sendBeacon` (Blob, `application/json`), falls back to `fetch` + `keepalive`. |
+| `complete` | Yes | Same as `listen`. |
+
+Delivery priority is absolute: if `handler` is set, it wins outright and `endpoint` is never called. Otherwise the payload is POSTed to `endpoint`. Terminal events (`listen`, `complete`) prefer `sendBeacon` so they survive page unload — **but only when no custom `headers` are configured**, since beacon can't send headers. With custom headers, terminal events fall back to `fetch` + `keepalive`, and `fetch` failures are logged via `console.error`.
+
+:::caution[Receiving beacons server-side]
+`sendBeacon` sends the body with `Content-Type: application/json` and **cannot** attach custom headers — including `Authorization`. If your endpoint needs auth headers on terminal events, set `headers` (which forces the `fetch` path), or authenticate another way (cookie, signed URL, IP allowlist). Your handler should also tolerate beacon requests, which arrive without your custom headers.
+:::
+
+## Complete wiring example: custom endpoint
+
+A full setup — players on the page, a tracker POSTing to your API, and a minimal server route to receive it.
+
+```html
+<!-- 1. Players (auto-mounted by the player's data-* contract) -->
+<div data-waveform-player
+     data-url="audio/ep-42.mp3"
+     data-title="Episode 42"></div>
+
+<script src="/js/waveform-player.js"></script>
+<script src="/js/waveform-tracker.js"></script>
+```
+
+```js
+// 2. Initialize the tracker ONCE, after the player script has loaded.
+WaveformTracker.init({
+  endpoint: 'https://api.example.com/track',
+  events: { play: 3, listen: 30, complete: 90 },
+  headers: { 'Authorization': 'Bearer ' + window.API_TOKEN }, // forces fetch path
+  metadata: { post_id: 456, user_id: window.currentUserId },
+  session: true,
+  debug: false
+});
+```
+
+```js
+// 3. Example endpoint (Express). The body is the payload object above.
+app.post('/track', express.json(), (req, res) => {
+  const { event, url, time, duration, page, session, title, post_id } = req.body;
+
+  // event: 'play' | 'listen' | 'complete'
+  // time:  media-seconds heard (play/listen) or currentTime (complete)
+  await db.listens.insert({
+    event, url, title, seconds: time, duration,
+    page, session, post_id,
+    at: new Date()
+  });
+
+  res.sendStatus(204); // beacons ignore the response; 2xx keeps logs clean
+});
+```
+
+### Or skip the network with `handler`
+
+When you'd rather route events through your own analytics layer (Segment, GA, a queue) instead of HTTP, pass a `handler`. It receives every payload and fully replaces network delivery — `endpoint` is ignored.
+
+```js
+WaveformTracker.init({
+  events: { listen: 30, complete: 90 },
+  handler(payload) {
+    // payload === { event, url, time, duration, page, ...metadata, session?, title? }
+    window.analytics?.track('Audio ' + payload.event, payload);
+  }
+});
+```
+
+<Aside type="caution" title="debug does not mean dry-run">
+  `debug: true` only adds `console.log` tracing — events are **still delivered**. (The README's "logs instead of sending" wording is inaccurate.) To inspect events without hitting the network, use a `handler` instead of an `endpoint`.
+</Aside>
+
+## Methods
+
+`init()` is the only entry point you normally need; the rest are for inspection, SPA control, and teardown.
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `init(config = {})` | `undefined` | Configure the singleton, attach `document` ready/destroy listeners, and track existing players. Call once. |
+| `trackPlayer(player)` | `undefined` | Begin tracking one player. Validates `player.container` + `player.options` (warns and bails if invalid); idempotent. |
+| `untrackPlayer(player)` | `undefined` | Stop tracking a player and remove its container listeners. No-op if not tracked. |
+| `trackAllPlayers()` | `undefined` | Track every instance from `WaveformPlayer.getAllInstances()`. Called automatically by `init()`. |
+| `getStats()` | `Array` | One entry per tracked player: `{ url, title, elapsedTime, isTracking, sentEvents }`. |
+| `getTrackedCount()` | `number` | How many players are currently tracked. |
+| `reset()` | `undefined` | Untrack all players, clear the trackers Map, and null `config` + `sessionId`. Does **not** remove the document ready/destroy listeners. |
+
+```js
+WaveformTracker.getTrackedCount();
+// → 2
+
+WaveformTracker.getStats();
+// → [
+//     { url: 'audio/ep-42.mp3', title: 'Episode 42',
+//       elapsedTime: 47.3, isTracking: true, sentEvents: ['play', 'listen'] }
+//   ]
+```
+
+`elapsedTime` is accumulated media-seconds (a float); `sentEvents` lists the event names already fired this playback.
+
+## Events consumed
+
+WaveformTracker is purely reactive — it listens to player events and never renders anything. For the player's full event surface, see [Player events](/player/options/).
+
+| Source | Event | Effect |
+| --- | --- | --- |
+| `document` | `waveformplayer:ready` | Captured (capture phase) → `trackPlayer(detail.player)`. |
+| `document` | `waveformplayer:destroy` | Captured → `untrackPlayer(detail.player)`. Prevents SPA leaks (player v1.8.0+). |
+| container | `waveformplayer:play` | Start tracking; reset the media-time baseline (`lastTime = null`). |
+| container | `waveformplayer:pause` | Stop tracking; clear the baseline. Accumulated `elapsedTime` is **kept**. |
+| container | `waveformplayer:timeupdate` | `{ currentTime, duration }` → accumulate deltas and run threshold checks. |
+| container | `waveformplayer:ended` | `{ currentTime, duration }` → maybe fire `complete`, then reset `sentEvents` / `elapsedTime` for replay. Reads time from the detail, so it works in the player's external audio mode. |
+
+:::tip[Works in external audio mode]
+The `ended` handler reads `currentTime` and `duration` from the event detail rather than `player.audio`, so tracking works even when the player is in [external audio mode](/player/options/) (where `player.audio` is `null`). `complete` via `ended` requires `duration > 0`; with a missing or zero duration, `complete` is skipped.
+:::
+
+## Logging
+
+Every tracker message is prefixed `[WaveformTracker]`.
+
+- `warn` and `error` are **always** emitted, even with `debug: false`, so integration mistakes (no endpoint/handler, missing `url`, a thrown handler, dropped events) surface immediately.
+- Verbose `log` tracing (player ready/destroy, play/pause, sent payloads, beacon fallbacks) is gated behind `debug: true`.
+
+The `init()` validation warning — `No endpoint or handler configured; events will not be delivered` — fires regardless of `debug`.
+
+## Privacy
+
+WaveformTracker is built for content metrics, not user surveillance:
+
+- **No cookies, no `localStorage`, no PII** are collected or stored.
+- The optional `session` id is a fresh random string per `init()`, held in memory only and regenerated on reload — it correlates events within one page session, nothing more. Disable it with `session: false`.
+- `page` is `window.location.pathname` only — no query string, no host.
+- Seeks are deliberately uncredited, so the numbers reflect content genuinely consumed.
+
+You decide what (if anything) identifying gets attached, via `metadata` — and what your endpoint or `handler` does with it.
+
+## Related
+
+- [WaveformPlayer options](/player/options/) — the player whose events the tracker consumes, including `url`, `title`, and external audio mode.
+- [Installation](/getting-started/installation/) — loading the player and add-ons.

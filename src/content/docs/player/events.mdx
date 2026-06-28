@@ -1,0 +1,300 @@
+---
+title: Events & callbacks
+description: Observe and react to the player.
+sidebar:
+  order: 4
+---
+
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+The player exposes its lifecycle two ways. Pick whichever fits how you wired the
+player up:
+
+- **`on*` constructor callbacks** — passed as options when you build the player.
+  Best when you own the `new WaveformPlayer(...)` call and want a single handler
+  per instance.
+- **`waveformplayer:*` DOM events** — bubbling `CustomEvent`s dispatched on the
+  player's container element. Best for declarative (`data-waveform-player`)
+  players you never constructed by hand, for attaching/detaching listeners after
+  init, or for delegating from an ancestor.
+
+Both paths fire from the same internal points, so a given moment (say, playback
+starting) triggers **both** the `onPlay` callback **and** the
+`waveformplayer:play` event. Use one, the other, or both.
+
+:::tip
+Every `waveformplayer:*` event **bubbles**. You can listen on the player's
+container, or on any ancestor (including `document`) and read
+`event.detail.player` to know which instance fired.
+:::
+
+## At a glance
+
+| Moment | Callback | DOM event |
+| --- | --- | --- |
+| Ready (post-construct) | — | `waveformplayer:ready` |
+| Waveform drawn | `onLoad` | — |
+| Play | `onPlay` | `waveformplayer:play` |
+| Pause | `onPause` | `waveformplayer:pause` |
+| Progress tick | `onTimeUpdate` | `waveformplayer:timeupdate` |
+| Track ended | `onEnd` | `waveformplayer:ended` |
+| Load/decode/audio error | `onError` | — |
+| Destroyed | — | `waveformplayer:destroy` |
+| Play requested (external) | — | `waveformplayer:request-play` |
+| Pause requested (external) | — | `waveformplayer:request-pause` |
+| Seek requested (external) | — | `waveformplayer:request-seek` |
+
+Note the asymmetry: `onLoad` / `onError` have **no** DOM-event twin, and
+`ready` / `destroy` / `request-*` have **no** callback twin.
+
+## Constructor callbacks
+
+Pass these as options. Each defaults to `null`. They are plain functions invoked
+with positional arguments — there is no `event` object and nothing to
+`preventDefault()`.
+
+| Callback | Signature | Fires when |
+| --- | --- | --- |
+| `onLoad` | `(player) => void` | A track's waveform has finished drawing (after peaks are fetched/generated and rendered). |
+| `onPlay` | `(player) => void` | Playback starts — both `self` and `external` modes. |
+| `onPause` | `(player) => void` | Playback pauses — both modes. Also runs once as part of `onEnd`. |
+| `onEnd` | `(player) => void` | The track reaches its end. In `external` mode this is synthesized when progress reaches `>= 1`. |
+| `onError` | `(error, player) => void` | A load, decode, or audio error occurs. This is the single funnel for surfaced errors. |
+| `onTimeUpdate` | `(currentTime, duration, player) => void` | On every progress tick. `currentTime` and `duration` are in seconds. Same argument order in both modes. |
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+
+const player = new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+
+  onLoad: (p) => {
+    console.log('ready to play:', p.options.title);
+  },
+  onPlay: (p) => updateUI('playing'),
+  onPause: (p) => updateUI('paused'),
+  onTimeUpdate: (currentTime, duration, p) => {
+    progressEl.textContent = `${currentTime.toFixed(1)} / ${duration.toFixed(1)}s`;
+  },
+  onEnd: (p) => {
+    console.log('finished:', p.options.url);
+    playNext();
+  },
+  onError: (error, p) => {
+    console.error('playback failed:', error);
+  },
+});
+```
+
+<Aside type="note">
+  `onTimeUpdate` is the only callback whose first argument is **not** the
+  player — it leads with `currentTime, duration` and passes the player **last**.
+  Everything else either takes `(player)` or, for `onError`, `(error, player)`.
+</Aside>
+
+## DOM events
+
+Every event is a bubbling `CustomEvent` dispatched on the player's container
+(`player.container`). Read the payload from `event.detail`. `detail.player` is
+always the originating `WaveformPlayer` instance, and `detail.url` is the current
+track URL.
+
+| Event | `detail` shape | Cancelable | Modes |
+| --- | --- | --- | --- |
+| `waveformplayer:ready` | `{ player, url }` | no | both |
+| `waveformplayer:play` | `{ player, url }` | no | both |
+| `waveformplayer:pause` | `{ player, url }` | no | both |
+| `waveformplayer:timeupdate` | `{ player, currentTime, duration, progress, url }` | no | both |
+| `waveformplayer:ended` | `{ player, url, currentTime, duration }` | no | both |
+| `waveformplayer:destroy` | `{ player, url }` | no | both |
+| `waveformplayer:request-play` | track detail (see below) | **yes** | external only |
+| `waveformplayer:request-pause` | track detail | **yes** | external only |
+| `waveformplayer:request-seek` | track detail + `{ percent }` | **yes** | external only |
+
+In the `timeupdate` detail, `progress` is a `0..1` fraction of the track
+(`currentTime / duration`), handy for driving a progress bar without dividing
+yourself. The `ended` detail reports `currentTime` equal to `duration`.
+
+### Listening
+
+```js
+const el = player.container;
+
+el.addEventListener('waveformplayer:ready', (e) => {
+  console.log('ready:', e.detail.url);
+});
+
+el.addEventListener('waveformplayer:timeupdate', (e) => {
+  const { currentTime, duration, progress } = e.detail;
+  bar.style.width = `${progress * 100}%`;
+});
+
+el.addEventListener('waveformplayer:ended', (e) => {
+  console.log('ended at', e.detail.currentTime, 'of', e.detail.duration);
+});
+```
+
+Because the events bubble, a single delegated listener can cover many players —
+including declarative ones you never constructed:
+
+```js
+// One listener for every player on the page, now or later.
+document.addEventListener('waveformplayer:play', (e) => {
+  analytics.track('audio_play', {
+    url: e.detail.url,
+    id: e.detail.player.id,
+  });
+});
+```
+
+<Aside type="tip" title="When does ready fire?">
+  `waveformplayer:ready` is dispatched roughly 100ms **after** the constructor
+  returns, so a listener you add on the very next line will still catch it. For
+  declarative players, attach the listener before that tick (e.g. on
+  `DOMContentLoaded`, before auto-init runs) or delegate from `document`.
+</Aside>
+
+### `waveformplayer:destroy`
+
+`destroy()` emits `waveformplayer:destroy` **first**, before tearing anything
+down, so listeners get a chance to release references (the player, the element,
+cached `detail` objects) before the container is emptied and listeners are
+aborted.
+
+```js
+player.container.addEventListener('waveformplayer:destroy', (e) => {
+  cleanupFor(e.detail.player.id);
+});
+```
+
+## External-mode request events
+
+In `audioMode: 'external'` the player owns no `<audio>` element — it is a
+visualization surface driven by an external clock via `setPlayingState()` and
+`setProgress()`. When the user interacts with it (clicks the play button, clicks
+the canvas, or seeks with the keyboard), the player can't act on its own, so it
+**asks** the controller by dispatching a **cancelable** request event.
+
+These three events fire **only** in external mode:
+
+| Event | Extra detail | Triggered by |
+| --- | --- | --- |
+| `waveformplayer:request-play` | — | `play()` / `togglePlay()` while paused |
+| `waveformplayer:request-pause` | — | `pause()` / `togglePlay()` while playing |
+| `waveformplayer:request-seek` | `{ percent }` (`0..1`) | canvas click or keyboard slider seek |
+
+All three carry the full **track detail** object (the seek event adds
+`percent`):
+
+```ts
+{
+  url:      string,
+  title:    string | null,
+  subtitle: string | null,
+  artist:   string | null,   // falls back to subtitle when no artist set
+  artwork:  string | null,
+  markers:  Array<{ time: number, label: string, color?: string }>,
+  waveform: number[] | string | null,
+  id:       string,
+  player:   WaveformPlayer
+}
+```
+
+This shape mirrors the input that `WaveformBar.play()` expects, so a controller
+can forward the detail straight through.
+
+Call `event.preventDefault()` to **veto** the player's default reaction:
+
+- `request-play` / `request-pause`: `preventDefault()` cancels the visual state
+  flip — the player stays as it was until your controller drives it with
+  `setPlayingState()`.
+- `request-seek`: **without** `preventDefault()` the local progress overlay
+  advances **optimistically** to `percent` so the canvas repaints immediately.
+  Call `preventDefault()` if you'd rather wait and drive the position yourself
+  via `setProgress()`.
+
+```js
+const viz = new WaveformPlayer('#viz', {
+  url: '/audio/track.mp3',
+  audioMode: 'external',
+  waveform: peaks, // pre-computed; skips Web Audio decode
+});
+
+const audio = document.querySelector('#my-audio');
+
+viz.container.addEventListener('waveformplayer:request-play', (e) => {
+  e.preventDefault();            // we own playback
+  audio.play();
+});
+
+viz.container.addEventListener('waveformplayer:request-pause', (e) => {
+  e.preventDefault();
+  audio.pause();
+});
+
+viz.container.addEventListener('waveformplayer:request-seek', (e) => {
+  // Let the overlay move optimistically (no preventDefault),
+  // then sync the real clock.
+  audio.currentTime = e.detail.percent * audio.duration;
+});
+
+// Pump the visuals from the real <audio> clock:
+audio.addEventListener('play',  () => viz.setPlayingState(true));
+audio.addEventListener('pause', () => viz.setPlayingState(false));
+audio.addEventListener('timeupdate', () =>
+  viz.setProgress(audio.currentTime, audio.duration)
+);
+```
+
+<Aside type="caution">
+  `request-*` events never fire in the default `audioMode: 'self'` — there, the
+  player owns its `<audio>` and acts directly. Conversely, in external mode the
+  audio-bound methods (`seekTo`, `seekToPercent`, `setVolume`,
+  `setPlaybackRate`) are no-ops. See [Player options](/player/options/) for the
+  full `audioMode` contract.
+</Aside>
+
+## Callbacks vs. events: choosing
+
+<CardGrid>
+
+  <Card title="Reach for callbacks when…">
+    You construct the player in JS and want one handler bound for its whole life.
+    They're terser and the player is the (usually only) argument.
+  </Card>
+  <Card title="Reach for DOM events when…">
+    The player is declarative (`data-waveform-player`), you need to add/remove
+    listeners dynamically, you want to delegate from an ancestor, or you need to
+    veto an external-mode request with <code>preventDefault()</code>.
+  </Card>
+
+</CardGrid>
+
+:::note
+Events and callbacks are not mutually exclusive — they fire from the same points.
+Setting `onPlay` **and** listening for `waveformplayer:play` will run both.
+:::
+
+## Teardown
+
+All document- and element-level listeners the player registers internally are
+tied to a single `AbortController`, so `destroy()` removes every one of them in a
+single step (and disconnects the `ResizeObserver`). You are responsible only for
+listeners **you** added with `addEventListener` — remove those yourself, ideally
+in response to `waveformplayer:destroy`.
+
+```js
+const onEnded = (e) => playNext(e.detail.player);
+player.container.addEventListener('waveformplayer:ended', onEnded);
+
+// later…
+player.container.addEventListener('waveformplayer:destroy', () => {
+  player.container.removeEventListener('waveformplayer:ended', onEnded);
+});
+```
+
+## Related
+
+- [Player options](/player/options/) — every option, including the `on*` callbacks and `audioMode`.
+- [Getting started](/getting-started/installation/) — install and first player.

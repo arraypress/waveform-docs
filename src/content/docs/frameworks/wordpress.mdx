@@ -1,0 +1,333 @@
+---
+title: WordPress
+description: Add WaveformPlayer to WordPress.
+sidebar:
+  order: 5
+---
+
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+WaveformPlayer is a single CSS file and a single self-initialising script, so it drops into any WordPress theme or plugin with `wp_enqueue_style` / `wp_enqueue_script`. Once the script is on the page it scans for `[data-waveform-player]` on `DOMContentLoaded` and upgrades every matching element — no inline JS required.
+
+The recommended flow:
+
+
+1. **Enqueue** the stylesheet and script (from a CDN, or bundled in your theme/plugin).
+2. **Emit the markup** — a `<div data-waveform-player …>` — from post content, a shortcode, or a block.
+
+
+## 1. Enqueue the assets
+
+The browser build is an IIFE that exposes `window.WaveformPlayer`, so it works as a plain classic script (no `type="module"` needed). Enqueue both files on `wp_enqueue_scripts`.
+
+### From a CDN
+
+The fastest path — point WordPress at jsDelivr or unpkg. Pin to a major (`@1`) for automatic patch/minor updates, or to an exact version (`@1.14.0`) for reproducible builds.
+
+```php
+// functions.php (theme) or your plugin's main file
+add_action( 'wp_enqueue_scripts', function () {
+	wp_enqueue_style(
+		'waveform-player',
+		'https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css',
+		array(),
+		'1.14.0'
+	);
+
+	wp_enqueue_script(
+		'waveform-player',
+		'https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js',
+		array(),     // no dependencies
+		'1.14.0',
+		true         // load in the footer
+	);
+} );
+```
+
+<Aside type="tip" title="Load it only where it's used">
+Enqueue conditionally to keep pages lean — for example `if ( is_singular() && has_shortcode( get_post()->post_content ?? '', 'waveform' ) ) { … }`, or gate on a page template. The whole player is ~10 KB of JS gzipped plus the stylesheet.
+</Aside>
+
+### Bundled in your theme or plugin
+
+To avoid a third-party CDN, copy the two files out of the package into your asset folder and enqueue them locally. Install the package to grab the `dist/` files:
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+Copy `node_modules/@arraypress/waveform-player/dist/waveform-player.css` and `…/dist/waveform-player.min.js` into your theme (e.g. `assets/`), then enqueue from there:
+
+```php
+// In a theme — use get_theme_file_uri()
+add_action( 'wp_enqueue_scripts', function () {
+	wp_enqueue_style(
+		'waveform-player',
+		get_theme_file_uri( 'assets/waveform-player.css' ),
+		array(),
+		'1.14.0'
+	);
+
+	wp_enqueue_script(
+		'waveform-player',
+		get_theme_file_uri( 'assets/waveform-player.min.js' ),
+		array(),
+		'1.14.0',
+		true
+	);
+} );
+```
+
+```php
+// In a plugin — use plugins_url() relative to the plugin file
+add_action( 'wp_enqueue_scripts', function () {
+	wp_enqueue_style(
+		'waveform-player',
+		plugins_url( 'assets/waveform-player.css', __FILE__ ),
+		array(),
+		'1.14.0'
+	);
+
+	wp_enqueue_script(
+		'waveform-player',
+		plugins_url( 'assets/waveform-player.min.js', __FILE__ ),
+		array(),
+		'1.14.0',
+		true
+	);
+} );
+```
+
+<Aside type="note">
+Use the package version as the enqueue `$ver` argument (here `'1.14.0'`). Bump it whenever you update the bundled files so WordPress busts the asset cache. For long-term caching you can use `filemtime()` on the local file instead.
+</Aside>
+
+## 2. Add a player to the page
+
+A player is just a marker `<div>` carrying `data-*` attributes. The minimum is `data-waveform-player` plus an audio source:
+
+```html
+<div
+	data-waveform-player
+	data-src="https://example.com/audio/track.mp3"
+	data-waveform-style="mirror"
+	data-title="Midnight Drive"
+	data-show-bpm="true"
+></div>
+```
+
+There are three ways to get that markup into a WordPress page.
+
+### Option A — Custom HTML block / post content
+
+In the block editor, paste the `<div>` into a **Custom HTML** block. It will render and auto-initialise on the front end.
+
+<Aside type="caution" title="KSES strips data-* for non-admins">
+WordPress sanitises post content with KSES for users who lack the `unfiltered_html` capability (everyone except Administrators on single-site, and only Super Admins on multisite). KSES removes `<div>` `data-*` attributes, which breaks the player. If editors below admin level need to add players, use the shortcode or block below instead of raw HTML — those generate the markup at render time and bypass content sanitisation.
+</Aside>
+
+### Option B — A custom shortcode
+
+A shortcode is the most portable route: it works in the classic editor, the Shortcode block, widgets, and template calls via `do_shortcode()`, and it escapes every value server-side. This example maps a handful of shortcode attributes onto the player's `data-*` contract and prints the `<div>`:
+
+```php
+/**
+ * [waveform src="…" style="mirror" title="…" subtitle="…" height="64" show-bpm="false" peaks="…"]
+ *
+ * Renders a WaveformPlayer container. The enqueued script upgrades it on load.
+ */
+function wfp_waveform_shortcode( $atts ) {
+	$atts = shortcode_atts(
+		array(
+			'src'      => '',          // audio URL (required)  -> data-src
+			'style'    => 'mirror',    // bars|mirror|line|blocks|dots|seekbar
+			'title'    => '',          // -> data-title
+			'subtitle' => '',          // -> data-subtitle
+			'height'   => '64',        // -> data-height
+			'show-bpm' => 'false',     // -> data-show-bpm
+			'peaks'    => '',          // pre-computed peaks: .json URL, CSV, or JSON array -> data-waveform
+		),
+		$atts,
+		'waveform'
+	);
+
+	if ( empty( $atts['src'] ) ) {
+		return '';
+	}
+
+	// Build the attribute map; only emit what was provided.
+	$attributes = array(
+		'data-waveform-player' => '',
+		'data-src'             => esc_url( $atts['src'] ),
+		'data-waveform-style'  => sanitize_html_class( $atts['style'] ),
+		'data-height'          => absint( $atts['height'] ),
+		'data-show-bpm'        => ( 'true' === $atts['show-bpm'] ) ? 'true' : 'false',
+	);
+
+	if ( '' !== $atts['title'] ) {
+		$attributes['data-title'] = sanitize_text_field( $atts['title'] );
+	}
+	if ( '' !== $atts['subtitle'] ) {
+		$attributes['data-subtitle'] = sanitize_text_field( $atts['subtitle'] );
+	}
+	if ( '' !== $atts['peaks'] ) {
+		$attributes['data-waveform'] = $atts['peaks'];
+	}
+
+	$html = '';
+	foreach ( $attributes as $name => $value ) {
+		$html .= sprintf( ' %s="%s"', $name, esc_attr( $value ) );
+	}
+
+	return '<div' . $html . '></div>';
+}
+add_shortcode( 'waveform', 'wfp_waveform_shortcode' );
+```
+
+Authors then write:
+
+```text
+[waveform src="https://example.com/audio/track.mp3" style="mirror" title="Midnight Drive" show-bpm="true"]
+```
+
+<Aside type="note" title="Attribute names">
+The shortcode attribute names above are arbitrary — they're your public surface. Internally they map to the canonical `data-*` keys: `style` to `data-waveform-style`, `show-bpm` to `data-show-bpm` (the BPM data-attr name intentionally differs from the JS option key `showBPM`). Add more pass-throughs as needed; the full set is on the [data attributes reference](/player/data-attributes/).
+</Aside>
+
+### Option C — A server-rendered block
+
+For a native block, register a dynamic block whose `render_callback` emits the same markup. The cleanest approach is to delegate to the shortcode function so there's a single source of truth:
+
+```php
+add_action( 'init', function () {
+	register_block_type( 'arraypress/waveform', array(
+		'api_version'     => 3,
+		'attributes'      => array(
+			'src'     => array( 'type' => 'string', 'default' => '' ),
+			'style'   => array( 'type' => 'string', 'default' => 'mirror' ),
+			'title'   => array( 'type' => 'string', 'default' => '' ),
+			'showBpm' => array( 'type' => 'boolean', 'default' => false ),
+		),
+		'render_callback' => function ( $attributes ) {
+			return wfp_waveform_shortcode( array(
+				'src'      => $attributes['src']   ?? '',
+				'style'    => $attributes['style'] ?? 'mirror',
+				'title'    => $attributes['title'] ?? '',
+				'show-bpm' => ! empty( $attributes['showBpm'] ) ? 'true' : 'false',
+			) );
+		},
+	) );
+} );
+```
+
+Pair this with a `block.json` and an `edit` component for the editor UI (standard `@wordpress/create-block` scaffolding). The front-end output is identical to the shortcode, so the enqueued script upgrades it the same way.
+
+<Aside type="tip">
+No code at all? The shortcode already works inside the core **Shortcode** block, so editors can drop `[waveform …]` anywhere without a custom block.
+</Aside>
+
+## Dynamically added players
+
+Auto-init only fires once, on `DOMContentLoaded`. If markup arrives later — AJAX, infinite scroll, a block preview re-render, or a tabbed/accordion panel revealed after load — re-scan the DOM yourself. `WaveformPlayer.init()` is idempotent (it sets `data-waveform-initialized="true"` and skips anything already upgraded):
+
+```js
+// After injecting new [data-waveform-player] markup into the page
+window.WaveformPlayer.init();
+```
+
+<Aside type="caution" title="Hidden containers measure as zero-width">
+The waveform canvas is sized from its parent via a `ResizeObserver`. A player built inside a `display:none` panel (tab/accordion) has no width yet. When you reveal it, call the instance's `resizeCanvas()`:
+
+```js
+const player = window.WaveformPlayer.getInstance( '#my-player' );
+if ( player ) player.resizeCanvas();
+```
+</Aside>
+
+## Performance: ship pre-computed peaks
+
+By default the player downloads the audio and decodes it with Web Audio to build the waveform. For a media-heavy WordPress site, generate the peaks once and serve them as a sibling `.json` file, then pass it via `data-waveform` (the `peaks` shortcode attribute above). This skips the Web Audio decode entirely and draws instantly:
+
+```html
+<div
+	data-waveform-player
+	data-src="https://example.com/audio/track.mp3"
+	data-waveform="https://example.com/audio/track.json"
+></div>
+```
+
+The `.json` may be a bare peaks array or an object with embedded `{ peaks, markers }`. See [pre-computed peaks](/player/peaks/) for generating the file (including `WaveformPlayer.getPeaksUrl()` to derive the sibling URL).
+
+## Common data attributes
+
+A quick reference for the attributes you'll reach for most in shortcodes and blocks. The canonical key always wins over its alias.
+
+| Attribute | Maps to | Notes |
+| --- | --- | --- |
+| `data-src` / `data-url` | audio source | `data-url` is canonical; `data-src` is the alias. |
+| `data-waveform-style` / `data-style` | visual style | `bars`, `mirror`, `line`, `blocks`, `dots`, `seekbar`. |
+| `data-title` / `data-subtitle` | info block | Title falls back to the filename if omitted. |
+| `data-artwork` | artwork image | 40×40 thumbnail next to the title. |
+| `data-height` | canvas height (px) | Default `64`. |
+| `data-color-preset` | `dark` / `light` | Omit for auto theme detection. |
+| `data-waveform-color` / `data-progress-color` | colours | CSS colour, or a JSON array of gradient stops. |
+| `data-show-bpm` | BPM badge | Boolean string `"true"`. Pair with `data-bpm` to set a known value. |
+| `data-waveform` | pre-computed peaks | `.json` URL, CSV, or JSON array — skips decoding. |
+| `data-markers` | cue markers | JSON array of `{ time, label, color? }`. |
+
+See the [full data attributes reference](/player/data-attributes/) for every key, and [options](/player/options/) for the JavaScript equivalents.
+
+## Notes & gotchas
+
+- **One global, classic script.** The enqueued build defines `window.WaveformPlayer`, so it is a non-module script — `wp_enqueue_script` with the default args is correct. Don't add `type="module"` via `script_loader_tag`.
+- **Footer vs. head.** Enqueue in the footer (`true`). The script attaches a `DOMContentLoaded` listener, so it upgrades players regardless of where it lands, but the footer keeps it out of the critical path.
+- **Escaping is your job.** WordPress doesn't escape shortcode output — always run URLs through `esc_url()` and other values through `esc_attr()` / `sanitize_text_field()`, as in the example above.
+- **Console prefix.** Every log and error the library emits is prefixed `[WaveformPlayer]`, which makes front-end debugging in WordPress straightforward.
+
+## Related
+
+<CardGrid>
+
+	<Card title="Installation" icon="download">
+		All install paths — CDN, bundler, and the data-attribute auto-init contract. [Getting started](/getting-started/installation/)
+	</Card>
+	<Card title="Data attributes" icon="document">
+		The complete declarative API surface. [Reference](/player/data-attributes/)
+	</Card>
+	<Card title="Options" icon="setting">
+		The JavaScript constructor options behind every attribute. [Options](/player/options/)
+	</Card>
+	<Card title="Pre-computed peaks" icon="approve-check">
+		Generate and serve `.json` peaks to skip decoding. [Peaks](/player/peaks/)
+	</Card>
+
+</CardGrid>

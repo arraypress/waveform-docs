@@ -1,0 +1,433 @@
+---
+title: Methods
+description: The WaveformPlayer JavaScript API.
+sidebar:
+  order: 3
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Every `WaveformPlayer` exposes a small, predictable instance API for playback, seeking, runtime track swaps, theming and teardown, plus a set of static helpers for instance lookup and build-time peak generation. This page documents every public method — its signature, parameters, return value and mode-specific behaviour.
+
+For the option surface those methods read and write, see [Options](/player/options/). For the events they emit, see [Events](/player/events/).
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+
+const player = new WaveformPlayer('#player', { url: '/audio/track.mp3' });
+player.play();
+```
+
+<Aside type="note" title="Self mode vs. external mode">
+Several methods behave differently — or are no-ops — depending on `audioMode`. In the default `'self'` mode the player owns an `<audio>` element and these methods drive it directly. In `'external'` mode there is no `<audio>` (`player.audio` is `null`): `seekTo`, `seekToPercent`, `setVolume` and `setPlaybackRate` are no-ops, and `play` / `pause` dispatch cancelable `waveformplayer:request-*` events instead of moving an audio clock. See [`setPlayingState`](#setplayingstateplaying) / [`setProgress`](#setprogresscurrenttime-duration) for driving an external player.
+</Aside>
+
+## Construction
+
+### `new WaveformPlayer(container, options?)`
+
+Creates and mounts a player.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `container` | `string \| HTMLElement` | A CSS selector or an element. The selector is resolved with `querySelector`. |
+| `options` | `WaveformPlayerOptions` | Optional. See [Options](/player/options/). |
+
+**Returns** the `WaveformPlayer` instance. **Throws** `Error('[WaveformPlayer] Container element not found')` if the container cannot be resolved.
+
+Configuration is merged in precedence order **defaults &lt; `data-*` attributes &lt; constructor options**, then the resolved colour preset and per-style bar sizing (`STYLE_DEFAULTS`) are applied. Aliases are normalized (`style` → `waveformStyle`, `src` → `url`; the canonical key wins). The instance is registered in [`WaveformPlayer.instances`](#waveformplayerinstances), the DOM and audio are initialized, and `waveformplayer:ready` fires roughly 100 ms later.
+
+```js
+// Selector
+const a = new WaveformPlayer('#player', { url: '/audio/a.mp3' });
+
+// Element reference
+const el = document.querySelector('.my-player');
+const b = new WaveformPlayer(el, { url: '/audio/b.mp3', waveformStyle: 'bars' });
+```
+
+<Aside type="tip">
+You rarely need `new` for declarative markup. Any element carrying `data-waveform-player` is instantiated automatically on `DOMContentLoaded`, and you can re-scan the DOM at any time with [`WaveformPlayer.init()`](#waveformplayerinit). See [Installation](/getting-started/installation/).
+</Aside>
+
+## Playback control
+
+These work in both modes. In `'external'` mode `play` / `pause` are requests, not commands — they dispatch a **cancelable** event and the controller decides whether to honour it.
+
+### `play()`
+
+Starts playback.
+
+- **Self mode** — pauses every other instance first if `singlePlay` is enabled, then returns the native `audio.play()` promise (`Promise<void>`).
+- **External mode** — dispatches a cancelable `waveformplayer:request-play` event and returns `undefined`. If a listener calls `preventDefault()`, the request is vetoed.
+
+**Returns** `Promise<void> | undefined`.
+
+```js
+// Self mode: handle autoplay rejection
+player.play()?.catch((err) => console.warn('Autoplay blocked', err));
+```
+
+### `pause()`
+
+Pauses playback. Self mode calls `audio.pause()`; external mode dispatches a cancelable `waveformplayer:request-pause`. **Returns** `void`.
+
+### `togglePlay()`
+
+Plays if currently paused, pauses if currently playing. Works in both modes. **Returns** `void`.
+
+```js
+button.addEventListener('click', () => player.togglePlay());
+```
+
+## Seeking
+
+<Aside type="caution">
+`seekTo` and `seekToPercent` only act in **self mode** (they move the owned `<audio>` clock). In external mode they are no-ops — drive the position with [`setProgress`](#setprogresscurrenttime-duration) instead, or let the canvas/keyboard emit `waveformplayer:request-seek`.
+</Aside>
+
+### `seekTo(seconds)`
+
+Sets the playback position to an absolute time.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `seconds` | `number` | Target time; clamped to `[0, duration]`. |
+
+Refreshes the progress overlay and time displays. No-op when there is no audio or no known duration. **Returns** `void`.
+
+### `seekToPercent(percent)`
+
+Seeks to a fraction of the total duration.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `percent` | `number` | Fraction of duration; clamped to `[0, 1]`. |
+
+**Returns** `void`.
+
+```js
+player.seekTo(30);        // jump to 0:30
+player.seekToPercent(0.5); // jump to the midpoint
+```
+
+## Loading tracks
+
+### `load(url)`
+
+Loads (or reloads) audio into the existing player: sets the title, fetches or generates and draws the peaks, renders markers, initializes Media Session (self mode), and fires the `onLoad` callback. Self mode awaits the audio's `loadedmetadata` event. Any load, decode or audio error funnels through `onError`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `url` | `string` | Audio file URL. |
+
+**Returns** `Promise<void>`.
+
+`load()` is the low-level primitive. For most runtime swaps prefer `loadTrack()`, which also resets per-track state and updates the info DOM.
+
+### `loadTrack(url, title?, subtitle?, options?)`
+
+Swaps the current track at runtime. Pauses, resets the audio / error / progress state, **resets per-track options** (`markers` → `[]` and `waveform` → `null`), merges the supplied `options`, updates the subtitle and artwork DOM, then calls `load()`. It auto-plays the new track unless `options.autoplay === false`.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `url` | `string` | New audio URL. |
+| `title` | `string \| null` | Optional. Track title; `null` derives it from the URL filename. |
+| `subtitle` | `string \| null` | Optional. Subtitle row; pass `''` to hide it. |
+| `options` | `object` | Optional. Per-track overrides merged over current options (e.g. `markers`, `waveform`, `artwork`, `bpm`, `autoplay`). |
+
+**Returns** `Promise<void>`.
+
+```js
+await player.loadTrack('/audio/next.mp3', 'Next Track', 'Some Artist', {
+  artwork: '/img/next.jpg',
+  waveform: WaveformPlayer.getPeaksUrl('/audio/next.mp3'), // skip decode
+  markers: [{ time: 12, label: 'Drop' }],
+  autoplay: false,
+});
+```
+
+<Aside type="caution" title="Why the per-track reset matters">
+`mergeOptions` skips `null` / `undefined`, so a later call can't clear an earlier value by passing `null`. That is exactly why `loadTrack` explicitly resets `options.waveform = null` and `options.markers = []` for every track — otherwise the previous track's peaks and markers would persist and the new track would redraw the *old* waveform (the 1.8.1 fix). If you add your own per-track options, reset them here too.
+</Aside>
+
+## Audio settings (self mode)
+
+### `setVolume(volume)`
+
+Sets the audio volume.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `volume` | `number` | Clamped to `[0, 1]`. Non-finite input is ignored. |
+
+No-op in external mode. **Returns** `void`.
+
+### `setPlaybackRate(rate)`
+
+Sets the playback speed.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `rate` | `number` | Clamped to `0.5`–`2`. |
+
+Applies to the audio, persists to `options.playbackRate`, and refreshes the speed menu UI. No-op in external mode. **Returns** `void`.
+
+```js
+player.setVolume(0.8);
+player.setPlaybackRate(1.5);
+```
+
+## Waveform & markers
+
+### `setWaveformData(data)`
+
+Replaces the current peaks and redraws.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `data` | `number[] \| string` | Inline array, comma-separated string, JSON-array string, or a `.json` URL (fetched asynchronously; embedded `{ peaks, markers }` honoured). |
+
+Malformed input normalizes to `[]`. **Returns** `void`.
+
+```js
+player.setWaveformData([0.1, 0.4, 0.8, 0.5, 0.2]);
+player.setWaveformData('/peaks/track.json');
+```
+
+### `setActiveMarker(index)`
+
+Toggles the `.active` class on a single marker and clears it from the rest.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `index` | `number \| null` | Marker index to activate; `null` clears all markers. |
+
+**Returns** `void`.
+
+### `resizeCanvas()`
+
+Recomputes the canvas backing size for the current container width and device pixel ratio, then redraws. **Returns** `void`.
+
+Redraws are normally driven automatically by a `ResizeObserver` on the canvas's parent plus a debounced window-resize handler. A pure DOM move (re-parenting the player without a size change) may not trip the observer — call `resizeCanvas()` explicitly after relocating a player.
+
+```js
+newParent.appendChild(player.container);
+player.resizeCanvas(); // force a redraw after the move
+```
+
+## Driving an external player
+
+These are the inbound pump for `audioMode: 'external'`: a controller (for example a single shared `<audio>`, or `waveform-bar`) calls them to push play-state and progress into the visualization. They are how the canvas stays in sync when the player itself owns no audio.
+
+### `setPlayingState(playing)`
+
+Flips the play/pause visual state without touching any audio.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `playing` | `boolean` | `true` shows the playing state, `false` the paused state. |
+
+Emits `waveformplayer:play` / `waveformplayer:pause` and runs the matching callback **only on a transition** (idempotent if the state is unchanged). **Returns** `void`.
+
+### `setProgress(currentTime, duration)`
+
+Updates the progress overlay and time displays from an external clock.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `currentTime` | `number` | Current position in seconds. |
+| `duration` | `number` | Total duration in seconds. No-op if `<= 0`. |
+
+Stores the external duration, emits `waveformplayer:timeupdate`, and synthesizes a one-shot `waveformplayer:ended` once `currentTime / duration >= 1`. **Returns** `void`.
+
+```js
+// External mode: pump from a shared audio element
+const player = new WaveformPlayer('#viz', { audioMode: 'external' });
+
+sharedAudio.addEventListener('play',  () => player.setPlayingState(true));
+sharedAudio.addEventListener('pause', () => player.setPlayingState(false));
+sharedAudio.addEventListener('timeupdate', () =>
+  player.setProgress(sharedAudio.currentTime, sharedAudio.duration));
+
+// Honour the canvas's seek request against your own clock
+player.container.addEventListener('waveformplayer:request-seek', (e) => {
+  sharedAudio.currentTime = e.detail.percent * sharedAudio.duration;
+});
+```
+
+## Theming
+
+### `refreshTheme()`
+
+Re-detects the page colour scheme and re-applies auto colours, then redraws.
+
+**No-op** when `colorPreset` is set explicitly, or when colours were hand-set — only the colours you left `null` follow the resolved preset. **Returns** `void`.
+
+You rarely need to call this by hand: a single shared `MutationObserver` plus a `matchMedia` watcher already re-detects on `<html>` / `<body>` class, `data-theme`, `data-color-scheme` or `style` changes, and on OS `prefers-color-scheme` flips, calling `refreshTheme()` on every instance. Call it manually only when you change the theme through a channel those watchers don't observe.
+
+## Lifecycle
+
+### `destroy()`
+
+Tears the player down completely. It flags itself as destroying, emits `waveformplayer:destroy` (first, so listeners can release references), pauses playback, stops the animation frame loop, aborts all DOM/document listeners via its `AbortController`, disconnects the `ResizeObserver`, removes the resize handler, drops itself from `instances` and `currentlyPlaying`, resets and nulls the audio element, and empties the container. **Returns** `void`.
+
+```js
+player.container.addEventListener('waveformplayer:destroy', () => cleanup());
+player.destroy();
+```
+
+<Aside type="caution">
+After `destroy()` the instance is no longer registered and its container is empty. Don't call further methods on it — create a new player if you need one again.
+</Aside>
+
+## Static methods
+
+### `WaveformPlayer.getInstance(idOrElement)`
+
+Looks up a live instance.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `idOrElement` | `string \| HTMLElement` | An instance id, an element, or an element's `id`. |
+
+**Returns** `WaveformPlayer | undefined`.
+
+```js
+const p = WaveformPlayer.getInstance('#player') ?? WaveformPlayer.getInstance(el);
+p?.play();
+```
+
+### `WaveformPlayer.getAllInstances()`
+
+**Returns** `WaveformPlayer[]` — every live instance.
+
+```js
+WaveformPlayer.getAllInstances().forEach((p) => p.pause());
+```
+
+### `WaveformPlayer.destroyAll()`
+
+Calls `destroy()` on every live instance and clears the instance map. **Returns** `void`. Useful in SPA route teardown or hot-module-reload disposal.
+
+### `WaveformPlayer.init()`
+
+Re-scans the DOM for `[data-waveform-player]` elements and instantiates any that aren't yet initialized. Idempotent: the library marks each handled element with `data-waveform-initialized="true"`, so re-running skips them. It also runs automatically on `DOMContentLoaded`. **Returns** `void`.
+
+Call it after injecting new markup (AJAX, client-side routing, a CMS preview pane):
+
+```js
+container.innerHTML = '<div data-waveform-player data-src="/audio/new.mp3"></div>';
+WaveformPlayer.init(); // mounts the freshly injected player
+```
+
+### `WaveformPlayer.getPeaksUrl(audioUrl)`
+
+Derives the sibling peaks URL for an audio file by swapping its extension to `.json` — the build-time counterpart to decoding audio in the browser.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `audioUrl` | `string \| null \| undefined` | An audio URL ending in `mp3`, `wav`, `ogg`, `flac`, `m4a` or `aac`. Any `?query` / `#hash` is preserved. |
+
+**Returns** `string | undefined` — the `.json` URL, or `undefined` if the extension isn't recognised. Pass the result as the `waveform` option to skip the Web Audio decode entirely.
+
+```js
+WaveformPlayer.getPeaksUrl('/audio/track.mp3');     // '/audio/track.json'
+WaveformPlayer.getPeaksUrl('/audio/track.wav?v=2'); // '/audio/track.json?v=2'
+WaveformPlayer.getPeaksUrl(undefined);              // undefined
+
+const player = new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  waveform: WaveformPlayer.getPeaksUrl('/audio/track.mp3'),
+});
+```
+
+### `WaveformPlayer.generateWaveformData(url, samples?)`
+
+Decodes an audio URL to a peaks array **without** creating a player — handy for pre-rendering peaks or feeding another component.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `url` | `string` | Audio file URL to decode. |
+| `samples` | `number` | Optional, default `200`. Peak resolution. |
+
+**Returns** `Promise<number[]>`.
+
+```js
+const peaks = await WaveformPlayer.generateWaveformData('/audio/track.mp3', 256);
+new WaveformPlayer('#player', { url: '/audio/track.mp3', waveform: peaks });
+```
+
+<Aside type="caution" title="Type drift">
+The runtime resolves to a plain `number[]` (the peaks). The hand-written `index.d.ts` currently declares `Promise<{ peaks, bpm }>` — treat the runtime shape as authoritative.
+</Aside>
+
+## Static properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `WaveformPlayer.instances` | `Map<string, WaveformPlayer>` | Live instances keyed by id. |
+| `WaveformPlayer.currentlyPlaying` | `WaveformPlayer \| null` | The instance currently playing (drives `singlePlay`). |
+
+```js
+console.log(`${WaveformPlayer.instances.size} players mounted`);
+WaveformPlayer.currentlyPlaying?.pause();
+```
+
+## Utility bridge
+
+### `WaveformPlayer.utils`
+
+A bag of shared, pure helpers bridged onto the class so sibling packages and CDN consumers can reuse them.
+
+| Helper | Signature | Description |
+| --- | --- | --- |
+| `formatTime` | `(seconds: number) => string` | Formats seconds as a clock string. |
+| `extractTitleFromUrl` | `(url: string) => string` | Derives a display title from a URL filename. |
+| `escapeHtml` | `(str: string) => string` | HTML-escapes a string. |
+| `isSafeHref` | `(url: string) => boolean` | Validates a URL is safe to use as an `href`. |
+| `parseDataAttributes` | `(element: HTMLElement) => object` | Parses the `data-*` contract into an options object. |
+
+```js
+const label = WaveformPlayer.utils.formatTime(95); // '1:35'
+```
+
+## Method reference at a glance
+
+| Method | Mode | Returns |
+| --- | --- | --- |
+| `play()` | both | `Promise<void> \| undefined` |
+| `pause()` | both | `void` |
+| `togglePlay()` | both | `void` |
+| `seekTo(seconds)` | self | `void` |
+| `seekToPercent(percent)` | self | `void` |
+| `load(url)` | both | `Promise<void>` |
+| `loadTrack(url, title?, subtitle?, options?)` | both | `Promise<void>` |
+| `setVolume(volume)` | self | `void` |
+| `setPlaybackRate(rate)` | self | `void` |
+| `setWaveformData(data)` | both | `void` |
+| `setActiveMarker(index)` | both | `void` |
+| `resizeCanvas()` | both | `void` |
+| `setPlayingState(playing)` | external | `void` |
+| `setProgress(currentTime, duration)` | external | `void` |
+| `refreshTheme()` | both | `void` |
+| `destroy()` | both | `void` |
+| `WaveformPlayer.getInstance(idOrElement)` | static | `WaveformPlayer \| undefined` |
+| `WaveformPlayer.getAllInstances()` | static | `WaveformPlayer[]` |
+| `WaveformPlayer.destroyAll()` | static | `void` |
+| `WaveformPlayer.init()` | static | `void` |
+| `WaveformPlayer.getPeaksUrl(audioUrl)` | static | `string \| undefined` |
+| `WaveformPlayer.generateWaveformData(url, samples?)` | static | `Promise<number[]>` |
+
+## See also
+
+<CardGrid>
+
+  <Card title="Options" icon="setting">
+    Every constructor option and `data-*` attribute these methods read and write. See [Options](/player/options/).
+  </Card>
+  <Card title="Events" icon="rss">
+    The events emitted by `play`, `setProgress`, `destroy` and friends — and the cancelable `request-*` events external mode dispatches. See [Events](/player/events/).
+  </Card>
+
+</CardGrid>
