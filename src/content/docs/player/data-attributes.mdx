@@ -5,8 +5,19 @@ sidebar:
   order: 2
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import PlayerDemo from '~/components/PlayerDemo.astro';
 
 Every WaveformPlayer option has a declarative `data-*` equivalent. Add the attributes to an element, drop the library on the page, and the player initialises itself — no JavaScript required. This is the zero-build path, and it is exactly what the framework wrappers (`waveform-player-astro`) emit under the hood.
+
+The player below is just markup — a `div` with `data-*` attributes, auto-initialised on this page exactly as described here:
+
+<PlayerDemo
+	url="/audio/drum-loop.mp3"
+	waveform="/waveforms/drum-loop.json"
+	title="Drum Loop"
+	subtitle="100% declarative — no JS"
+	waveformStyle="bars"
+/>
 
 This page is the authoritative list: every attribute, its JS-option equivalent, accepted values, and the parsing rules that turn a string in your HTML into a typed option.
 

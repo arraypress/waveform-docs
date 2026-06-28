@@ -5,6 +5,7 @@ sidebar:
   order: 5
 ---
 import { Tabs, TabItem, Steps } from '@astrojs/starlight/components';
+import PlayerDemo from '~/components/PlayerDemo.astro';
 
 The player ships a complete, themeable look out of the box and gives you three layers of control on top of it:
 
@@ -68,6 +69,16 @@ This means a player dropped into a Tailwind `dark`-class page, a `data-theme="li
 ### Live theme re-detection
 
 The player adapts to runtime light/dark switches, not just the value present at load. A single shared, event-driven watcher (a `MutationObserver` on `<html>`/`<body>` watching `class`, `data-theme`, `data-color-scheme`, and `style`, plus a `prefers-color-scheme` `matchMedia` listener) calls `refreshTheme()` on every live instance whenever the page theme changes.
+
+The player below is auto-themed — flip this site's light/dark toggle (top of the page) and watch it re-colour live:
+
+<PlayerDemo
+	url="/audio/keys-house-piano.mp3"
+	waveform="/waveforms/keys-house-piano.json"
+	title="House Piano"
+	subtitle="Auto-themed — toggle the page theme"
+	waveformStyle="mirror"
+/>
 
 You can also trigger it yourself:
 
@@ -137,6 +148,15 @@ In markup, pass a JSON array string:
   data-progress-color='["#f97316", "#b91c1c"]'
 ></div>
 ```
+
+<PlayerDemo
+	url="/audio/pad-reach.mp3"
+	waveform="/waveforms/pad-reach.json"
+	title="Gradient stops"
+	subtitle="white→zinc waveform, orange→red progress"
+	waveformColor={'["#fafafa", "#71717a"]'}
+	progressColor={'["#f97316", "#b91c1c"]'}
+/>
 
 :::note
 Cue markers carry their own per-marker `color` (defaulting to a translucent white), independent of the theme tokens. See [Markers](/player/markers/).
@@ -236,6 +256,18 @@ new WaveformPlayer('#player', {
 
 The button's vertical alignment is a separate knob, `buttonAlign` (`'auto'` | `'top'` | `'center'` | `'bottom'`); `'auto'` resolves to `bottom` for the `bars` style and `center` for everything else, surfaced as `.waveform-align-*` on `.waveform-track`.
 
+A `minimal` button at `4rem`, live:
+
+<PlayerDemo
+	url="/audio/drum-loop.mp3"
+	waveform="/waveforms/drum-loop.json"
+	title="Drum Loop"
+	subtitle="minimal button · 4rem"
+	waveformStyle="bars"
+	buttonStyle="minimal"
+	buttonSize="4rem"
+/>
+
 ## Layout: default vs preview
 
 `layout` selects the overall composition:
@@ -253,6 +285,17 @@ new WaveformPlayer('#player', {
   waveformStyle: 'bars',
 });
 ```
+
+The same options, live — note the centered title and trimmed meta row:
+
+<PlayerDemo
+	url="/audio/pad-reach.mp3"
+	waveform="/waveforms/pad-reach.json"
+	title="Pad Reach"
+	layout="preview"
+	buttonStyle="minimal"
+	waveformStyle="bars"
+/>
 
 ## Waveform geometry
 

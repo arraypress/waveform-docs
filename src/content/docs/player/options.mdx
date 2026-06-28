@@ -5,10 +5,24 @@ sidebar:
   order: 1
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import PlayerDemo from '~/components/PlayerDemo.astro';
 
 Every `WaveformPlayer` is configured through a single option surface. You can set those options two ways — as **JS constructor options** (camelCase) or as **`data-*` attributes** (kebab-case) on the player element. The two paths are kept in sync: anything you can do in JS, you can do declaratively, and vice versa.
 
 This page is the complete reference. Options are grouped into [Source](#source), [Appearance](#appearance), [Colors](#colors), and [Metadata & UI](#metadata--ui), with the matching `data-*` attribute and any aliases listed for each.
+
+Here is a fully-loaded player — artwork, title, subtitle, and live BPM — to anchor the options below:
+
+<PlayerDemo
+	url="/audio/keys-house-piano.mp3"
+	waveform="/waveforms/keys-house-piano.json"
+	artwork="/img/cover.webp"
+	title="House Piano"
+	subtitle="The Wavelength"
+	waveformStyle="mirror"
+	showBpm={true}
+	bpm={124}
+/>
 
 ## The two configuration paths
 

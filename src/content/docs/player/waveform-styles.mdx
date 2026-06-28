@@ -1,0 +1,100 @@
+---
+title: Waveform styles
+description: The six built-in waveform renderers — bars, mirror, line, blocks, dots, and seekbar — each shown live.
+sidebar:
+  order: 6
+---
+
+import PlayerDemo from '~/components/PlayerDemo.astro';
+
+`waveformStyle` picks how the peaks are painted onto the canvas. Six renderers
+ship in the box; each one seeds its own bar sizing (see [the geometry
+notes](/player/styling/#waveform-geometry)) so it looks right with zero tuning.
+
+Set it in markup with `data-waveform-style` or on the constructor as
+`waveformStyle`. Every player below is **live** — press play, seek, and toggle
+this site's light/dark switch to see the theme tokens follow.
+
+## `mirror` (default)
+
+A SoundCloud-style symmetrical waveform, reflected around the centre line. The
+default, and the most legible at small heights.
+
+<PlayerDemo
+	url="/audio/pluck-luminous.mp3"
+	waveform="/waveforms/pluck-luminous.json"
+	title="Pluck Luminous"
+	subtitle="waveformStyle: mirror"
+	waveformStyle="mirror"
+/>
+
+## `bars`
+
+Classic vertical bars drawn from the baseline up — the familiar "audio editor"
+look. Tighter default spacing than `mirror`.
+
+<PlayerDemo
+	url="/audio/keys-house-piano.mp3"
+	waveform="/waveforms/keys-house-piano.json"
+	title="House Piano"
+	subtitle="waveformStyle: bars"
+	waveformStyle="bars"
+/>
+
+## `line`
+
+A smooth oscilloscope-style wave — a single continuous stroke instead of
+discrete bars. Best for ambient or sustained material.
+
+<PlayerDemo
+	url="/audio/pad-reach.mp3"
+	waveform="/waveforms/pad-reach.json"
+	title="Pad Reach"
+	subtitle="waveformStyle: line"
+	waveformStyle="line"
+/>
+
+## `blocks`
+
+Segmented LED-meter blocks — each bar is quantised into stacked cells for a
+retro hardware-meter feel.
+
+<PlayerDemo
+	url="/audio/drum-loop.mp3"
+	waveform="/waveforms/drum-loop.json"
+	title="Drum Loop"
+	subtitle="waveformStyle: blocks"
+	waveformStyle="blocks"
+/>
+
+## `dots`
+
+Circular points instead of bars — a lighter, more graphic treatment that reads
+well in dense grids.
+
+<PlayerDemo
+	url="/audio/pluck-luminous.mp3"
+	waveform="/waveforms/pluck-luminous.json"
+	title="Pluck Luminous"
+	subtitle="waveformStyle: dots"
+	waveformStyle="dots"
+/>
+
+## `seekbar`
+
+No waveform at all — just a rounded progress track. The lightest option, ideal
+when you want playback control without the visualization (or have no peaks to
+draw).
+
+<PlayerDemo
+	url="/audio/keys-house-piano.mp3"
+	waveform="/waveforms/keys-house-piano.json"
+	title="House Piano"
+	subtitle="waveformStyle: seekbar"
+	waveformStyle="seekbar"
+/>
+
+:::tip
+Style aliases are accepted: `bar` → `bars`, `block` → `blocks`, `dot` → `dots`.
+Unknown values fall back to `bars`.
+:::
