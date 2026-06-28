@@ -16,6 +16,10 @@ export default defineConfig({
 				baseUrl: 'https://github.com/arraypress/waveform-docs/edit/main/',
 			},
 			customCss: ['./src/styles/custom.css'],
+			components: {
+				// Header "Copy page" dropdown (Markdown / Claude / ChatGPT), next to the theme toggle.
+				SocialIcons: './src/overrides/SocialIcons.astro',
+			},
 			// llms.txt lives on the marketing site; link agents there.
 			head: [
 				{

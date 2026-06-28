@@ -1,0 +1,11 @@
+---
+/**
+ * Header override: render the "Copy page" dropdown alongside Starlight's
+ * default social icons (sits next to the theme toggle in the top bar).
+ */
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+import CopyPage from '../components/CopyPage.astro';
+---
+
+<CopyPage />
+<Default><slot /></Default>
