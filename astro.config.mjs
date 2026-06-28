@@ -1,5 +1,36 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
+
+// Shared social-share card (the marketing site's branded OG image).
+const OG_IMAGE = 'https://waveformplayer.com/img/og.png';
+
+// Site-wide structured data: the publisher, the docs site, and the product.
+const JSON_LD = JSON.stringify([
+	{
+		'@context': 'https://schema.org',
+		'@type': 'Organization',
+		name: 'ArrayPress',
+		url: 'https://github.com/arraypress',
+		sameAs: ['https://github.com/arraypress', 'https://www.npmjs.com/org/arraypress'],
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'WebSite',
+		name: 'WaveformPlayer Docs',
+		url: 'https://docs.waveformplayer.com',
+	},
+	{
+		'@context': 'https://schema.org',
+		'@type': 'SoftwareApplication',
+		name: 'WaveformPlayer',
+		applicationCategory: 'MultimediaApplication',
+		operatingSystem: 'Web',
+		url: 'https://waveformplayer.com',
+		offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+		author: { '@type': 'Organization', name: 'ArrayPress', url: 'https://github.com/arraypress' },
+	},
+]);
 
 // https://astro.build/config
 export default defineConfig({
@@ -31,6 +62,12 @@ export default defineConfig({
 				{ tag: 'link', attrs: { rel: 'stylesheet', href: 'https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.css' } },
 				{ tag: 'script', attrs: { src: 'https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.min.js', defer: true } },
 				{ tag: 'script', content: "document.addEventListener('astro:page-load',function(){window.WaveformPlayer&&WaveformPlayer.init&&WaveformPlayer.init()});" },
+				// SEO: a default social card (Starlight emits og:*/twitter:card but no
+				// image) + site-wide JSON-LD. twitter:card is already summary_large_image.
+				{ tag: 'meta', attrs: { property: 'og:image', content: OG_IMAGE } },
+				{ tag: 'meta', attrs: { property: 'og:image:alt', content: 'WaveformPlayer — beautiful audio visualization for the web' } },
+				{ tag: 'meta', attrs: { name: 'twitter:image', content: OG_IMAGE } },
+				{ tag: 'script', attrs: { type: 'application/ld+json' }, content: JSON_LD },
 			],
 			sidebar: [
 				{ label: 'Getting Started', items: [{ autogenerate: { directory: 'getting-started' } }] },
@@ -43,5 +80,6 @@ export default defineConfig({
 				{ label: 'Changelog', collapsed: true, items: [{ autogenerate: { directory: 'changelog' } }] },
 			],
 		}),
+		sitemap(),
 	],
 });
