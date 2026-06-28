@@ -5,6 +5,7 @@ sidebar:
   order: 1
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import TrackerDemo from '~/components/TrackerDemo.astro';
 
 **WaveformTracker** is a headless, ~2KB analytics add-on for [WaveformPlayer](/player/options/). It measures how much of your audio people *actually listen to* — real media-time, not wall-clock — and POSTs a compact JSON event to your endpoint (or hands it to your own callback) when a listener crosses a threshold you define.
 
@@ -26,6 +27,12 @@ It renders no DOM, ships no CSS, sets no cookies, and collects no PII. Drop it o
   </Card>
 
 </CardGrid>
+
+Because it's headless, the tracker is easiest to *see* with a live readout. The player below is wired to a tracker whose `handler` renders each captured event straight into the panel (no server) — the `listen` threshold is lowered to 5s so it fires quickly. Press play, let it run, pause, scrub, finish:
+
+<TrackerDemo />
+
+In production you'd swap that `handler` for an `endpoint` and these exact payloads would POST to your server.
 
 ## What it measures
 

@@ -1,0 +1,206 @@
+---
+/**
+ * TrackerDemo — a live WaveformTracker wired to a player, with an on-page panel
+ * that shows the analytics events as they fire.
+ *
+ * The tracker is configured with a `handler` (instead of an `endpoint`), so no
+ * server is involved — every payload it would POST is rendered into the panel
+ * instead. Play, pause, cross the listen threshold, or finish the track and
+ * watch the exact JSON the tracker captures.
+ *
+ * The tracker auto-attaches to every player on the page and is a singleton, so
+ * (like the bar) it loads on demand and is torn down on navigate-away.
+ */
+interface Props {
+	url?: string;
+	waveform?: string;
+	title?: string;
+	subtitle?: string;
+	/** Seconds of cumulative playback before a `listen` event fires. */
+	listen?: number;
+}
+const p = Astro.props;
+const url = p.url ?? '/audio/keys-house-piano.mp3';
+const waveform = p.waveform ?? '/waveforms/keys-house-piano.json';
+const title = p.title ?? 'House Piano';
+const subtitle = p.subtitle ?? 'Tracked — events appear on the right';
+const listen = p.listen ?? 5;
+---
+
+<div class="tracker-demo not-content" data-wt-demo data-wt-listen={listen}>
+	<div class="tracker-demo-player">
+		<div
+			data-waveform-player
+			data-url={url}
+			data-waveform={waveform}
+			data-title={title}
+			data-subtitle={subtitle}
+			data-waveform-style="mirror"
+			data-height={64}
+		>
+		</div>
+	</div>
+	<div class="tracker-demo-feed">
+		<div class="tracker-demo-feed-head">
+			<span>Captured events</span>
+			<button type="button" data-wt-clear>Clear</button>
+		</div>
+		<ol data-wt-log class="tracker-demo-log">
+			<li class="tracker-demo-empty">Press play — events stream in here.</li>
+		</ol>
+	</div>
+</div>
+
+<script is:inline>
+	(function () {
+		var JS = 'https://unpkg.com/@arraypress/waveform-tracker/dist/waveform-tracker.min.js';
+
+		function withRuntime(cb) {
+			if (window.WaveformTracker) return cb();
+			var existing = document.querySelector('script[data-wt-js]');
+			if (existing) return existing.addEventListener('load', cb);
+			var s = document.createElement('script');
+			s.src = JS;
+			s.setAttribute('data-wt-js', '');
+			s.addEventListener('load', cb);
+			document.head.appendChild(s);
+		}
+
+		function render(payload) {
+			var log = document.querySelector('[data-wt-log]');
+			if (!log) return;
+			var empty = log.querySelector('.tracker-demo-empty');
+			if (empty) empty.remove();
+			var li = document.createElement('li');
+			li.className = 'tracker-demo-event tracker-demo-event--' + payload.event;
+			var t = Math.floor(payload.time || 0);
+			var mmss = Math.floor(t / 60) + ':' + ('0' + (t % 60)).slice(-2);
+			li.innerHTML =
+				'<span class="tracker-demo-badge">' + payload.event + '</span>' +
+				'<code>{ time: ' + t + 's (' + mmss + '), duration: ' + payload.duration + 's }</code>';
+			log.prepend(li);
+			while (log.children.length > 12) log.removeChild(log.lastChild);
+		}
+
+		function teardown() {
+			if (window.WaveformTracker && window.WaveformTracker.config) window.WaveformTracker.reset();
+		}
+
+		function setup() {
+			var host = document.querySelector('[data-wt-demo]');
+			if (!host) {
+				teardown();
+				return;
+			}
+			if (!window.WaveformPlayer) return;
+			var listen = parseInt(host.getAttribute('data-wt-listen'), 10) || 5;
+			withRuntime(function () {
+				if (!window.WaveformTracker) return;
+				// Re-init cleanly (reset first so re-navigation doesn't double-bind).
+				if (window.WaveformTracker.config) window.WaveformTracker.reset();
+				window.WaveformTracker.init({
+					events: { listen: listen },
+					session: false,
+					handler: render,
+				});
+			});
+		}
+
+		// Clear button (delegated so it survives swaps).
+		document.addEventListener('click', function (e) {
+			if (e.target && e.target.closest && e.target.closest('[data-wt-clear]')) {
+				var log = document.querySelector('[data-wt-log]');
+				if (log) log.innerHTML = '<li class="tracker-demo-empty">Press play — events stream in here.</li>';
+			}
+		});
+
+		setup();
+		if (!window.__wtDemoBound) {
+			window.__wtDemoBound = true;
+			document.addEventListener('astro:page-load', setup);
+			document.addEventListener('astro:before-swap', teardown);
+		}
+	})();
+</script>
+
+<style>
+	.tracker-demo {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1rem;
+		margin: 1.25rem 0;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.75rem;
+		background: var(--sl-color-gray-6);
+	}
+	@media (min-width: 60rem) {
+		.tracker-demo {
+			grid-template-columns: 1.3fr 1fr;
+			align-items: start;
+		}
+	}
+	.tracker-demo-feed-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.5rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--sl-color-gray-2);
+	}
+	.tracker-demo-feed-head button {
+		font-size: 0.72rem;
+		padding: 0.15rem 0.55rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.4rem;
+		background: var(--sl-color-bg);
+		color: var(--sl-color-gray-2);
+		cursor: pointer;
+	}
+	.tracker-demo-log {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+		max-height: 16rem;
+		overflow-y: auto;
+	}
+	.tracker-demo-log :global(li) {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		font-size: 0.78rem;
+	}
+	.tracker-demo-log :global(.tracker-demo-empty) {
+		color: var(--sl-color-gray-3);
+		font-style: italic;
+	}
+	.tracker-demo-log :global(code) {
+		font-size: 0.72rem;
+		color: var(--sl-color-gray-2);
+		background: none;
+		border: 0;
+		padding: 0;
+	}
+	.tracker-demo-log :global(.tracker-demo-badge) {
+		flex: 0 0 auto;
+		min-width: 4.2rem;
+		text-align: center;
+		padding: 0.1rem 0.45rem;
+		border-radius: 0.35rem;
+		font-weight: 600;
+		font-size: 0.68rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		background: var(--sl-color-gray-5);
+		color: var(--sl-color-white);
+	}
+	.tracker-demo-log :global(.tracker-demo-event--complete .tracker-demo-badge),
+	.tracker-demo-log :global(.tracker-demo-event--listen .tracker-demo-badge) {
+		background: var(--sl-color-white);
+		color: var(--sl-color-bg);
+	}
+</style>

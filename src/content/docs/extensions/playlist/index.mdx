@@ -5,10 +5,17 @@ sidebar:
   order: 1
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import PlaylistDemo from '~/components/PlaylistDemo.astro';
 
 `WaveformPlaylist` turns a list of tracks into a navigable playlist, album or chaptered episode — driving a single embedded [WaveformPlayer](/player/options/) underneath. It parses declarative `[data-track]` / `[data-chapter]` markup (or a JS config), renders the list UI, wires up keyboard navigation, and loads each track into the player on demand.
 
 It is a thin orchestration layer: it owns the **list/chapter UI and track switching**, and forwards everything else — height, waveform style, colours, controls — straight to the inner player.
+
+Here's a real, playable playlist — pick any track and it loads into the shared player (auto-advance is on):
+
+<PlaylistDemo />
+
+That's nothing but a `[data-waveform-playlist]` container wrapping one `[data-track]` per row — the exact markup covered below.
 
 <Aside type="caution" title="Requires the core player">
 `WaveformPlaylist` is a hard dependency on `@arraypress/waveform-player`. `window.WaveformPlayer` **must** exist at construction time, or the constructor throws `[WaveformPlaylist] WaveformPlayer is required but not found`. Always load the player first.

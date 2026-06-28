@@ -1,0 +1,107 @@
+---
+/**
+ * PlaylistDemo — a live WaveformPlaylist embedded in the docs.
+ *
+ * Renders the real `data-waveform-playlist` container with `data-track` (and
+ * optional `data-chapter`) children — exactly the markup the snippet produces —
+ * then loads the playlist runtime from CDN on demand (it references the player
+ * global already present in the Starlight head) and re-inits on navigation.
+ *
+ * The playlist is a *contained* component (not a singleton), so no teardown is
+ * needed; `WaveformPlaylist.init()` is idempotent via a per-container flag.
+ */
+interface Chapter {
+	time: string; // "m:ss"
+	label: string;
+}
+interface Track {
+	url: string;
+	title: string;
+	subtitle?: string;
+	artwork?: string;
+	chapters?: Chapter[];
+}
+interface Props {
+	tracks?: Track[];
+	layout?: 'list' | 'minimal';
+	continuous?: boolean;
+}
+
+const DEFAULT_TRACKS: Track[] = [
+	{ url: '/audio/keys-house-piano.mp3', title: 'House Piano', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/pluck-luminous.mp3', title: 'Pluck Luminous', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/pad-reach.mp3', title: 'Pad Reach', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/drum-loop.mp3', title: 'Drum Loop', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
+];
+
+const tracks = Astro.props.tracks ?? DEFAULT_TRACKS;
+const layout = Astro.props.layout ?? 'list';
+const continuous = Astro.props.continuous ?? true;
+---
+
+<div class="playlist-demo not-content" data-wp-demo>
+	<div data-waveform-playlist data-layout={layout} data-continuous={continuous ? 'true' : undefined}>
+		{tracks.map((t) => (
+			<div
+				data-track
+				data-url={t.url}
+				data-title={t.title}
+				data-subtitle={t.subtitle}
+				data-artwork={t.artwork}
+			>
+				{(t.chapters ?? []).map((c) => (
+					<div data-chapter data-time={c.time}>{c.label}</div>
+				))}
+			</div>
+		))}
+	</div>
+</div>
+
+<script is:inline>
+	(function () {
+		var CSS = 'https://unpkg.com/@arraypress/waveform-playlist/dist/waveform-playlist.min.css';
+		var JS = 'https://unpkg.com/@arraypress/waveform-playlist/dist/waveform-playlist.min.js';
+
+		function ensureCss() {
+			if (document.querySelector('link[data-wp-css]')) return;
+			var l = document.createElement('link');
+			l.rel = 'stylesheet';
+			l.href = CSS;
+			l.setAttribute('data-wp-css', '');
+			document.head.appendChild(l);
+		}
+		function withRuntime(cb) {
+			if (window.WaveformPlaylist) return cb();
+			var existing = document.querySelector('script[data-wp-js]');
+			if (existing) return existing.addEventListener('load', cb);
+			var s = document.createElement('script');
+			s.src = JS;
+			s.setAttribute('data-wp-js', '');
+			s.addEventListener('load', cb);
+			document.head.appendChild(s);
+		}
+		function setup() {
+			if (!document.querySelector('[data-wp-demo]')) return;
+			if (!window.WaveformPlayer) return; // player global not ready yet
+			ensureCss();
+			withRuntime(function () {
+				if (window.WaveformPlaylist && window.WaveformPlaylist.init) window.WaveformPlaylist.init();
+			});
+		}
+		setup();
+		if (!window.__wpDemoBound) {
+			window.__wpDemoBound = true;
+			document.addEventListener('astro:page-load', setup);
+		}
+	})();
+</script>
+
+<style>
+	.playlist-demo {
+		margin: 1.25rem 0;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.75rem;
+		background: var(--sl-color-gray-6);
+	}
+</style>
