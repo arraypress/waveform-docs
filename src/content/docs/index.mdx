@@ -1,0 +1,55 @@
+---
+title: WaveformPlayer
+description: Documentation for the @arraypress waveform family — a small, zero-dependency set of vanilla-JS audio components.
+template: splash
+hero:
+  tagline: Beautiful audio visualization for the web — a canvas waveform player and its family, configured from plain markup. Zero dependencies, ~10KB.
+  actions:
+    - text: Get started
+      link: /getting-started/installation/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/arraypress/waveform-player
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## The family
+
+<CardGrid>
+	<Card title="WaveformPlayer" icon="seti:audio">
+		The zero-config core. Canvas waveform with six visual styles, keyboard
+		control and Media Session — vanilla JS, no dependencies.
+	</Card>
+	<Card title="WaveformBar" icon="bars">
+		A persistent Spotify-style bottom bar — queue, volume, repeat, favorites,
+		cart, DJ markers and cross-page session persistence.
+	</Card>
+	<Card title="WaveformPlaylist" icon="list-format">
+		Playlists and chapters — albums, podcasts, courses and audiobooks. Fully
+		keyboard-accessible.
+	</Card>
+	<Card title="WaveformTracker" icon="approve-check">
+		Privacy-first listen analytics. Credits real media-time engagement,
+		ignores seeks, no cookies.
+	</Card>
+	<Card title="WaveformGen" icon="seti:powershell">
+		A Node CLI + library to pre-generate waveform peaks (and BPM) from audio
+		for instant render.
+	</Card>
+	<Card title="Framework wrappers" icon="puzzle">
+		Typed Astro and React components for the player, bar and playlist — every
+		option as a prop, SSR-safe.
+	</Card>
+</CardGrid>
+
+## Start here
+
+<CardGrid>
+	<LinkCard title="Installation" href="/getting-started/installation/" description="Script tag, CDN, or npm." />
+	<LinkCard title="Quick start" href="/getting-started/quick-start/" description="A working player from a single div." />
+	<LinkCard title="Options" href="/player/options/" description="Every option, JS and data-*." />
+	<LinkCard title="Events & methods" href="/player/events/" description="Drive and observe the player." />
+</CardGrid>

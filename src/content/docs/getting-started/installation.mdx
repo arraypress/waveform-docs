@@ -1,0 +1,64 @@
+---
+title: Installation
+description: Add WaveformPlayer via a script tag, a CDN, or npm.
+sidebar:
+  order: 1
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+WaveformPlayer is plain, dependency-free JavaScript. Add the stylesheet and the
+script, and it upgrades any `[data-waveform-player]` element on the page — no
+build step required.
+
+## CDN (no build step)
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.css">
+<script src="https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.min.js"></script>
+```
+
+That's everything. The script auto-initialises on load — see [Quick start](/getting-started/quick-start/).
+
+## npm
+
+<Tabs syncKey="pkg">
+	<TabItem label="npm">
+	```sh
+	npm i @arraypress/waveform-player
+	```
+	</TabItem>
+	<TabItem label="pnpm">
+	```sh
+	pnpm add @arraypress/waveform-player
+	```
+	</TabItem>
+	<TabItem label="yarn">
+	```sh
+	yarn add @arraypress/waveform-player
+	```
+	</TabItem>
+	<TabItem label="bun">
+	```sh
+	bun add @arraypress/waveform-player
+	```
+	</TabItem>
+</Tabs>
+
+Then import the core and the stylesheet:
+
+```js
+import { WaveformPlayer } from '@arraypress/waveform-player';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+```
+
+## Framework wrappers
+
+Using Astro or React? Install the typed wrapper instead — see
+[Astro](/frameworks/astro/) and [React](/frameworks/react/).
+
+## For AI agents
+
+The family ships a machine-readable reference at
+[`waveformplayer.com/llms.txt`](https://waveformplayer.com/llms.txt) — point your
+coding agent at it and it can wire up a player correctly.

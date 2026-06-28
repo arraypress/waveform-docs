@@ -1,0 +1,92 @@
+/* WaveformPlayer docs — shadcn-zinc theme for Starlight.
+   Overrides Starlight's design tokens to the same monochrome palette + Geist
+   fonts as the marketing site (waveformplayer.com). */
+
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+:root {
+	--sl-font: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+	--sl-font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+	--sl-nav-height: 3.75rem;
+	--sl-text-code: 0.875em;
+}
+
+/* ── Dark (default) — zinc ───────────────────────────────────────────────── */
+:root,
+:root[data-theme='dark'] {
+	--sl-color-white: #fafafa;
+	--sl-color-gray-1: #e4e4e7;
+	--sl-color-gray-2: #d4d4d8;
+	--sl-color-gray-3: #a1a1aa;
+	--sl-color-gray-4: #52525b;
+	--sl-color-gray-5: #27272a;
+	--sl-color-gray-6: #18181b;
+	--sl-color-black: #09090b;
+
+	--sl-color-accent-low: #27272a;
+	--sl-color-accent: #71717a;
+	--sl-color-accent-high: #fafafa;
+
+	--sl-color-bg: #09090b;
+	--sl-color-bg-nav: color-mix(in srgb, #09090b 72%, transparent);
+	--sl-color-bg-sidebar: #09090b;
+	--sl-color-bg-inline-code: #18181b;
+	--sl-color-text-accent: #fafafa;
+	--sl-color-hairline: #27272a;
+	--sl-color-hairline-light: #27272a;
+	--sl-color-hairline-shade: #18181b;
+}
+
+/* ── Light — zinc ────────────────────────────────────────────────────────── */
+:root[data-theme='light'] {
+	--sl-color-white: #09090b;
+	--sl-color-gray-1: #18181b;
+	--sl-color-gray-2: #27272a;
+	--sl-color-gray-3: #52525b;
+	--sl-color-gray-4: #71717a;
+	--sl-color-gray-5: #e4e4e7;
+	--sl-color-gray-6: #f4f4f5;
+	--sl-color-gray-7: #fafafa;
+	--sl-color-black: #ffffff;
+
+	--sl-color-accent-low: #f4f4f5;
+	--sl-color-accent: #71717a;
+	--sl-color-accent-high: #18181b;
+
+	--sl-color-bg: #ffffff;
+	--sl-color-bg-nav: color-mix(in srgb, #ffffff 72%, transparent);
+	--sl-color-bg-sidebar: #fafafa;
+	--sl-color-bg-inline-code: #f4f4f5;
+	--sl-color-text-accent: #18181b;
+	--sl-color-hairline: #e4e4e7;
+	--sl-color-hairline-light: #e4e4e7;
+	--sl-color-hairline-shade: #f4f4f5;
+}
+
+/* ── Polish ──────────────────────────────────────────────────────────────── */
+.sl-markdown-content :not(a, strong, em, del, span, input, code, br) + :not(a, strong, em, del, span, input, code, br, :where(.not-content *)) {
+	margin-top: 1rem;
+}
+
+/* Sticky header: subtle blur + hairline, matching the marketing site. */
+header.header {
+	backdrop-filter: blur(12px);
+	border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+/* Inline code + code blocks: tighter, monochrome surface. */
+.sl-markdown-content code:not(:where(.not-content *)) {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.3rem;
+	padding: 0.1rem 0.35rem;
+}
+.expressive-code .frame {
+	border-radius: 0.6rem;
+}
+
+/* Site title weight. */
+.site-title {
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}

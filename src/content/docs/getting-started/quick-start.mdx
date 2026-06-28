@@ -1,0 +1,57 @@
+---
+title: Quick start
+description: A working WaveformPlayer from a single div.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## From markup
+
+After adding the [script and stylesheet](/getting-started/installation/), drop a
+`div` with `data-waveform-player` and a `data-url`:
+
+```html
+<div
+  data-waveform-player
+  data-url="/audio/track.mp3"
+  data-title="Midnight Dreams"
+  data-subtitle="The Wavelength"
+  data-waveform-style="mirror"
+  data-height="64"
+></div>
+```
+
+That is a complete, working player — play button, seekable waveform, time and
+title. Everything else is optional configuration.
+
+<Aside type="tip" title="Instant render">
+	Point `data-waveform` at a pre-generated peaks file (from
+	[WaveformGen](/extensions/gen/)) and the waveform paints immediately, with no
+	client-side audio decode.
+</Aside>
+
+## From JavaScript
+
+The same options work on the constructor (camelCase instead of `data-*`):
+
+```js
+import { WaveformPlayer } from '@arraypress/waveform-player';
+
+const player = new WaveformPlayer(document.querySelector('#player'), {
+  url: '/audio/track.mp3',
+  title: 'Midnight Dreams',
+  waveformStyle: 'mirror',
+  height: 64,
+});
+
+player.play();
+```
+
+## What's next
+
+- [Options](/player/options/) — the full configuration surface.
+- [Data attributes](/player/data-attributes/) — the markup contract.
+- [Events & methods](/player/events/) — drive and observe playback.
+- [Styling](/player/styling/) — colors, presets, and CSS variables.
