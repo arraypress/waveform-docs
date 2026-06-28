@@ -1,0 +1,58 @@
+---
+/**
+ * PlayerDemo — a live, playable WaveformPlayer embedded in the docs. Renders the
+ * real `data-waveform-player` markup from props (so what you see is what the
+ * snippet produces) inside a tidy demo card. The runtime is loaded globally in
+ * the Starlight head; players auto-init and re-theme with the docs light/dark.
+ */
+interface Props {
+	url: string;
+	waveform?: string;
+	title?: string;
+	subtitle?: string;
+	artwork?: string;
+	waveformStyle?: string;
+	height?: number;
+	colorPreset?: string;
+	waveformColor?: string;
+	progressColor?: string;
+	buttonStyle?: string;
+	buttonSize?: number | string;
+	layout?: string;
+	showBpm?: boolean;
+	bpm?: number;
+}
+const p = Astro.props;
+---
+
+<div class="player-demo not-content">
+	<div
+		data-waveform-player
+		data-url={p.url}
+		data-waveform={p.waveform}
+		data-title={p.title}
+		data-subtitle={p.subtitle}
+		data-artwork={p.artwork}
+		data-waveform-style={p.waveformStyle ?? 'mirror'}
+		data-height={p.height ?? 64}
+		data-color-preset={p.colorPreset}
+		data-waveform-color={p.waveformColor}
+		data-progress-color={p.progressColor}
+		data-button-style={p.buttonStyle}
+		data-button-size={p.buttonSize}
+		data-layout={p.layout}
+		data-show-bpm={p.showBpm ? 'true' : undefined}
+		data-bpm={p.bpm}
+	>
+	</div>
+</div>
+
+<style>
+	.player-demo {
+		margin: 1.25rem 0;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.75rem;
+		background: var(--sl-color-gray-6);
+	}
+</style>

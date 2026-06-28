@@ -6,6 +6,7 @@ sidebar:
 ---
 
 import { Aside } from '@astrojs/starlight/components';
+import PlayerDemo from '~/components/PlayerDemo.astro';
 
 ## From markup
 
@@ -24,7 +25,16 @@ After adding the [script and stylesheet](/getting-started/installation/), drop a
 ```
 
 That is a complete, working player — play button, seekable waveform, time and
-title. Everything else is optional configuration.
+title. Everything else is optional configuration. Here it is, live:
+
+<PlayerDemo
+	url="/audio/pluck-luminous.mp3"
+	waveform="/waveforms/pluck-luminous.json"
+	title="Midnight Dreams"
+	subtitle="The Wavelength"
+	waveformStyle="mirror"
+	height={64}
+/>
 
 <Aside type="tip" title="Instant render">
 	Point `data-waveform` at a pre-generated peaks file (from

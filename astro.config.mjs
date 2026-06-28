@@ -26,6 +26,11 @@ export default defineConfig({
 					tag: 'link',
 					attrs: { rel: 'alternate', type: 'text/plain', href: 'https://waveformplayer.com/llms.txt' },
 				},
+				// Live <PlayerDemo> embeds — load the real runtime (CDN) and re-init
+				// after Starlight view-transition navigations.
+				{ tag: 'link', attrs: { rel: 'stylesheet', href: 'https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.css' } },
+				{ tag: 'script', attrs: { src: 'https://unpkg.com/@arraypress/waveform-player/dist/waveform-player.min.js', defer: true } },
+				{ tag: 'script', content: "document.addEventListener('astro:page-load',function(){window.WaveformPlayer&&WaveformPlayer.init&&WaveformPlayer.init()});" },
 			],
 			sidebar: [
 				{ label: 'Getting Started', items: [{ autogenerate: { directory: 'getting-started' } }] },
