@@ -5,10 +5,17 @@ sidebar:
   order: 1
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BarDemo from '~/components/BarDemo.astro';
 
 **WaveformBar** is a persistent, Spotify-style transport that docks to the bottom (or top) of your page and keeps playing while visitors browse. It is a thin orchestration layer over [`@arraypress/waveform-player`](/player/options/): the bar owns a single embedded player and exposes a queue, volume, repeat, favorites, cart, DJ markers, share links, and cross-page persistence — driven almost entirely by `data-wb-*` attributes.
 
 `window.WaveformBar` is a **singleton instance** (the default export). The named export `WaveformBar` is the class — you rarely need it. All API calls go through the singleton: `WaveformBar.init(config)`, `WaveformBar.play(...)`, etc.
+
+The bar below is **real and live** — it's this exact page running `WaveformBar.init()`, driven by the trigger buttons:
+
+<BarDemo />
+
+The buttons are nothing but `data-wb-play` markup (`data-wb-url`, `data-wb-title`, `data-wb-artist`, `data-wb-artwork`) — the same contract covered under [Triggers](/extensions/bar/triggers/).
 
 ## Install
 

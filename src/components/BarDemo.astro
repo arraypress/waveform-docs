@@ -1,0 +1,188 @@
+---
+/**
+ * BarDemo — a LIVE WaveformBar docked to the bottom of this docs page.
+ *
+ * Unlike <PlayerDemo>, the bar is a body-appended *singleton*, not a contained
+ * card — so it pins to the viewport exactly as it does in production. This
+ * component renders a row of `data-wb-play` trigger buttons (the real markup
+ * contract); clicking one loads that track into the bar.
+ *
+ * The bar runtime is loaded from CDN on demand (it references the player global
+ * already present in the Starlight head). The bar is initialised on pages that
+ * contain a `[data-wb-demo]` block and torn down on navigate-away, so it never
+ * follows you onto a page that isn't demoing it.
+ */
+interface Track {
+	url: string;
+	title: string;
+	artist?: string;
+	artwork?: string;
+}
+interface Props {
+	tracks?: Track[];
+}
+
+const tracks: Track[] = Astro.props.tracks ?? [
+	{ url: '/audio/keys-house-piano.mp3', title: 'House Piano', artist: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/pluck-luminous.mp3', title: 'Pluck Luminous', artist: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/drum-loop.mp3', title: 'Drum Loop', artist: 'The Wavelength', artwork: '/img/cover.webp' },
+];
+---
+
+<div class="bar-demo not-content" data-wb-demo>
+	<p class="bar-demo-hint">Press a track — the bar docks to the bottom of this page and keeps playing as you scroll:</p>
+	<div class="bar-demo-grid">
+		{tracks.map((t) => (
+			<button
+				type="button"
+				class="bar-demo-trigger"
+				data-wb-play
+				data-wb-url={t.url}
+				data-wb-title={t.title}
+				data-wb-artist={t.artist}
+				data-wb-artwork={t.artwork}
+			>
+				<span class="bar-demo-play" aria-hidden="true">▶</span>
+				<span class="bar-demo-meta">
+					<strong>{t.title}</strong>
+					{t.artist && <span>{t.artist}</span>}
+				</span>
+			</button>
+		))}
+	</div>
+</div>
+
+<script is:inline>
+	(function () {
+		var CSS = 'https://unpkg.com/@arraypress/waveform-bar/dist/waveform-bar.min.css';
+		var JS = 'https://unpkg.com/@arraypress/waveform-bar/dist/waveform-bar.min.js';
+
+		function ensureCss() {
+			if (document.querySelector('link[data-wb-css]')) return;
+			var l = document.createElement('link');
+			l.rel = 'stylesheet';
+			l.href = CSS;
+			l.setAttribute('data-wb-css', '');
+			document.head.appendChild(l);
+		}
+
+		function withRuntime(cb) {
+			if (window.WaveformBar) return cb();
+			var existing = document.querySelector('script[data-wb-js]');
+			if (existing) {
+				existing.addEventListener('load', cb);
+				return;
+			}
+			var s = document.createElement('script');
+			s.src = JS;
+			s.setAttribute('data-wb-js', '');
+			s.addEventListener('load', cb);
+			document.head.appendChild(s);
+		}
+
+		function teardown() {
+			if (window.WaveformBar && window.WaveformBar.isInitialized) {
+				window.WaveformBar.destroy();
+			}
+		}
+
+		function setup() {
+			// Only run on pages that actually embed the demo.
+			if (!document.querySelector('[data-wb-demo]')) {
+				teardown();
+				return;
+			}
+			if (!window.WaveformPlayer) return; // player global not ready yet
+			ensureCss();
+			withRuntime(function () {
+				if (!window.WaveformBar) return;
+				// init() internally calls destroy() first, so re-running is safe.
+				window.WaveformBar.init({ storageKey: 'wfdocs-bar-demo', share: true });
+			});
+		}
+
+		setup();
+		// Starlight uses view transitions — re-evaluate on every navigation,
+		// and drop the singleton when leaving so it doesn't follow you around.
+		// Bind once: this inline script re-runs on each swap-in, but `document`
+		// persists, so guard against stacking duplicate listeners.
+		if (!window.__wbDemoBound) {
+			window.__wbDemoBound = true;
+			document.addEventListener('astro:page-load', setup);
+			document.addEventListener('astro:before-swap', teardown);
+		}
+	})();
+</script>
+
+<style>
+	.bar-demo {
+		margin: 1.25rem 0;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.75rem;
+		background: var(--sl-color-gray-6);
+	}
+	.bar-demo-hint {
+		margin: 0 0 0.85rem;
+		font-size: 0.875rem;
+		color: var(--sl-color-gray-2);
+	}
+	.bar-demo-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: 0.6rem;
+	}
+	.bar-demo-trigger {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.6rem 0.8rem;
+		text-align: left;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.6rem;
+		background: var(--sl-color-bg);
+		color: var(--sl-color-white);
+		cursor: pointer;
+		transition: border-color 0.15s, background 0.15s;
+	}
+	.bar-demo-trigger:hover {
+		border-color: var(--sl-color-gray-3);
+		background: var(--sl-color-gray-5);
+	}
+	.bar-demo-trigger.wb-current {
+		border-color: var(--sl-color-white);
+	}
+	.bar-demo-play {
+		display: grid;
+		place-items: center;
+		flex: 0 0 1.9rem;
+		width: 1.9rem;
+		height: 1.9rem;
+		border-radius: 999px;
+		background: var(--sl-color-white);
+		color: var(--sl-color-bg);
+		font-size: 0.7rem;
+		padding-left: 0.1em;
+	}
+	.bar-demo-trigger.wb-playing .bar-demo-play::before {
+		content: '❚❚';
+		font-size: 0.6rem;
+	}
+	.bar-demo-trigger.wb-playing .bar-demo-play {
+		font-size: 0; /* hide the ▶ glyph, show the pause via ::before */
+	}
+	.bar-demo-meta {
+		display: flex;
+		flex-direction: column;
+		line-height: 1.25;
+		min-width: 0;
+	}
+	.bar-demo-meta strong {
+		font-weight: 600;
+		font-size: 0.9rem;
+	}
+	.bar-demo-meta span {
+		font-size: 0.78rem;
+		color: var(--sl-color-gray-3);
+	}
+</style>
