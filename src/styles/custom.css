@@ -90,3 +90,21 @@ header.header {
 	font-weight: 600;
 	letter-spacing: -0.01em;
 }
+
+/* ── Asides (callouts) — shadcn-monochrome ───────────────────────────────────
+   Note/Tip go neutral (the icon carries the meaning); Caution/Danger keep a
+   subtle amber/red border+icon for the warning cue. Neutral surface for all. */
+.starlight-aside { background-color: var(--sl-color-gray-6); }
+.starlight-aside--note,
+.starlight-aside--tip {
+	--sl-color-asides-text-accent: var(--sl-color-white);
+	--sl-color-asides-border: var(--sl-color-gray-4);
+}
+.starlight-aside--caution {
+	--sl-color-asides-text-accent: #cbb26b;
+	--sl-color-asides-border: #cbb26b;
+}
+.starlight-aside--danger {
+	--sl-color-asides-text-accent: #dc8c8c;
+	--sl-color-asides-border: #dc8c8c;
+}
