@@ -23,8 +23,14 @@ interface Track {
 }
 interface Props {
 	tracks?: Track[];
-	layout?: 'list' | 'minimal';
+	layout?: 'list' | 'minimal' | 'hero' | 'grid';
 	continuous?: boolean;
+	coverSize?: number;
+	thumbnailSize?: number;
+	density?: 'comfortable' | 'compact';
+	coverPosition?: 'left' | 'top';
+	barPosition?: 'top' | 'bottom';
+	showSubtitle?: boolean;
 }
 
 const DEFAULT_TRACKS: Track[] = [
@@ -37,10 +43,21 @@ const DEFAULT_TRACKS: Track[] = [
 const tracks = Astro.props.tracks ?? DEFAULT_TRACKS;
 const layout = Astro.props.layout ?? 'list';
 const continuous = Astro.props.continuous ?? true;
+const { coverSize, thumbnailSize, density, coverPosition, barPosition, showSubtitle } = Astro.props;
 ---
 
 <div class="playlist-demo not-content" data-wp-demo>
-	<div data-waveform-playlist data-layout={layout} data-continuous={continuous ? 'true' : undefined}>
+	<div
+		data-waveform-playlist
+		data-layout={layout}
+		data-continuous={continuous ? 'true' : undefined}
+		data-cover-size={coverSize ?? undefined}
+		data-thumbnail-size={thumbnailSize ?? undefined}
+		data-density={density ?? undefined}
+		data-cover-position={coverPosition ?? undefined}
+		data-bar-position={barPosition ?? undefined}
+		data-show-subtitle={showSubtitle === false ? 'false' : undefined}
+	>
 		{tracks.map((t) => (
 			<div
 				data-track
