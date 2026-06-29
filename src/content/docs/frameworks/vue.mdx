@@ -364,7 +364,7 @@ onUnmounted(() => {
 ```
 
 <Aside type="note" title="Known type drift">
-A few `index.d.ts` defaults lag the runtime: the type file says `height` `60`, `samples` `200`, `barRadius` `0`, but the runtime defaults are `64`, `256`, and `1`. `themes.js` `DEFAULT_OPTIONS` is the source of truth. This affects only the documented `@default` values, not behaviour.
+A couple of `index.d.ts` defaults lag the runtime: the type file says `height` `60` and `barRadius` `0`, but the runtime defaults are `64` and `1`. `themes.js` `DEFAULT_OPTIONS` is the source of truth. This affects only the documented `@default` values, not behaviour.
 </Aside>
 
 ## Which approach?

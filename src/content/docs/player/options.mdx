@@ -94,7 +94,7 @@ What to load and how to drive it.
 | `url` | `''` | `string` | Audio file URL (alias: `src`). Empty means no auto-load. `data-url`. |
 | `src` | — | `string` | Shorthand alias for `url`; canonical `url` wins if both set. `data-src`. |
 | `waveform` | `null` | `number[] \| string \| null` | Pre-computed peaks: inline array, comma-separated string, JSON-array string, or a `.json` URL (fetched; embedded markers applied). Skips Web Audio decode. Reset per-track in `loadTrack`. `data-waveform`. |
-| `samples` | `256` | `number` | Source peak resolution decoded; resampled to fit the visible bars (fidelity headroom, **not** bar count). `data-samples`. |
+| `samples` | `1800` | `number` | Source peak resolution decoded; resampled to fit the visible bars (fidelity headroom, **not** bar count). `data-samples`. |
 | `preload` | `'metadata'` | `'auto' \| 'metadata' \| 'none'` | `<audio>` preload hint (self mode). `data-preload`. |
 | `audioMode` | `'self'` | `'self' \| 'external'` | `'self'` owns an `<audio>`; `'external'` is visualization-only. `data-audio-mode`. |
 | `playbackRate` | `1` | `number` | Initial playback rate (self mode). `data-playback-rate`. |

@@ -12,7 +12,7 @@ Construct with a selector or element and optional options:
 
 ```js
 const playlist = new WaveformPlaylist('#my-playlist', {
-  layout: 'list',          // or 'minimal'
+  layout: 'list',          // or 'minimal' | 'hero' | 'grid'
   continuous: true,
   waveformStyle: 'mirror', // any core player option passes through
   height: 80
@@ -84,8 +84,8 @@ The playlist generates a structured DOM you can target for theming. Key hooks:
 
 | Class | Element |
 | --- | --- |
-| `.waveform-playlist` | The container (base styles), added on init. `.wp-minimal` modifier when `layout: 'minimal'`. |
-| `.wp-player` | The generated "now playing" player wrapper. |
+| `.waveform-playlist` | The container (base styles), added on init. Layout modifiers: `.wp-minimal`, `.wp-hero-layout`, `.wp-grid-layout`, plus `.wp-density-compact` (`density: 'compact'`) and `.wp-cover-top` (`coverPosition: 'top'`). |
+| `.wp-player` | The generated player wrapper (list / minimal layouts). In the **hero** and **grid** layouts the embedded player renders into `.wp-hero-stage` instead. |
 | `.wp-list-container` / `.wp-list` | The list wrapper and the `<ul>` track list. `.wp-chapters-only` is the single-track-with-chapters variant. |
 | `.wp-item` | Track row (`role="button"`). `.wp-active` marks the active row. |
 | `.wp-indicator` | Track-number badge (shown when a track has no artwork). |
@@ -94,6 +94,11 @@ The playlist generates a structured DOM you can target for theming. Key hooks:
 | `.wp-chapters` / `.wp-chapter` | Nested chapter list and rows under a track (multi-track). `.wp-chapter-time` / `.wp-chapter-label` for the row contents. |
 | `.wp-chapter-item` / `.wp-time` / `.wp-label` | Rows in the single-track chapters-only list. |
 | `.wp-controls` / `.wp-track-btn` | Minimal-layout button container and buttons (`aria-pressed` reflects selection). |
+| `.wp-hero` / `.wp-hero-cover` / `.wp-hero-art` / `.wp-hero-overlay` | **Hero** — the "now playing" unit, the cover play/pause button, its image, and the overlay icon. |
+| `.wp-hero-stage` / `.wp-hero-meta` / `.wp-hero-title` / `.wp-hero-sub` / `.wp-hero-time` | **Hero** — the waveform stage (hosts the player) and the title / subtitle / current-total-time meta row. |
+| `.wp-queue` / `.wp-queue-item` / `.wp-queue-thumb` / `.wp-queue-state` | **Hero** — the stripped track queue: list, row, thumbnail, and the per-row play-state indicator. |
+| `.wp-now-bar` / `.wp-now-bar-top` / `.wp-now-meta` | **Grid** — the slim now-playing transport bar (`.wp-now-bar-top` when `barPosition: 'top'`) and its title/time meta. |
+| `.wp-grid` / `.wp-grid-item` / `.wp-grid-cover` / `.wp-grid-art` / `.wp-grid-title` | **Grid** — the card container, a card (active card is ringed), the cover wrapper, image, and title. |
 
 <Aside type="note" title="Dark-surface styling">
 The default CSS assumes a dark surface and uses modern features — `color-mix(in srgb, currentColor …, transparent)` for active states and `backdrop-filter: blur(2px)` on the artwork overlay. Theming is driven by `currentColor` / `inherit`, with responsive tweaks at `max-width: 480px`.

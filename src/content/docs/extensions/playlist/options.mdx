@@ -8,7 +8,7 @@ import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/
 
 ## Layouts
 
-The playlist picks one of three UIs automatically based on content and the `layout` option:
+The playlist picks one of five UIs based on content and the `layout` option:
 
 1. **Chapters-only** — exactly **one** track that **has chapters** renders a chapters list (`.wp-chapters-only`) with no track row. Ideal for a single podcast episode or long-form lecture.
 
@@ -16,12 +16,23 @@ The playlist picks one of three UIs automatically based on content and the `layo
 
 3. **List** (default) — everything else renders the full track-row list (`.wp-list`), each row showing artwork/number, title, subtitle and duration, with chapters as expandable nested sub-lists under the active track.
 
+4. **Hero** — `layout: 'hero'` (added in 1.4.0) — a "now playing" unit: the cover artwork doubles as the play/pause button beside the waveform, with a title/subtitle and a current/total time readout, shown over a stripped track queue. A single **chaptered** track instead renders a seekable chapter list with chapter markers on the waveform.
+
+5. **Grid** — `layout: 'grid'` (added in 1.4.0) — a responsive grid of cover-art cards with a slim "now playing" transport bar (waveform + title/time) docked above or below the grid (via `barPosition`). The active card is ringed.
+
 ```html
 <!-- Minimal pill-button switcher -->
 <div data-waveform-playlist data-layout="minimal">
   <div data-track data-url="track-1.mp3" data-title="One"></div>
   <div data-track data-url="track-2.mp3" data-title="Two"></div>
   <div data-track data-url="track-3.mp3" data-title="Three"></div>
+</div>
+
+<!-- Hero "now playing" unit over a track queue -->
+<div data-waveform-playlist data-layout="hero">
+  <div data-track data-url="track-1.mp3" data-title="One"   data-subtitle="Artist" data-artwork="1.jpg"></div>
+  <div data-track data-url="track-2.mp3" data-title="Two"   data-subtitle="Artist" data-artwork="2.jpg"></div>
+  <div data-track data-url="track-3.mp3" data-title="Three" data-subtitle="Artist" data-artwork="3.jpg"></div>
 </div>
 ```
 
@@ -31,13 +42,24 @@ These options control the playlist itself. Set them as constructor options **or*
 
 | Option | `data-*` | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `layout` | `data-layout` | `'list' \| 'minimal'` | `'list'` | UI layout. `'minimal'` renders pill buttons instead of full rows. |
+| `layout` | `data-layout` | `'list' \| 'minimal' \| 'hero' \| 'grid'` | `'list'` | UI layout. `'minimal'` renders pill buttons instead of full rows; `'hero'` renders a "now-playing" unit over a track queue; `'grid'` renders a cover-art grid with a slim now-playing bar. The last two were added in 1.4.0. |
 | `continuous` | `data-continuous` | `boolean` | `false` | Auto-advance to the next track when one ends. Container value reads the string `'true'`. |
 | `expandChapters` | `data-expand-chapters` | `boolean` | `true` | In multi-track lists, render each track's chapters as a nested expandable sub-list under the active track. `data-expand-chapters="false"` disables. |
 | `showDuration` | `data-show-duration` | `boolean` | `true` | Render the per-track `data-duration` string in the row. `data-show-duration="false"` disables. |
 | `showChapterMarkers` | `data-show-chapter-markers` | `boolean \| null` | `null` | Render a track's chapters as markers on the waveform. `null` = smart default (see below). The attribute accepts `'true'` / `'false'`; absent leaves it `null`. |
 | `chapterMarkerColor` | `data-chapter-marker-color` | `string` | `'rgba(161, 161, 170, 0.85)'` | Fallback colour for chapter-derived markers when a chapter has no `data-color`. |
 | `showPlayState` | `data-show-play-state` | `boolean` | `true` | Show a play/pause icon overlay on the active track's artwork (artwork tracks only). `data-show-play-state="false"` disables. |
+
+The following five sizing/position options were added in 1.4.0 and apply to the **hero** and **grid** layouts (plus `thumbnailSize` for the `list` layout's row artwork):
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `coverSize` | `data-cover-size` | `number \| null` | `null` | Hero cover size in px. `null` derives a size from the waveform height (`(height ?? 56) + 36`). |
+| `thumbnailSize` | `data-thumbnail-size` | `number \| null` | `null` | Queue/grid/list artwork size in px. Sets the `--wp-thumb-size` CSS var (list & hero queue) and `--wp-grid-cover` (grid). `null` falls back to the CSS default. |
+| `density` | `data-density` | `'comfortable' \| 'compact'` | `'comfortable'` | Row spacing for the hero queue and grid. `'compact'` adds `.wp-density-compact` for tighter rows. |
+| `coverPosition` | `data-cover-position` | `'left' \| 'top'` | `'left'` | Hero only — place the cover beside (`'left'`) or above (`'top'`) the waveform. `'top'` adds `.wp-cover-top`. |
+| `barPosition` | `data-bar-position` | `'top' \| 'bottom'` | `'bottom'` | Grid only — dock the now-playing transport bar above (`'top'`, adds `.wp-now-bar-top`) or below the cards. |
+| `showSubtitle` | `data-show-subtitle` | `boolean` | `true` | Show the now-playing subtitle in the hero/grid bar. `data-show-subtitle="false"` hides it. |
 
 <Aside type="note" title="Default colour: source vs README">
 The runtime default for `chapterMarkerColor` is grey `rgba(161, 161, 170, 0.85)` (authoritative — the source value). Older README copy lists a purple `rgba(168, 85, 247, 0.8)`; the source value wins at runtime.

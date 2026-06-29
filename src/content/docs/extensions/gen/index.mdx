@@ -116,17 +116,12 @@ WaveformGen does not expand globs itself — `./audio/*.mp3` is expanded by your
 `--samples` and `--precision` are parsed with `parseInt` and **no validation**. A non-numeric value (e.g. `--samples abc`) silently becomes `NaN`, which produces a broken peaks array. Always pass integers.
 </Aside>
 
-### Default samples differ between CLI and library
+### Default samples
 
-This is the single most important thing to remember when scripting WaveformGen:
+Both the CLI (`--samples`) and the library `generatePeaks()` default to **1800** peaks — the SoundCloud-scale resolution that keeps wide / high-DPI waveforms crisp.
 
-| Context | Default `samples` |
-|---------|-------------------|
-| CLI `--samples` | **1800** |
-| Library `generatePeaks()` | **200** |
-
-<Aside type="caution" title="Always pass samples explicitly in the library">
-The library default (`200`) is **not** the CLI default (`1800`). If you call `generatePeaks()` without `samples`, you get 200 peaks — a much coarser waveform than the CLI produces. To match CLI output, always pass `samples` explicitly.
+<Aside type="note" title="CLI and library now match">
+As of `waveform-gen` 1.5.0 the library default was raised from `200` to `1800`, so `generatePeaks()` and the CLI produce the same resolution out of the box. Pass `--samples` / `{ samples }` only when you want a different count.
 </Aside>
 
 ### Exit codes & error handling

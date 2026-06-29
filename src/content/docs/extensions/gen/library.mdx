@@ -14,7 +14,7 @@ The package exports exactly one function — `generatePeaks` — re-exported fro
 import { generatePeaks } from '@arraypress/waveform-gen';
 
 const { peaks, bpm } = await generatePeaks('./song.mp3', {
-  samples: 1800,   // pass explicitly — library default is 200, not 1800
+  samples: 1800,   // optional — library now defaults to 1800 (matches the CLI)
   precision: 2,
   detectBPM: true,
 });
@@ -31,7 +31,7 @@ Reads and decodes the file, extracts max-amplitude peaks per bin across all chan
 
 | Option | Default | Type | Description |
 |--------|---------|------|-------------|
-| `samples` | `200` | number | Number of peaks. Falsy (`0` / `undefined`) falls back to `200` via `options.samples \|\| 200`. |
+| `samples` | `1800` | number | Number of peaks. Falsy (`0` / `undefined`) falls back to `1800` via `options.samples \|\| 1800`. |
 | `precision` | `2` | number | Decimal places. `>= 0` rounds; `< 0` returns unrounded normalized peaks. |
 | `detectBPM` | `false` | boolean | When `true`, also run BPM detection and return `bpm` (`number \| null`). |
 
