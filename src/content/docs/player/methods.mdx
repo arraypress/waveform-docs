@@ -207,11 +207,13 @@ active marker is highlighted and reveals its label.
 **Returns** `void`.
 
 :::note[Markers activate automatically]
-During playback the player already drives this for you — it highlights the
-marker the playhead has most recently passed (the one with the greatest `time` ≤
-the current time) and reveals its label, in both audio modes. Call
-`setActiveMarker()` only when an external controller wants to override which
-marker is highlighted.
+During playback the player drives this for you — it highlights the marker the
+playhead has most recently passed (the greatest `time` ≤ the current time) and
+**briefly flashes its label**, which then fades while the highlight stays (both
+audio modes). The flash is CSS-overridable via `.waveform-marker.show-label` —
+keep the label on with `.waveform-marker.active .waveform-marker-tooltip { opacity: 1 }`,
+or hide it with `{ opacity: 0 !important }`. Call `setActiveMarker()` only when an
+external controller wants to override which marker is highlighted.
 :::
 
 ### `resizeCanvas()`
