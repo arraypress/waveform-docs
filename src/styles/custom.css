@@ -108,3 +108,13 @@ header.header {
 	--sl-color-asides-text-accent: #dc8c8c;
 	--sl-color-asides-border: #dc8c8c;
 }
+
+/* ── Card icons — shadcn-monochrome ──────────────────────────────────────────
+   Starlight rotates the icon-box colour per card (purple/orange/green/red/blue
+   via --sl-card-border / --sl-card-bg). Neutralise that to a single zinc box so
+   cards match the rest of the theme. */
+.sl-markdown-content .card .icon {
+	color: var(--sl-color-gray-3) !important;
+	border-color: var(--sl-color-gray-5) !important;
+	background-color: var(--sl-color-gray-6) !important;
+}

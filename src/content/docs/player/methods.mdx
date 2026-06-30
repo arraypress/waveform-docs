@@ -197,13 +197,22 @@ player.setWaveformData('/peaks/track.json');
 
 ### `setActiveMarker(index)`
 
-Toggles the `.active` class on a single marker and clears it from the rest.
+Toggles the `.active` class on a single marker and clears it from the rest. An
+active marker is highlighted and reveals its label.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `index` | `number \| null` | Marker index to activate; `null` clears all markers. |
 
 **Returns** `void`.
+
+:::note[Markers activate automatically]
+During playback the player already drives this for you — it highlights the
+marker the playhead has most recently passed (the one with the greatest `time` ≤
+the current time) and reveals its label, in both audio modes. Call
+`setActiveMarker()` only when an external controller wants to override which
+marker is highlighted.
+:::
 
 ### `resizeCanvas()`
 
