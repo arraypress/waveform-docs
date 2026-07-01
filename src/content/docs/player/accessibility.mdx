@@ -6,7 +6,7 @@ sidebar:
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
-Every player is keyboard-operable and screen-reader-aware out of the box. The waveform is exposed as a native [`role="slider"`](#the-accessibleseek-slider), the play button and cue markers carry accessible names, focus is visible, animation honours `prefers-reduced-motion`, and self-mode players register system [Media Session](#media-session) controls. Nothing on this page requires configuration — it is on by default.
+Every player is keyboard-operable and screen-reader-aware out of the box. The waveform is exposed as a native [`role="slider"`](#the-accessibleseek-slider), the play button and cue markers carry accessible names, the optional playback-speed menu announces its open state (`aria-expanded`) and closes on <kbd>Escape</kbd>, focus is visible, animation honours `prefers-reduced-motion`, and self-mode players register system [Media Session](#media-session) controls. Nothing on this page requires configuration — it is on by default.
 
 ## Two focusable surfaces
 
@@ -17,7 +17,7 @@ A player exposes two distinct keyboard targets, each with its own keys:
 | The **seek slider** | `.waveform-container` | Yes (`tabindex="0"`) | Arrow / Page / Home / End seeking — both audio modes |
 | The **player root** | `.waveform-player` | Only after a click (`tabindex` flips `-1` → `0`) | Space, digits `0`–`9`, volume, mute — self mode |
 
-The slider is reachable with <kbd>Tab</kbd>. The root becomes focusable when the user clicks anywhere on the player, which also pulls focus off sibling players so transport keys only ever drive one instance.
+The slider is reachable with <kbd>Tab</kbd>. Clicking an interactive control keeps focus on it — the play button and cue markers activate without moving focus, and clicking the waveform focuses the **slider**. Clicking a non-interactive area (the title, the info row, surrounding padding) focuses the **root**, which also pulls focus off sibling players so transport keys only ever drive one instance.
 
 <Aside type="note">
 The slider's key handler calls `stopPropagation()`, so when the canvas surface is focused the arrow keys seek (they do not fall through to the root's volume handler). The two surfaces never double-fire.
@@ -42,7 +42,7 @@ These work in **both** audio modes. In self mode they call `seekTo()` directly; 
 
 ### The player root
 
-Click a player to give its root focus, then:
+Click a non-interactive area of the player to focus its root, then:
 
 | Key | Action | Mode |
 | --- | --- | --- |

@@ -1,6 +1,6 @@
 ---
 title: Framework wrappers
-description: Release history for the Astro and React wrapper packages.
+description: Release history for the Astro, React, Vue and Svelte wrapper packages.
 sidebar:
   order: 3
 ---
@@ -11,7 +11,7 @@ sidebar:
 Generated from each wrapper package's CHANGELOG. Run `npm run sync:changelogs` after a release to refresh.
 :::
 
-The thin Astro/React wrappers version independently of the core libraries they wrap.
+The thin framework wrappers version independently of the core libraries they wrap.
 
 ## `@arraypress/waveform-player-astro`
 
@@ -194,7 +194,135 @@ Initial release.
   imperative-ref control example. `examples/basic.tsx` with seven
   copy-paste-ready snippets.
 
+## `@arraypress/waveform-player-vue`
+
+### [0.1.0] — Unreleased
+
+Initial release.
+
+#### Added
+
+- `<WaveformPlayer>` Vue 3 component wrapping every option exposed by
+  `@arraypress/waveform-player` as a typed prop:
+  - Audio source (`url`, `src` alias, `audioMode`, `preload`)
+  - Waveform visualisation (`waveformStyle`, `height`, `samples`,
+    `barWidth`, `barSpacing`, `barRadius`, `waveform`)
+  - Colours (`colorPreset`, `waveformColor`, `progressColor`,
+    `buttonColor`, `buttonHoverColor`, `textColor`,
+    `textSecondaryColor`, `backgroundColor`, `borderColor` — strings or
+    `string[]` gradients)
+  - Playback (`playbackRate`, `showPlaybackSpeed`, `playbackRates`)
+  - UI toggles (`showControls`, `showInfo`, `showTime`, `showHoverTime`,
+    `showBPM`, `buttonAlign`, `accessibleSeek`, `seekLabel`, `errorText`)
+  - Markers (`markers`, `showMarkers`)
+  - Metadata (`title`, `subtitle`, `artwork`, `album`)
+  - Behaviour (`autoplay`, `singlePlay`, `playOnSeek`,
+    `enableMediaSession`)
+  - Icons (`playIcon`, `pauseIcon`)
+- Lifecycle emits (`load`, `play`, `pause`, `end`, `timeupdate`,
+  `error`), each forwarding the live `WaveformPlayer` instance. Wired
+  through Vue's stable `emit`, so listeners can change without tearing
+  the player down.
+- Imperative API exposed via a template `ref` (`WaveformPlayerExpose`):
+  `play()`, `pause()`, `togglePlay()`, `seekTo()`, `seekToPercent()`,
+  `setVolume()`, `setPlaybackRate()`, `setPlayingState()`,
+  `setProgress()`, `loadTrack()`, plus the raw `instance`.
+- `class`, `style`, and `id` fall through to the host element via Vue's
+  attribute inheritance; the base class `wfp-host` always applies.
+- SSR / Nuxt safe: the core library is loaded via dynamic
+  `import('@arraypress/waveform-player')` inside `onMounted` so the
+  browser-only audio surface never runs server-side.
+- Identity-prop re-mount: when any library-construction prop changes,
+  the wrapper destroys the existing instance and creates a new one with
+  the updated options. A monotonic mount token discards any in-flight
+  async import that a newer mount (or unmount) has superseded.
+- Public types are adopted from the core `@arraypress/waveform-player`
+  (`WaveformStyle`, `ColorPreset`, `AudioMode`, `AudioPreload`,
+  `ButtonAlign`, `WaveformMarker`, `WaveformPeaks`), re-exported here so
+  the wrapper's types can never drift out of sync. `WaveformPlayerProps`
+  is derived from the core's `WaveformPlayerOptions`.
+- Dual ESM (`dist/index.js`) + CJS (`dist/index.cjs`) build via `tsup`,
+  with `.d.ts` for both. Vue + the core library are externalised so they
+  resolve to the consumer's copies.
+- Vitest test suite (jsdom + `@vue/test-utils`) covering mount, option
+  pass-through, the `src → url` alias, boolean-prop omission, emit
+  forwarding, destroy-on-unmount, identity-prop re-mount, and the
+  exposed imperative API. The core is mocked at the module boundary
+  because jsdom has no Web Audio API.
+- README with full prop reference, seven usage patterns, and the
+  imperative-ref control example. `examples/basic.vue` with seven
+  copy-paste-ready snippets.
+
+## `@arraypress/waveform-player-svelte`
+
+### [0.1.0] — Unreleased
+
+Initial release.
+
+#### Added
+
+- `<WaveformPlayer>` Svelte 5 component (built with runes) wrapping
+  every option exposed by `@arraypress/waveform-player` as a typed prop:
+  - Audio source (`url`, `src` alias, `audioMode`, `preload`)
+  - Waveform visualisation (`waveformStyle`, `height`, `samples`,
+    `barWidth`, `barSpacing`, `barRadius`, `waveform`)
+  - Colours (`colorPreset`, `waveformColor`, `progressColor`,
+    `buttonColor`, `buttonHoverColor`, `textColor`,
+    `textSecondaryColor`, `backgroundColor`, `borderColor` — strings or
+    `string[]` gradients)
+  - Playback (`playbackRate`, `showPlaybackSpeed`, `playbackRates`)
+  - UI toggles (`showControls`, `showInfo`, `showTime`, `showHoverTime`,
+    `showBPM`, `buttonAlign`, `accessibleSeek`, `seekLabel`, `errorText`)
+  - Markers (`markers`, `showMarkers`)
+  - Metadata (`title`, `subtitle`, `artwork`, `album`)
+  - Behaviour (`autoplay`, `singlePlay`, `playOnSeek`,
+    `enableMediaSession`)
+  - Icons (`playIcon`, `pauseIcon`)
+- Lowercase lifecycle callback props (`onload`, `onplay`, `onpause`,
+  `onend`, `ontimeupdate`, `onerror`), each forwarding the live
+  `WaveformPlayer` instance. Wired through reactive closures, so
+  changing a handler never tears the player down.
+- Imperative API exported by the component instance (reachable via
+  `bind:this`): `play()`, `pause()`, `togglePlay()`, `seekTo()`,
+  `seekToPercent()`, `setVolume()`, `setPlaybackRate()`,
+  `setPlayingState()`, `setProgress()`, `loadTrack()`, and
+  `getInstance()`.
+- `class`, `style`, `id`, and other element attributes fall through to
+  the host element via `...rest`; the base class `wfp-host` always
+  applies.
+- SSR / SvelteKit safe: the core library is loaded via dynamic
+  `import('@arraypress/waveform-player')` inside a browser-only
+  `$effect`, so the audio surface never runs server-side.
+- Identity-prop re-mount: a single `$effect` reads every
+  construction prop, so changing any of them destroys the existing
+  instance and creates a new one. A monotonic mount token discards any
+  in-flight async import that a newer mount (or unmount) has superseded.
+- Public types adopted from the core `@arraypress/waveform-player`
+  (`WaveformStyle`, `ColorPreset`, `AudioMode`, `AudioPreload`,
+  `ButtonAlign`, `WaveformMarker`, `WaveformPeaks`), re-exported here so
+  the wrapper's types can never drift. `WaveformPlayerProps` is derived
+  from the core's `WaveformPlayerOptions`.
+- Built with `svelte-package` (`dist/` ships the preprocessed
+  `.svelte` + generated `.d.ts`). Svelte + the core library are peer
+  dependencies.
+- Vitest test suite (jsdom + `@testing-library/svelte`) covering mount,
+  option pass-through, the `src → url` alias, boolean-prop omission,
+  callback forwarding, destroy-on-unmount, identity-prop re-mount, and
+  the exported imperative API. The core is mocked at the module
+  boundary because jsdom has no Web Audio API.
+- README with full prop reference, seven usage patterns, and the
+  imperative `bind:this` control example. `examples/Basic.svelte` with
+  seven copy-paste-ready snippets.
+
 ## `@arraypress/waveform-bar-astro`
+
+### [0.2.0] — 2026-07-01
+
+#### Changed
+
+- Sync `WaveformBarConfig` to the bar's `mode` API: `layout` → `mode`
+  (`'waveform' | 'classic'`), remove `maxWidth`, add `showShuffle` / `shuffle`.
+  Matches `@arraypress/waveform-bar` 1.7.0.
 
 ### [0.1.3] — 2026-06-27
 
@@ -286,6 +414,14 @@ Initial release.
 
 ## `@arraypress/waveform-bar-react`
 
+### [0.2.0] — 2026-07-01
+
+#### Changed
+
+- Sync `WaveformBarConfig` to the bar's `mode` API: `layout` → `mode`
+  (`'waveform' | 'classic'`), remove `maxWidth`, add `showShuffle` / `shuffle`.
+  Matches `@arraypress/waveform-bar` 1.7.0.
+
 ### [0.1.1] — 2026-06-27
 
 #### Changed
@@ -347,3 +483,287 @@ Initial release.
   `waveformbar:*` custom-event API documented as the callback
   alternative.
 - `examples/basic.tsx` with seven copy-paste-ready snippets.
+
+## `@arraypress/waveform-bar-vue`
+
+### [0.1.0] — Unreleased
+
+Initial release.
+
+#### Added
+
+- `<WaveformBar>` — singleton mount for the persistent bottom bar. Render
+  once in your root layout. On mount it dynamically imports
+  `@arraypress/waveform-bar` (SSR-safe) and calls
+  `window.WaveformBar.init(config)`; re-inits when the config's structural
+  shape changes (compared via `JSON.stringify`, so a fresh object with the
+  same shape doesn't churn); relocates the bar element into a persist host
+  `<div>`; and calls `destroy()` on unmount. `config`, `persist`, `hostId`
+  props; `class` / `style` fall through to the host (base class `wb-host`).
+- `<WaveformBarTrigger>` — polymorphic (`as="button" | "a" | "div" |
+  "span"`, default `button`) click trigger that emits the `data-wb-*`
+  attribute contract the core library scans for. Maps track-data props
+  (`url`, `id`, `title`, `artist`, `album`, `artwork`, `link`, `duration`,
+  `bpm`, `musicalKey`, `meta`, `waveform`, `markers`, `favorited`,
+  `inCart`) to attributes (arrays JSON-encoded; absent props emit no
+  attribute). `mode="play" | "queue"`, `href` (for `as="a"`),
+  `noDefaultIcons`. Renders default play/pause SVGs unless slot content is
+  provided. Auto-generates an `aria-label` from `title`. `class`, native
+  listeners (`@click`), and other attributes fall through; the base class
+  `wb-icon-swap` is always applied.
+- No lifecycle callback props — the bar dispatches every state change as a
+  bubbling `waveformbar:*` `CustomEvent`; listen with `addEventListener`.
+  This keeps callbacks from forcing a bar re-init (matching the React
+  wrapper).
+- Public types mirroring the core surface: `WaveformBarConfig`,
+  `WaveformBarProps`, `WaveformBarTriggerProps`, `WaveformBarTrackData`,
+  `WaveformBarMarker`, `WaveformBarActions`, `WaveformBarAction`,
+  `WaveformBarTheme`, `RepeatMode`, `TriggerMode`, `WaveformStyle`.
+- Dual ESM + CJS build via `tsup` with `.d.ts` for both. Vue + the core
+  libraries are peer dependencies.
+- Vitest test suite (jsdom + `@vue/test-utils`, 13 tests) covering the
+  singleton's host render + `init` / re-init / `destroy` lifecycle, and the
+  trigger's `data-wb-*` contract, polymorphism, modes, default-icon
+  handling, class merge, and click forwarding.
+
+## `@arraypress/waveform-bar-svelte`
+
+### [0.1.0] — Unreleased
+
+Initial release.
+
+#### Added
+
+- `<WaveformBar>` — singleton mount (Svelte 5 runes) for the persistent
+  bottom bar. Render once in your root layout. A browser-only `$effect`
+  dynamically imports `@arraypress/waveform-bar` (SSR-safe) and calls
+  `window.WaveformBar.init(config)`; a `$derived` config key re-inits only
+  when the config's structural shape (or `persist`) changes; the bar
+  element is relocated into a persist host `<div>`; `destroy()` is called
+  on unmount. `config`, `persist`, `hostId` props; `class` / attributes
+  fall through to the host (base class `wb-host`).
+- `<WaveformBarTrigger>` — polymorphic (`as="button" | "a" | "div" |
+  "span"` via `<svelte:element>`, default `button`) click trigger that
+  emits the `data-wb-*` attribute contract the core library scans for.
+  Maps track-data props (`url`, `id`, `title`, `artist`, `album`,
+  `artwork`, `link`, `duration`, `bpm`, `musicalKey`, `meta`, `waveform`,
+  `markers`, `favorited`, `inCart`) to attributes (arrays JSON-encoded;
+  absent props emit no attribute). `mode="play" | "queue"`, `href` (for
+  `as="a"`), `noDefaultIcons`. Renders default play/pause SVGs unless
+  children are slotted. Auto-generates an `aria-label` from `title`.
+  `class`, native listeners (`onclick`), and other attributes fall through
+  via `...rest`; the base class `wb-icon-swap` is always applied.
+- No lifecycle callback props — the bar dispatches every state change as a
+  bubbling `waveformbar:*` `CustomEvent`; listen with `addEventListener`.
+- Public types mirroring the core surface: `WaveformBarConfig`,
+  `WaveformBarProps`, `WaveformBarTriggerProps`, `WaveformBarTrackData`,
+  `WaveformBarMarker`, `WaveformBarActions`, `WaveformBarAction`,
+  `WaveformBarTheme`, `RepeatMode`, `TriggerMode`, `WaveformStyle`.
+- Built with `svelte-package` (`dist/` ships the preprocessed `.svelte` +
+  generated `.d.ts`). Svelte + the core libraries are peer dependencies.
+- Vitest test suite (jsdom + `@testing-library/svelte`, 12 tests) covering
+  the singleton's host render + `init` / re-init / no-churn / `destroy`
+  lifecycle, and the trigger's `data-wb-*` contract, polymorphism, modes,
+  default-icon handling, class merge, and click forwarding.
+
+## `@arraypress/waveform-playlist-astro`
+
+### [0.1.0] — Initial release
+
+#### Added
+
+- `<WaveformPlaylist>` Astro component wrapping
+  `@arraypress/waveform-playlist`. Renders the library's nested markup
+  contract — a `[data-waveform-playlist]` container with one
+  `[data-track]` child per track and one `[data-chapter]` child per
+  chapter — from a single typed `tracks` array.
+- Typed props for the playlist's own options:
+  - `layout` (`'list' | 'minimal'`), `continuous`, `expandChapters`,
+    `showDuration`, `showChapterMarkers` (`boolean | null`),
+    `chapterMarkerColor`, `showPlayState`.
+- Typed pass-through of the WaveformPlayer options the playlist forwards
+  to its embedded player — `waveformStyle`, `height`, `samples`,
+  `barWidth`, `barSpacing`, `barRadius`, `colorPreset`, the colour
+  options (including gradient-array `waveformColor` / `progressColor`),
+  `playbackRate`, `showPlaybackSpeed`, `playbackRates`, `showControls`,
+  `showInfo`, `showTime`, `showHoverTime`, `showBPM`, `bpm`,
+  `buttonAlign`, `buttonStyle`, `accessibleSeek`, `seekLabel`,
+  `errorText`, `showMarkers`, `autoplay`, `singlePlay`, `playOnSeek`,
+  `enableMediaSession`, `preload`, `playIcon`, `pauseIcon`. The
+  per-track content fields (`url`, `title`, `subtitle`, `artwork`,
+  `album`, `markers`) live on each `tracks` entry instead, and the
+  player's `layout` / `audioMode` are intentionally not exposed (the
+  playlist owns `data-layout` and always drives a self-mode player).
+- A typed `tracks` array (`WaveformPlaylistTrackInput[]`) with per-track
+  `url`, `title`, `subtitle`, `artwork`, `album`, `duration`, `markers`,
+  and `chapters` (`{ time, label, color? }`).
+- Astro-specific `lazy` prop that switches the init attribute to
+  `data-waveform-playlist-lazy` and ships a single deduplicated
+  `IntersectionObserver` that promotes the playlist on viewport entry,
+  plus a non-lazy `astro:page-load` re-init for Astro View Transitions.
+- Astro-specific `id`, `class`, and `style` pass-throughs (`wfpl-host` is
+  always applied to the container).
+- Public TypeScript types derived from the two core packages so they
+  never drift: `WaveformPlaylistProps`, `WaveformPlaylistTrackInput`,
+  and re-exports of `WaveformPlaylistOptions` / `WaveformPlaylistTrack` /
+  `WaveformPlaylistChapter` / `WaveformPlaylistMarker` (from the playlist
+  core) and `WaveformStyle` / `WaveformMarker` / `WaveformPeaks` /
+  `ColorPreset` / `AudioMode` / `AudioPreload` / `ButtonAlign` (from the
+  player core).
+- Vitest suite covering container option serialisation, omission
+  semantics, JSON serialisation for array props, per-track and per-chapter
+  rendering, lazy-mount and View-Transitions script presence, and the
+  Astro extras.
+- Documentation: full prop reference, setup guide, and usage examples
+  (`examples/basic.astro`).
+
+## `@arraypress/waveform-playlist-react`
+
+### [0.1.0] — Unreleased
+
+Initial release.
+
+#### Added
+
+- `<WaveformPlaylist>` React component wrapping
+  `@arraypress/waveform-playlist`:
+  - A declarative, required `tracks` array
+    (`WaveformPlaylistTrackInput[]`) rendered into the `[data-track]` /
+    `[data-chapter]` child markup the playlist constructor parses on
+    mount. Each track accepts `url`, `title`, `subtitle`, `artwork`,
+    `album`, `duration`, `markers`, and `chapters`
+    (`{ time, label, color? }`, where `time` is a seconds number or a
+    `'M:SS'` string).
+  - Playlist options as typed props: `layout` (`'list' | 'minimal'`),
+    `continuous`, `expandChapters`, `showDuration`,
+    `showChapterMarkers`, `chapterMarkerColor`, `showPlayState`.
+  - Pass-through player options forwarded to the embedded player
+    (`waveformStyle`, `height`, `samples`, `barWidth`, `barSpacing`,
+    `barRadius`, colours, `playbackRate`, `showPlaybackSpeed`,
+    `playbackRates`, UI toggles, `accessibleSeek`, `seekLabel`,
+    `errorText`, behaviour flags, icons, `audioMode`, `preload`).
+  - React-specific extras: `id`, `className`, `style`, and `ref`
+    forwarding via `WaveformPlaylistHandle`.
+- `WaveformPlaylistHandle` imperative API on the forwarded ref —
+  `selectTrack()`, `seekToChapter()`, `nextTrack()`, `previousTrack()`,
+  `getPlayer()`, `getCurrentTrackIndex()`, `getTracks()`, plus the raw
+  `instance` escape hatch.
+- SSR / RSC safe: the playlist library is loaded via dynamic
+  `import('@arraypress/waveform-playlist')` inside the effect so the
+  browser-only audio surface never runs server-side.
+- Identity-prop re-mount: when any construction prop changes — the
+  serialised `tracks`, `layout`, `continuous`, colours, sizing, etc. —
+  the wrapper destroys the existing instance and creates a new one
+  against the freshly-rendered markup. DOM-only props (`className`,
+  `style`, `id`) do not trigger a re-mount.
+- The host container deliberately omits `data-waveform-playlist` so the
+  library's global auto-init never double-mounts on top of the instance
+  the wrapper creates explicitly.
+- Public TypeScript types: `WaveformPlaylistProps`,
+  `WaveformPlaylistHandle`, `WaveformPlaylistTrackInput`,
+  `WaveformPlaylistChapterInput`, plus the re-exported core types
+  (`WaveformPlaylistOptions`, `WaveformPlaylistTrack`,
+  `WaveformPlaylistChapter`, `WaveformPlaylistMarker`, `WaveformStyle`,
+  `WaveformMarker`, `WaveformPeaks`, `ColorPreset`, `AudioMode`,
+  `AudioPreload`, `ButtonAlign`).
+- Vitest test suite (jsdom + `@testing-library/react`) covering
+  track / chapter markup rendering, mount, unmount destroy, option
+  pass-through, identity-prop re-mount, ref forwarding, and the full
+  imperative handle surface. The core library is mocked at the module
+  boundary because jsdom has no Web Audio API.
+- Dual ESM (`dist/index.js`) + CJS (`dist/index.cjs`) build via `tsup`,
+  with `.d.ts` for both. React and both `@arraypress/waveform-*` cores
+  are externalised so they resolve to the consumer's copies.
+- README with full prop reference and usage patterns, and
+  `examples/basic.tsx` with seven copy-paste-ready snippets.
+
+#### Peer dependencies
+
+- `@arraypress/waveform-playlist` `^1.3.0`
+- `@arraypress/waveform-player` `^1.8.0`
+- `react` `^18.0.0 || ^19.0.0`
+
+## `@arraypress/waveform-playlist-vue`
+
+### [0.1.0] — Unreleased
+
+Initial release.
+
+#### Added
+
+- `<WaveformPlaylist>` Vue 3 component wrapping `@arraypress/waveform-playlist`:
+  - Declarative `tracks` prop (with optional per-track `chapters` and
+    `markers`), rendered into the `[data-track]` / `[data-chapter]` markup
+    the playlist constructor parses on mount.
+  - Playlist options as typed props: `layout` (`'list' | 'minimal'`),
+    `continuous`, `expandChapters`, `showDuration`, `showChapterMarkers`,
+    `chapterMarkerColor`, `showPlayState`.
+  - The full pass-through player-option surface (waveform style, sizing,
+    colours, playback, UI toggles, accessibility, icons) — inherited from
+    the core `WaveformPlayerOptions` via `Omit<>`, minus per-track content
+    fields (which come from `tracks`).
+- Imperative navigation API exposed via a template `ref`
+  (`WaveformPlaylistExpose`): `selectTrack()`, `seekToChapter()`,
+  `nextTrack()`, `previousTrack()`, `getPlayer()`, `getCurrentTrackIndex()`,
+  `getTracks()`, plus the raw `instance`.
+- `class`, `style`, and `id` fall through to the host element via Vue's
+  attribute inheritance; the base class `wfp-host` always applies.
+- SSR / Nuxt safe: the core library is loaded via dynamic
+  `import('@arraypress/waveform-playlist')` inside `onMounted`.
+- Identity-prop re-mount: any construction-prop change (a serialised
+  `tracks` change, layout, options, …) destroys and rebuilds the instance.
+  A monotonic mount token discards a superseded in-flight import; the
+  watcher uses `flush: 'post'` so the fresh markup is in the DOM before the
+  constructor re-parses it.
+- No lifecycle emits — the playlist owns the embedded player's callbacks
+  internally (matching the React wrapper). Observe playback via the
+  embedded player from `getPlayer()`.
+- Public types adopted from both cores (`@arraypress/waveform-playlist` +
+  `@arraypress/waveform-player`), re-exported so they can never drift.
+- Dual ESM + CJS build via `tsup` with `.d.ts` for both. Vue + both cores
+  are peer dependencies.
+- Vitest test suite (jsdom + `@vue/test-utils`) covering host + track
+  markup rendering, option mapping (tracks excluded), boolean-prop
+  omission, destroy-on-unmount, identity-prop re-mount, and the exposed
+  navigation API. The core is mocked at the module boundary.
+
+## `@arraypress/waveform-playlist-svelte`
+
+### [0.1.0] — Unreleased
+
+Initial release.
+
+#### Added
+
+- `<WaveformPlaylist>` Svelte 5 component (built with runes) wrapping
+  `@arraypress/waveform-playlist`:
+  - Declarative `tracks` prop (with optional per-track `chapters` and
+    `markers`), rendered into the `[data-track]` / `[data-chapter]` markup
+    the playlist constructor parses on mount.
+  - Playlist options as typed props: `layout` (`'list' | 'minimal'`),
+    `continuous`, `expandChapters`, `showDuration`, `showChapterMarkers`,
+    `chapterMarkerColor`, `showPlayState`.
+  - The full pass-through player-option surface (waveform style, sizing,
+    colours, playback, UI toggles, accessibility, icons) — inherited from
+    the core `WaveformPlayerOptions` via `Omit<>`, minus per-track content
+    fields (which come from `tracks`).
+- Imperative navigation API exported by the component instance (reachable
+  via `bind:this`): `selectTrack()`, `seekToChapter()`, `nextTrack()`,
+  `previousTrack()`, `getPlayer()`, `getCurrentTrackIndex()`,
+  `getTracks()`, and `getInstance()`.
+- `class`, `style`, `id`, and other element attributes fall through to the
+  host element via `...rest`; the base class `wfp-host` always applies.
+- SSR / SvelteKit safe: the core library is loaded via dynamic
+  `import('@arraypress/waveform-playlist')` inside a browser-only `$effect`.
+- Identity-prop re-mount: a single `$effect` reads `JSON.stringify(tracks)`
+  + every construction option, so any change destroys and rebuilds the
+  instance over the freshly-rendered markup. A monotonic mount token
+  discards a superseded in-flight import.
+- Public types adopted from both cores (`@arraypress/waveform-playlist` +
+  `@arraypress/waveform-player`), re-exported so they can never drift.
+- Built with `svelte-package` (`dist/` ships the preprocessed `.svelte` +
+  generated `.d.ts`). Svelte + both cores are peer dependencies.
+- Vitest test suite (jsdom + `@testing-library/svelte`) covering host +
+  track markup rendering, option mapping (tracks excluded), boolean-prop
+  omission, destroy-on-unmount, identity-prop re-mount, and the exported
+  navigation API. The core is mocked at the module boundary.

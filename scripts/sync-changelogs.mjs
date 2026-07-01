@@ -78,8 +78,16 @@ for (const { slug, pkg, title, order, description } of SINGLE) {
 const WRAPPERS = [
 	'waveform-player-astro',
 	'waveform-player-react',
+	'waveform-player-vue',
+	'waveform-player-svelte',
 	'waveform-bar-astro',
 	'waveform-bar-react',
+	'waveform-bar-vue',
+	'waveform-bar-svelte',
+	'waveform-playlist-astro',
+	'waveform-playlist-react',
+	'waveform-playlist-vue',
+	'waveform-playlist-svelte',
 ];
 
 const sections = WRAPPERS.map((pkg) => {
@@ -94,12 +102,12 @@ const sections = WRAPPERS.map((pkg) => {
 
 if (sections.length) {
 	write('frameworks', [
-		frontmatter({ title: 'Framework wrappers', description: 'Release history for the Astro and React wrapper packages.', order: 3 }),
+		frontmatter({ title: 'Framework wrappers', description: 'Release history for the Astro, React, Vue and Svelte wrapper packages.', order: 3 }),
 		GENERATED,
 		'',
 		':::note\nGenerated from each wrapper package\'s CHANGELOG. Run `npm run sync:changelogs` after a release to refresh.\n:::',
 		'',
-		'The thin Astro/React wrappers version independently of the core libraries they wrap.',
+		'The thin framework wrappers version independently of the core libraries they wrap.',
 		'',
 		sections.join('\n\n'),
 	].join('\n'));

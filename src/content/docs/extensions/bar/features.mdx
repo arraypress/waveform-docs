@@ -1,10 +1,19 @@
 ---
 title: Features
-description: Queue, volume, repeat, favorites, cart, DJ markers, share links and cross-page persistence.
+description: Layout modes, queue, volume, repeat, shuffle, favorites, cart, DJ markers, share links and cross-page persistence.
 sidebar:
   order: 5
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Layout modes
+
+`mode` picks the bar's layout:
+
+- **`'waveform'`** (default) — a full-width waveform scrubber spanning the bar. `wide: true` lifts the 1400px content cap for an edge-to-edge waveform.
+- **`'classic'`** — a Spotify-style three-column layout: now-playing (artwork + title / artist) on the left, transport controls centred above a compact full-width seek bar, and secondary controls (volume, queue, share) on the right. Always full-width, so `wide` doesn't apply.
+
+Both modes share the same queue, transport, persistence and event surface — only the presentation differs. See [Configuration](/extensions/bar/configuration/) for the full option list.
 
 ## Queue
 
@@ -21,6 +30,10 @@ The volume wrapper renders when `showMute` or `showVolume` is true. The mute but
 :::note
 Error auto-skip never wraps via `repeat: 'all'` — this guards against an infinite loop on a dead first track.
 :::
+
+## Shuffle
+
+Set `showShuffle: true` to add a shuffle toggle beside the repeat control. With shuffle on, `next()` and continuous auto-advance pick a random upcoming track instead of the next in order; `shuffle: true` starts it enabled. Toggle at runtime with `toggleShuffle()` / `setShuffle()` — the button reflects state and tucks away with the collapsed pill.
 
 ## Favorites & cart
 

@@ -11,6 +11,43 @@ sidebar:
 Generated from [`@arraypress/waveform-bar`'s CHANGELOG](https://github.com/arraypress/waveform-bar/blob/main/CHANGELOG.md). Run `npm run sync:changelogs` after a release to refresh.
 :::
 
+## [1.7.0] — 2026-07-01
+
+### Added
+
+- **Classic (Spotify-style) mode.** `mode: 'waveform' | 'classic'` — `'classic'`
+  lays the bar out in three columns: now-playing on the left, transport centred
+  over a full-width seek bar, secondary controls on the right. `'waveform'`
+  (default) keeps the existing full-width waveform layout.
+- **Shuffle.** `showShuffle` adds a shuffle toggle to the transport and
+  `shuffle` sets its initial state (random queue advance on next / auto-advance).
+
+### Changed
+
+- **Simplified layout config to two modes.** `mode` supersedes the old
+  `layout` / `waveform` combination; `wide` gives waveform mode a full-width size.
+- **Queue + collapse accessibility.** The queue button now exposes
+  `aria-haspopup` / `aria-expanded` (open/closed state is announced) and closes
+  on `Escape`, returning focus to the trigger; the collapse button keeps its
+  `aria-expanded` in sync.
+
+### Removed
+
+- **`maxWidth`** config option — superseded by `mode` / `wide` sizing.
+
+## [1.6.4] - 2026-06-30
+
+### Fixed
+
+- **Volume slider collapsed to a tiny stub when the host page styles range
+  inputs.** The vertical slider is a horizontal range input rotated -90°. A
+  generic `input[type="range"] { width: 100% }` on the host page (specificity
+  `0,1,1`) out-specified the bar's `.wb-volume-slider` rule (`0,1,0`), shrinking
+  the slider to the 40px popup width — a 40px stub after rotation. The bar's
+  slider rules are now scoped under `.wb-volume-popup` (`0,2,0`, plus a pinned
+  `flex-shrink: 0`) so the bar's own sizing wins regardless of host form-control
+  styles.
+
 ## [1.3.2] - 2026-06-27
 
 ### Changed

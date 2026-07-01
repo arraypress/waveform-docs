@@ -11,6 +11,93 @@ sidebar:
 Generated from [`@arraypress/waveform-player`'s CHANGELOG](https://github.com/arraypress/waveform-player/blob/main/CHANGELOG.md). Run `npm run sync:changelogs` after a release to refresh.
 :::
 
+## [1.17.0] — 2026-07-01
+
+### Added
+
+- **Seekbar drag-to-scrub.** Press and drag on the waveform/seekbar to scrub;
+  the seek commits on release, so audio keeps playing during the drag instead
+  of re-seeking on every move.
+- **Opt-in circular seek handle** on the `seekbar` style — `seekHandle`
+  (default `false`, also `data-seek-handle`). A draggable handle that expands on
+  hover; the bar turns it on.
+
+### Changed
+
+- **Hardened peak extraction.** Replaced `Math.max(...peaks)` with a loop-based
+  max (no `RangeError` on very large arrays) and centralised the default sample
+  count in a shared `DEFAULT_SAMPLES` (1800) constant so live extraction and
+  `DEFAULT_OPTIONS` can't drift.
+- **Playback-speed menu accessibility.** The speed toggle now sets
+  `aria-haspopup` / `aria-expanded` (so the open/closed state is announced),
+  closes on `Escape`, and returns focus to the trigger after a rate is chosen.
+  Kept as a lightweight disclosure — the options remain plain buttons in the
+  tab order, no ARIA-menu machinery.
+
+### Fixed
+
+- **Activating a control no longer steals keyboard focus onto the player
+  wrapper.** Clicking/activating the play button — or any interactive control
+  (slider, link, input) — now keeps focus on that control; the container only
+  takes focus when the click lands on a non-interactive area. (Reported in #10.)
+
+## [1.16.1] — 2026-06-30
+
+### Changed
+
+- **Active-marker label now flashes then fades** instead of staying visible the
+  whole time the playhead is past a marker. When the playhead reaches a marker
+  its label appears for ~2.5s and then fades out, while the highlight stays.
+  Driven by a `.show-label` class the player adds/removes, so it's
+  CSS-overridable: keep it on with
+  `.waveform-marker.active .waveform-marker-tooltip { opacity: 1 }` or hide it
+  with `{ opacity: 0 !important }`.
+
+## [1.16.0] — 2026-06-30
+
+### Added
+
+- **Hover-time tooltip.** With `showHoverTime: true` (`data-show-hover-time`), a
+  tooltip follows the pointer over the waveform showing the time at that
+  position. The option was previously parsed but did nothing — it's now wired up
+  (works in both self and external modes).
+- **Active markers.** As playback passes a marker, the player highlights it and
+  reveals its label automatically — it drives the existing `setActiveMarker()`
+  from the progress loop (self and external modes), so chaptered tracks and DJ
+  cues light up as you reach them.
+- **Artwork fallback.** When the `artwork` image fails to load (404 / broken
+  URL), the player now shows a muted music-note placeholder tile instead of the
+  browser's broken-image icon.
+
+### Fixed
+
+- **`index.d.ts` `@default` JSDoc synced with the runtime.** The hand-written
+  type file still annotated `height` as `@default 60` and `barRadius` as
+  `@default 0`; `DEFAULT_OPTIONS` is `64` and `1`. Corrected so IDE tooltips
+  match actual behaviour. Documentation-only — no type or runtime change.
+
+## [1.15.0] — 2026-06-30
+
+### Fixed
+
+- **Live-decoded waveforms are now accurate.** `extractPeaks` inspected only
+  ~1 in 10 frames per window (a real-time speed shortcut), which missed
+  transients and made the waveform *shape* shift noticeably when the sample
+  count changed. It now scans **every frame** — matching WaveformGen's offline
+  output exactly (same shape, not just same amplitude), so a live decode and a
+  pre-generated `.json` render identically. `decodeAudioData` dominates the
+  cost, so the full scan is effectively free.
+
+### Changed
+
+- **`samples` default raised 256 → 1800** (the SoundCloud / WaveformGen figure).
+  It is the source peak resolution for live decode only (ignored when `waveform`
+  peaks are supplied), resampled down to the visible bar count. At 256, any
+  waveform wider than ~256 bars — common on wide or high-DPI displays — was
+  upsampled and looked blurry; 1800 keeps it crisp. Paired with the every-frame
+  scan it costs no extra extraction time. Override with `samples` /
+  `data-samples`.
+
 ## [1.14.0] — 2026-06-28
 
 ### Added
