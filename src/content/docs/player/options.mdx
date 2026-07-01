@@ -218,6 +218,7 @@ Visibility toggles, track metadata, markers, accessibility, and callbacks.
 | `showInfo` | `true` | `boolean` | Render the info block (artwork/title/subtitle/meta). `data-show-info`. |
 | `showTime` | `true` | `boolean` | Render current/total time display. `data-show-time`. |
 | `showHoverTime` | `false` | `boolean` | Show a tooltip that follows the pointer over the waveform, displaying the time at that position (self + external modes). `data-show-hover-time`. |
+| `seekHandle` | `false` | `boolean` | On the `seekbar` style only: a draggable circular handle that expands on hover (Spotify-style). Drag-to-scrub works on every style regardless. `data-seek-handle`. |
 | `showBPM` | `false` | `boolean` | Show the BPM badge. **`data-show-bpm`** (the data key differs from the option key). |
 | `singlePlay` | `true` | `boolean` | Pause every other instance when this one plays. `data-single-play`. |
 | `playOnSeek` | `true` | `boolean` | Start playback when seeking via a marker click while paused. `data-play-on-seek`. |
@@ -348,6 +349,7 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-show-info` | `showInfo` | bool. |
 | `data-show-time` | `showTime` | bool. |
 | `data-show-hover-time` | `showHoverTime` | bool. |
+| `data-seek-handle` | `seekHandle` | bool. |
 | `data-show-bpm` | `showBPM` | bool. |
 | `data-bpm` | `bpm` | int. |
 | `data-single-play` | `singlePlay` | bool. |

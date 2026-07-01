@@ -48,8 +48,10 @@ Buttons render only when their flag (or the relevant config) is set. The methods
 | --- | --- | --- | --- |
 | `position` | `'bottom' \| 'top'` | `'bottom'` | Which edge the bar docks to. `'top'` adds `.wb-top` and flips the slide direction. |
 | `theme` | `'dark' \| 'light' \| null` | `null` | Force a theme. `null` = auto-detect from the page and re-detect live (see [Theming](#theming)). |
-| `wide` | `boolean` | `false` | `true` sets `--wb-max-width: 100%`, lifting the stylesheet's 1400px content cap. |
-| `maxWidth` | `string \| null` | `null` | Custom CSS max-width (e.g. `'1200px'`) set as `--wb-max-width`. Overrides `wide`. |
+| `mode` | `'waveform' \| 'classic'` | `'waveform'` | `'classic'` is a Spotify-style centre layout: now-playing left, transport centred over a full-width seek bar, controls right. |
+| `wide` | `boolean` | `false` | Waveform mode only. `true` sets `--wb-max-width: 100%`, lifting the 1400px content cap. |
+| `showShuffle` | `boolean` | `false` | Show a shuffle toggle in the transport cluster. |
+| `shuffle` | `boolean` | `false` | Start with shuffle (random queue advance) on. |
 | `defaultArtwork` | `string \| null` | `null` | Fallback artwork URL when a track has no `artwork`. |
 
 ### Embedded player (waveform)

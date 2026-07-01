@@ -1,390 +1,548 @@
 ---
 title: Vue
-description: Use WaveformPlayer in Vue.
+description: Typed Vue 3 components.
 sidebar:
   order: 4
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
-There is no official Vue wrapper for WaveformPlayer — and you don't need one. The core package is framework-agnostic vanilla JS. In Vue you have two clean integration paths:
+The `@arraypress` waveform family ships three Vue 3 wrappers, each a thin, typed component over its vanilla core:
 
-- **Ref-based (imperative):** mount the player against a template ref in `onMounted`, call `destroy()` in `onUnmounted`. Full access to options, methods, and events. Best for SPAs and anything dynamic.
-- **Declarative (auto-init):** render the `data-*` markup and let the library's `DOMContentLoaded` / `WaveformPlayer.init()` scan instantiate it. Zero JS glue. Best for mostly-static content.
+| Package | Component(s) | Wraps |
+| --- | --- | --- |
+| `@arraypress/waveform-player-vue` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
+| `@arraypress/waveform-bar-vue` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/extensions/bar/) |
+| `@arraypress/waveform-playlist-vue` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/extensions/playlist/) |
 
-Both are covered below, along with SSR/Nuxt guidance.
+Every wrapper follows the same design:
 
-## Install
+- **Each is a `defineComponent`** with a render function — no `.vue` compile step, dual ESM/CJS builds, and a hand-written `.d.ts`. Core options surface as **props**, lifecycle events as **emits**, and the instance as a **template ref**.
+- **Prop types are derived from the core's `WaveformPlayerOptions`**, not re-declared — so they never drift as the core evolves.
+- **The core JS is dynamically `import()`ed inside `onMounted`**, so the audio + canvas + `fetch` surface never runs during SSR / Nuxt.
+- **Every optional prop is declared `{ type: …, default: undefined }`.** An absent prop is *never forwarded* to the core, so the core's own default applies — you only pass the props you want to override.
+- **CSS is never auto-loaded** — you import each core's stylesheet once at your app entry.
+
+:::caution[Use `waveformStyle`, not `style`]
+On all three components, `style` (and `class`, `id`) is a standard HTML attribute that **falls through to the host `<div>`** via Vue's attribute inheritance — use it to reserve layout height, etc. The base class (`wfp-host` / `wb-host`) is always merged in. The core's `style` alias for the *visual* waveform style is intentionally omitted from the prop type. To pick a visual style use **`waveformStyle`** / `waveform-style` (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`).
+:::
+
+---
+
+## Player — `<WaveformPlayer>`
+
+### Install
+
+`vue` and `@arraypress/waveform-player` are peer dependencies (Vue `^3.5.0`; core player `^1.8.0`).
 
 <Tabs syncKey="pkg">
 
 <TabItem label="npm">
 
 ```bash
-npm install @arraypress/waveform-player
+npm install @arraypress/waveform-player-vue @arraypress/waveform-player vue
 ```
 
 </TabItem>
 <TabItem label="pnpm">
 
 ```bash
-pnpm add @arraypress/waveform-player
+pnpm add @arraypress/waveform-player-vue @arraypress/waveform-player vue
 ```
 
 </TabItem>
 <TabItem label="yarn">
 
 ```bash
-yarn add @arraypress/waveform-player
+yarn add @arraypress/waveform-player-vue @arraypress/waveform-player vue
 ```
 
 </TabItem>
 <TabItem label="bun">
 
 ```bash
-bun add @arraypress/waveform-player
+bun add @arraypress/waveform-player-vue @arraypress/waveform-player vue
 ```
 
 </TabItem>
 
 </Tabs>
 
-Import the stylesheet once, globally — typically in your app entry (`main.js` / `main.ts`):
+Import the core stylesheet **once** at your app entry:
 
-```js title="src/main.js"
-import { createApp } from 'vue';
-import App from './App.vue';
-
+```ts
+// main.ts / app entry
 import '@arraypress/waveform-player/dist/waveform-player.css';
-
-createApp(App).mount('#app');
 ```
 
-:::tip
-The CSS is required for the player to render correctly. Import it once at the app root, not per-component — bundlers dedupe it, and a single import keeps the cascade predictable.
-:::
+### Quick start
 
-## Ref-based component (recommended)
-
-Create a template ref, instantiate `WaveformPlayer` against the resolved element in `onMounted`, and tear it down in `onUnmounted`. Pass constructor options directly — they are the same options documented in [Options](/player/options/).
-
-```vue title="WaveformPlayer.vue"
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import WaveformPlayer from '@arraypress/waveform-player';
-
-const props = defineProps({
-  url: { type: String, required: true },
-  title: { type: String, default: null },
-  subtitle: { type: String, default: null },
-});
-
-const el = ref(null);
-let player = null;
-
-onMounted(() => {
-  player = new WaveformPlayer(el.value, {
-    url: props.url,
-    title: props.title,
-    subtitle: props.subtitle,
-    waveformStyle: 'mirror',
-    waveformColor: ['#fafafa', '#71717a'], // vertical gradient stops
-    showBPM: true,
-    onTimeUpdate: (currentTime, duration) => {
-      // wire into your own UI/state here
-    },
-  });
-});
-
-onUnmounted(() => {
-  player?.destroy();
-  player = null;
-});
+```vue
+<script setup lang="ts">
+import { WaveformPlayer } from '@arraypress/waveform-player-vue';
 </script>
 
 <template>
-  <div ref="el"></div>
+  <WaveformPlayer
+    url="/audio/track.mp3"
+    title="My Track"
+    waveform-style="mirror"
+    :waveform-color="['#fafafa', '#71717a']"
+    show-bpm
+    @timeupdate="(currentTime, duration) => { /* live progress */ }"
+  />
 </template>
 ```
 
-<Aside type="caution" title="Always destroy">
-`destroy()` aborts every DOM/document listener (single `AbortController`), disconnects the `ResizeObserver`, stops the RAF loop, drops the instance from the static registry, and empties the container. Skipping it in `onUnmounted` leaks listeners and live instances across route changes and HMR reloads.
-</Aside>
+`src` is the core's shorthand alias for `url` (`url` wins if both are set). Provide one of the two.
 
-:::caution[Pass the element, not a selector]
-`new WaveformPlayer(container, options)` accepts a CSS selector **or** an `HTMLElement`. In Vue, pass the resolved `el.value` (an element). It guarantees you target *this* component instance — not the first match in the document — which matters when several players are mounted at once. A missing container throws `Error('[WaveformPlayer] Container element not found')`.
-:::
+### Props
 
-### Listening to events
+Every core player option is accepted as a typed prop — `url`, `src`, `audioMode`, `height`, `samples`, `barWidth`, `barSpacing`, `barRadius`, `colorPreset`, gradient-array colours (`waveformColor`, `progressColor`), `accessibleSeek`, `markers`, `showBPM`, and so on. The prop type `WaveformPlayerProps` is `Omit<WaveformPlayerOptions, …callbacks>`, so it tracks the core automatically. See [Player → Options](/player/options/) for the full inherited surface.
 
-Every instance dispatches DOM `CustomEvent`s on its container (they bubble), and mirrors the key ones as option callbacks. Use whichever fits your architecture — callbacks for local state, DOM events when a parent or sibling needs to react.
+Because every optional prop defaults to `undefined`, props you don't pass are not forwarded and the core's default wins.
 
-```vue title="WaveformPlayer.vue"
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import WaveformPlayer from '@arraypress/waveform-player';
+### Events
 
-const props = defineProps({ url: { type: String, required: true } });
-const emit = defineEmits(['ready', 'play', 'pause', 'ended']);
+The six core lifecycle callbacks surface as **emits** (not callback props) — each forwards the live `WaveformPlayer` instance:
 
-const el = ref(null);
-let player = null;
-
-function onReady(e)  { emit('ready', e.detail); }
-function onPlay(e)   { emit('play', e.detail); }
-function onPause(e)  { emit('pause', e.detail); }
-function onEnded(e)  { emit('ended', e.detail); }
-
-onMounted(() => {
-  player = new WaveformPlayer(el.value, { url: props.url });
-
-  el.value.addEventListener('waveformplayer:ready', onReady);
-  el.value.addEventListener('waveformplayer:play', onPlay);
-  el.value.addEventListener('waveformplayer:pause', onPause);
-  el.value.addEventListener('waveformplayer:ended', onEnded);
-});
-
-onUnmounted(() => {
-  // Remove your own listeners before destroying.
-  el.value?.removeEventListener('waveformplayer:ready', onReady);
-  el.value?.removeEventListener('waveformplayer:play', onPlay);
-  el.value?.removeEventListener('waveformplayer:pause', onPause);
-  el.value?.removeEventListener('waveformplayer:ended', onEnded);
-  player?.destroy();
-  player = null;
-});
-</script>
-
-<template>
-  <div ref="el"></div>
-</template>
+```vue
+<WaveformPlayer
+  url="/audio/track.mp3"
+  @load="(player) => console.log('loaded', player)"
+  @play="() => console.log('playing')"
+  @pause="() => console.log('paused')"
+  @timeupdate="(currentTime, duration) => console.log(`${currentTime} / ${duration}`)"
+  @end="() => console.log('finished')"
+  @error="(err) => console.error('audio failed:', err)"
+/>
 ```
 
-:::note
-`destroy()` tears down the player's *own* listeners (via its `AbortController`) but not listeners **you** attached to the container. Remove those yourself in `onUnmounted` to be safe, even though Vue will also remove the element from the DOM.
-:::
-
-The full event surface:
-
-| Event | `detail` | Notes |
+| Emit | Payload | Notes |
 | --- | --- | --- |
-| `waveformplayer:ready` | `{ player, url }` | Fires ~100ms after construction. |
-| `waveformplayer:play` | `{ player, url }` | Both audio modes. |
-| `waveformplayer:pause` | `{ player, url }` | Both audio modes. |
-| `waveformplayer:ended` | `{ player, url, currentTime, duration }` | Synthesized in external mode at progress &gt;= 1. |
-| `waveformplayer:timeupdate` | `{ player, currentTime, duration, progress, url }` | `progress` is `0..1`. |
-| `waveformplayer:destroy` | `{ player, url }` | Emitted at the start of `destroy()`. |
+| `@load` | `(instance)` | Fired after the waveform is drawn. |
+| `@play` | `(instance)` | Playback started (both audio modes). |
+| `@pause` | `(instance)` | Playback paused (both modes). |
+| `@end` | `(instance)` | Track ended (external mode synthesizes it at progress ≥ 1). |
+| `@timeupdate` | `(currentTime, duration, instance)` | Progress tick. Same argument order in both modes. |
+| `@error` | `(error, instance)` | Load / decode / audio error. |
 
-Cancelable `waveformplayer:request-*` events fire only in `external` mode — see [Audio modes](/player/external-mode/). See [Events](/player/events/) for the complete reference.
+`emit` is stable, so listeners always reach the latest handler without tearing the player down. Only construction-time props (`url`, `audioMode`, visualization options, …) trigger a re-mount.
 
-### Reacting to prop changes
+### Imperative API
 
-Props are not reactively bound into the player — pass them at construction. When a prop changes after mount, drive the player imperatively with its methods. Use `loadTrack()` to swap the source at runtime (it pauses, resets per-track state, and loads):
+Grab the instance with a template `ref` typed as `WaveformPlayerExpose`. Methods are reached through `defineExpose`:
 
-```vue title="WaveformPlayer.vue"
-<script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
-import WaveformPlayer from '@arraypress/waveform-player';
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import {
+  WaveformPlayer,
+  type WaveformPlayerExpose,
+} from '@arraypress/waveform-player-vue';
 
-const props = defineProps({
-  url:      { type: String, required: true },
-  title:    { type: String, default: null },
-  subtitle: { type: String, default: null },
-});
-
-const el = ref(null);
-let player = null;
-
-onMounted(() => {
-  player = new WaveformPlayer(el.value, { url: props.url, title: props.title });
-});
-
-// Swap the track when the URL prop changes. Pass { autoplay: false }
-// to suppress loadTrack's default auto-play behaviour.
-watch(() => props.url, (next, prev) => {
-  if (player && next && next !== prev) {
-    player.loadTrack(next, props.title, props.subtitle, { autoplay: false });
-  }
-});
-
-onUnmounted(() => {
-  player?.destroy();
-  player = null;
-});
+const player = ref<WaveformPlayerExpose>();
 </script>
 
 <template>
-  <div ref="el"></div>
+  <WaveformPlayer ref="player" url="/audio/track.mp3" />
+  <button @click="player?.togglePlay()">Play / Pause</button>
+  <button @click="player?.seekTo(60)">Jump to 1:00</button>
+  <button @click="player?.loadTrack('/audio/next.mp3', 'Next Track', 'Artist')">
+    Load next
+  </button>
 </template>
 ```
 
-<Aside type="note" title="loadTrack auto-plays by default">
-`loadTrack(url, title?, subtitle?, options?)` auto-plays the new track **unless** you pass `{ autoplay: false }`. It also resets per-track state — `markers`, `waveform`, subtitle, artwork — so a track loaded without pre-computed peaks won't redraw the previous track's waveform.
-</Aside>
-
-Useful methods to drive from Vue: `play()`, `pause()`, `togglePlay()`, `seekTo(seconds)`, `seekToPercent(percent)`, `setVolume(volume)`, `setPlaybackRate(rate)`, `setWaveformData(data)`, `loadTrack(...)`. Full list in [Methods](/player/methods/).
-
-## Declarative (auto-init)
-
-If you just need the player rendered from static data, skip the imperative wiring entirely. The library auto-initializes any `[data-waveform-player]` element on `DOMContentLoaded`, and `WaveformPlayer.init()` is idempotent (it marks initialized nodes with `data-waveform-initialized="true"`).
-
-Because Vue renders after the initial `DOMContentLoaded`, call `WaveformPlayer.init()` once in `onMounted` to scan the freshly rendered markup:
-
-```vue title="StaticPlayer.vue"
-<script setup>
-import { onMounted } from 'vue';
-import WaveformPlayer from '@arraypress/waveform-player';
-
-onMounted(() => {
-  WaveformPlayer.init(); // idempotent — only touches uninitialised nodes
-});
-</script>
-
-<template>
-  <div
-    data-waveform-player
-    data-src="/audio/track.mp3"
-    data-style="mirror"
-    data-show-bpm="true"
-    data-waveform-color='["#fafafa","#71717a"]'
-  ></div>
-</template>
-```
-
-Every option has a `data-*` equivalent — see [Data attributes](/player/data-attributes/). Note the alias and naming quirks:
-
-| Attribute | Maps to | Note |
+| Method | Signature | Notes |
 | --- | --- | --- |
-| `data-src` / `data-url` | `url` | `data-url` (canonical) wins if both set. |
-| `data-style` / `data-waveform-style` | `waveformStyle` | `data-waveform-style` wins if both set. |
-| `data-show-bpm` | `showBPM` | dataKey differs from the option key. |
-| `data-color` | `waveformColor` | Legacy alias. |
-| `data-theme` | `colorPreset` | Legacy alias. |
-| `data-waveform-color` | `waveformColor` | CSS colour **or** a JSON array of gradient stops. |
+| `play` | `() => Promise<void> \| undefined` | Returns the native `play()` promise in self mode; `undefined` in external mode. |
+| `pause` | `() => void` | |
+| `togglePlay` | `() => void` | |
+| `seekTo` | `(seconds: number) => void` | Self mode only. |
+| `seekToPercent` | `(percent: number) => void` | Fraction `0..1`. Self mode only. |
+| `setVolume` | `(volume: number) => void` | `0..1`. Self mode only. |
+| `setPlaybackRate` | `(rate: number) => void` | Clamped `0.5..2`. Self mode only. |
+| `setPlayingState` | `(playing: boolean) => void` | **External mode** — push play/pause visual state. |
+| `setProgress` | `(currentTime, duration) => void` | **External mode** — push the progress overlay from your own clock. |
+| `loadTrack` | `(url, title?, subtitle?, options?) => Promise<void>` | Swap track at runtime; auto-plays unless `options.autoplay === false`. |
+| `instance` | `readonly WaveformPlayer \| null` | Escape hatch — full core API (`load`, `setWaveformData`, `refreshTheme`, `container`, statics, …). |
 
-<Aside type="caution" title="Auto-init does not auto-destroy">
-Auto-initialized players are tracked in the static `WaveformPlayer.instances` registry but are **not** tied to Vue's lifecycle. If the component unmounts, call `WaveformPlayer.getInstance(el).destroy()` yourself (or `WaveformPlayer.destroyAll()` on teardown). For components that mount and unmount repeatedly, prefer the ref-based approach — its `onUnmounted` cleanup is unambiguous.
-</Aside>
+Calls before the async import resolves are safe no-ops.
 
-## SSR & Nuxt
+:::note[Re-mount semantics]
+When any construction prop changes, the component destroys the instance and constructs a new one rather than diffing options. Same-`url` re-mounts are cheap because the core caches decoded peaks keyed by URL. For runtime track swaps without a re-mount, use `loadTrack()`. (A `:key` bound to the URL forces the same clean rebuild explicitly.)
+:::
 
-WaveformPlayer is a browser component — it touches `document`, the DOM, canvas, and (in `self` mode) Web Audio / `<audio>`. None of that exists during server-side rendering, so **all instantiation must be client-only**.
+:::tip[DOM events]
+Prefer the emits for lifecycle. If you need the raw `waveformplayer:*` [events](/player/events/) (e.g. `waveformplayer:request-seek` in external mode), attach via the instance: `player.value?.instance?.container.addEventListener(...)`.
+:::
 
-The ref-based pattern is already SSR-safe in Vue 3: `onMounted` runs **only on the client**, never on the server. The template renders an empty `<div ref="el">` on the server, and the player is constructed after hydration. No extra guarding is needed for the imperative path — keep `new WaveformPlayer(...)` inside `onMounted`, never at module top level or in `setup`'s synchronous body.
+---
 
-For Nuxt, wrap the component (or render it inside `<ClientOnly>`) to skip server rendering entirely and avoid hydration mismatches:
+## Bar — `<WaveformBar>` + `<WaveformBarTrigger>`
 
-```vue title="pages/track.vue"
+The bar is a **singleton**: render `<WaveformBar>` once in your root layout, then scatter `<WaveformBarTrigger>` elements anywhere to play or queue tracks.
+
+### Install
+
+Peer deps: `@arraypress/waveform-bar` (`^1.3.1`), `@arraypress/waveform-player` (`^1.7.2`), Vue `^3.5.0`.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-bar-vue @arraypress/waveform-bar @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-bar-vue @arraypress/waveform-bar @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-bar-vue @arraypress/waveform-bar @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-bar-vue @arraypress/waveform-bar @arraypress/waveform-player vue
+```
+
+</TabItem>
+
+</Tabs>
+
+:::caution[Load order matters]
+The bar has a hard runtime dependency on the player global. Import the **player before the bar** at your app entry, or `window.WaveformBar` will be undefined:
+
+```ts
+import '@arraypress/waveform-player/dist/waveform-player.css';
+import '@arraypress/waveform-bar/dist/waveform-bar.css';
+import '@arraypress/waveform-player'; // sets window.WaveformPlayer  (first)
+import '@arraypress/waveform-bar';    // sets window.WaveformBar     (second)
+```
+:::
+
+### Mount the bar
+
+```vue
+<script setup lang="ts">
+import { WaveformBar } from '@arraypress/waveform-bar-vue';
+</script>
+
+<template>
+  <RouterView />
+  <WaveformBar
+    :config="{
+      persist: true,
+      continuous: true,
+      showQueue: true,
+      actions: {
+        favorite: { endpoint: '/api/favorites' },
+        cart: { endpoint: '/api/cart' },
+      },
+    }"
+  />
+</template>
+```
+
+On mount the component dynamically imports the core and calls `window.WaveformBar.init(config)`. When the config's structural shape changes it re-runs `init()` (idempotent — the library destroys and recreates internally); on unmount it calls `destroy()` so route changes and HMR reloads don't leak listeners.
+
+| `<WaveformBar>` prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `config` | `WaveformBarConfig` | `undefined` | Passed verbatim to `init()`. See table below. |
+| `persist` | `boolean` | `true` | Relocate the `.waveform-bar` element under the host `<div>` so it survives route changes. |
+| `hostId` | `string` | `'waveform-bar-host'` | DOM `id` of the persist host. |
+
+`class` and `style` fall through to the persist host `<div>` (base class `wb-host`).
+
+:::note[Config change detection]
+The config is compared by a `JSON.stringify` key, so passing a fresh object with the same shape every render is safe. Function endpoints (`actions.*.endpoint`) serialize to a placeholder, so if you pass a function endpoint, keep the whole `config` reference stable (hoist it or wrap it in a `computed`) to avoid re-init churn.
+:::
+
+#### `WaveformBarConfig`
+
+Bar-vue hand-declares this type (the bar core ships no `.d.ts`), so this is the source of truth for the typed config surface. Every field is optional.
+
+| Group | Fields |
+| --- | --- |
+| Behaviour | `persist`, `autoResume`, `continuous`, `repeat` (`'off' \| 'all' \| 'one'`), `shuffle` |
+| UI toggles | `showQueue`, `showPrevNext`, `showRepeat`, `showShuffle`, `showVolume`, `showMute`, `showTime`, `showTrackLink`, `showMeta`, `maxMeta` (number) |
+| Layout | `mode` (`'waveform' \| 'classic'`), `wide`, `position` (`'bottom' \| 'top'`), `collapsible` |
+| Theming | `defaultArtwork` (`string \| null`), `theme` (`'dark' \| 'light' \| null`) |
+| Waveform | `waveform` (boolean), `waveformStyle`, `waveformHeight`, `barWidth`, `barSpacing`, `waveformColor`, `progressColor`, `markerColor` |
+| Sharing / errors | `share`, `shareParam`, `errorText` |
+| Volume / storage | `volume`, `storageKey` |
+| Server actions | `actions` (`{ favorite?, cart? }`, each `{ endpoint, method?, headers? }`) |
+
+`mode` defaults to `'waveform'` (the standard layout with a width-adjustable waveform). Set `mode: 'classic'` for the Spotify-style centre layout with a full-width seek bar. `showShuffle` adds a shuffle toggle to the transport cluster; `shuffle` starts with random queue advance on.
+
+### Trigger a track
+
+`<WaveformBarTrigger>` emits the `data-wb-*` attribute contract the bar scans for. It is polymorphic — a `<button>` by default — and any unlisted DOM attribute or native listener (`@click`, `data-testid`, `role`, …) falls through to the rendered element.
+
+```vue
+<script setup lang="ts">
+import { WaveformBarTrigger } from '@arraypress/waveform-bar-vue';
+</script>
+
+<template>
+  <!-- Default: a <button> with auto play/pause icons -->
+  <WaveformBarTrigger
+    url="/audio/track.mp3"
+    id="track-42"
+    title="Midnight Dreams"
+    artist="The Wavelength"
+    artwork="/img/cover.jpg"
+  />
+
+  <!-- Append to the queue with custom content -->
+  <WaveformBarTrigger mode="queue" url="/audio/track.mp3" title="Midnight Dreams">
+    + Queue
+  </WaveformBarTrigger>
+
+  <!-- Wrap a whole card as the trigger -->
+  <WaveformBarTrigger as="div" :url="track.url" no-default-icons>
+    <article class="product-card">…</article>
+  </WaveformBarTrigger>
+</template>
+```
+
+**Track data props** (`WaveformBarTrackData`) — each maps 1:1 to a `data-wb-*` attribute; arrays are JSON-encoded and absent props emit no attribute:
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | **Required** — play target + identity. |
+| `id` | `string` | Defaults to `url`. |
+| `title`, `artist`, `album`, `artwork`, `link` | `string` | Display metadata. |
+| `duration`, `bpm` | `string \| number` | |
+| `musicalKey` | `string` | → `data-wb-key`. |
+| `meta` | `string[]` | Extra metadata chips. |
+| `waveform` | `number[] \| string` | Pre-computed peaks or `.json` URL. |
+| `markers` | `WaveformBarMarker[]` | DJ-mode cue markers (`{ time, label, title?, artist?, artwork?, bpm?, key?, color? }`). |
+| `favorited`, `inCart` | `boolean` | Initial action state. |
+
+**Trigger-specific props:**
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `mode` | `'play' \| 'queue'` | `'play'` | Immediate play vs. append to queue. |
+| `as` | `'button' \| 'a' \| 'div' \| 'span'` | `'button'` | Rendered tag. |
+| `href` | `string` | — | Used when `as="a"`. |
+| `noDefaultIcons` | `boolean` | `false` | Suppress the injected play/pause SVGs. |
+| `aria-label` | `string` | auto | Falls through to the element; auto-generated from `title` when absent. |
+| default slot | — | — | Custom content; overrides the default icons. |
+
+`class` is merged with the base class `wb-icon-swap`.
+
+:::note[No callback props on the bar]
+The bar deliberately exposes no emits and no imperative ref — an inline function each render would re-init the singleton. The core dispatches every state change as a bubbling `waveformbar:*` `CustomEvent` (`waveformbar:play`, `waveformbar:trackchange`, …); listen via `addEventListener` in your own effect. That stays framework-agnostic and avoids re-init churn.
+:::
+
+---
+
+## Playlist — `<WaveformPlaylist>`
+
+A declarative `tracks` array with optional chapters, an embedded player, and imperative track / chapter navigation.
+
+### Install
+
+Peer deps: `@arraypress/waveform-playlist` (`^1.3.0`), `@arraypress/waveform-player` (`^1.8.0`), Vue `^3.5.0`.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-playlist-vue @arraypress/waveform-playlist @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-playlist-vue @arraypress/waveform-playlist @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-playlist-vue @arraypress/waveform-playlist @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-playlist-vue @arraypress/waveform-playlist @arraypress/waveform-player vue
+```
+
+</TabItem>
+
+</Tabs>
+
+Import both stylesheets, and import the player core for its global side effect — the playlist constructs `new window.WaveformPlayer(...)` for the active track:
+
+```ts
+import '@arraypress/waveform-player/dist/waveform-player.css';
+import '@arraypress/waveform-playlist/dist/waveform-playlist.css';
+import '@arraypress/waveform-player'; // registers window.WaveformPlayer
+```
+
+### Quick start
+
+```vue
+<script setup lang="ts">
+import { WaveformPlaylist } from '@arraypress/waveform-playlist-vue';
+
+const tracks = [
+  { url: '/audio/a.mp3', title: 'Track A', subtitle: 'Artist' },
+  {
+    url: '/audio/b.mp3',
+    title: 'Track B',
+    chapters: [
+      { time: 0, label: 'Intro' },
+      { time: '1:30', label: 'Verse' },
+      { time: 180, label: 'Chorus', color: '#22d3ee' },
+    ],
+  },
+];
+</script>
+
+<template>
+  <WaveformPlaylist continuous waveform-style="bars" :tracks="tracks" />
+</template>
+```
+
+Each track renders into the `[data-track]` / `[data-chapter]` markup the playlist constructor parses on mount. The host carries the base class `wfp-host`.
+
+### `tracks` (required)
+
+`WaveformPlaylistTrackInput[]`:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | **Required** → `data-url`. |
+| `title` | `string` | Falls back to the filename if omitted. |
+| `subtitle` | `string` | Subtitle row. |
+| `artwork` | `string` | Artwork URL. |
+| `album` | `string` | Media Session metadata. |
+| `duration` | `string` | Display duration, e.g. `'3:45'`. |
+| `markers` | `WaveformPlaylistMarker[]` | JSON-encoded into `data-markers`. |
+| `chapters` | `WaveformPlaylistChapterInput[]` | `{ time: number \| string, label, color? }` — `time` accepts seconds or `'M:SS'`. |
+
+### Props
+
+`WaveformPlaylistProps` combines three groups:
+
+1. **Playlist options** picked from `WaveformPlaylistOptions`: `continuous`, `expandChapters`, `showDuration`, `showChapterMarkers`, `chapterMarkerColor`, `showPlayState`.
+2. **Pass-through player options** — the full `WaveformPlayerOptions` visualization / colour / behaviour surface, **minus** per-track content (`url`, `src`, `title`, `subtitle`, `artwork`, `album`, `markers`, `waveform`), the `style` alias, the player's own `layout`, and the lifecycle callbacks.
+3. **Vue extras** — the required `tracks` (plus `class`, `style`, `id` falling through to the host).
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `tracks` | `WaveformPlaylistTrackInput[]` | `[]` | **Required.** An empty array renders an empty playlist (the core skips init). |
+| `layout` | `'list' \| 'minimal'` | `'list'` | Full track list vs. compact button switcher. **Overrides** the player's own `layout`. |
+
+Common pass-through player props include `waveformStyle`, `height`, `colorPreset`, `waveformColor`, `progressColor`, `showBPM`, `accessibleSeek`, and `autoplay` — see [Player → Options](/player/options/) for the complete list.
+
+### Imperative API
+
+Grab the instance with a template `ref` typed as `WaveformPlaylistExpose`:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import {
+  WaveformPlaylist,
+  type WaveformPlaylistExpose,
+} from '@arraypress/waveform-playlist-vue';
+
+const playlist = ref<WaveformPlaylistExpose>();
+</script>
+
+<template>
+  <WaveformPlaylist ref="playlist" :tracks="tracks" continuous />
+  <button @click="playlist?.previousTrack()">Prev</button>
+  <button @click="playlist?.nextTrack()">Next</button>
+  <button @click="playlist?.selectTrack(0)">First</button>
+</template>
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `selectTrack` | `(index: number) => void` | Select + load a track by index. |
+| `seekToChapter` | `(trackIndex, time) => void` | Loads the target track first if needed, then seeks. |
+| `nextTrack` | `() => void` | |
+| `previousTrack` | `() => void` | |
+| `getPlayer` | `() => unknown \| null` | The embedded `WaveformPlayer` instance (full player API). |
+| `getCurrentTrackIndex` | `() => number` | |
+| `getTracks` | `() => WaveformPlaylistTrack[]` | Parsed tracks (with resolved `element` / `index`). |
+| `instance` | `readonly WaveformPlaylist \| null` | Escape hatch for anything else. |
+
+Calls before the async import resolves are no-ops.
+
+:::note[No emits on the playlist]
+The playlist owns the embedded player's callbacks internally to drive continuous playback and chapter tracking, so it exposes **no lifecycle emits** — forwarding them would yield events that never fire. Observe playback through the embedded player from `getPlayer()`.
+:::
+
+:::note[Re-mount semantics]
+Changing `tracks` (compared by serialized value) or any construction-time option tears the playlist down and rebuilds it against the freshly rendered markup. The watcher uses `flush: 'post'` so the new track markup is in the DOM before the constructor re-parses it. For navigation without a re-mount, use the handle above.
+:::
+
+---
+
+## Server-side rendering & Nuxt
+
+All three components are SSR / Nuxt safe by construction: the host markup (and, for the playlist, the `[data-track]` children) renders on the server, and the browser-only core is dynamically `import()`ed inside `onMounted` — which runs **only on the client**, never during server render. The interactive UI hydrates in once the library loads.
+
+No extra guarding is needed for the imperative path: keep instantiation inside `onMounted` (the wrappers already do), never at module top level. Reserve layout space with `style` (e.g. `:style="{ minHeight: '96px' }"`) to avoid a content shift before the waveform draws.
+
+For Nuxt, you can render the components directly. To skip server rendering entirely and sidestep any hydration mismatch, wrap them in `<ClientOnly>`:
+
+```vue
 <template>
   <ClientOnly>
     <WaveformPlayer url="/audio/track.mp3" title="Midnight Drive" />
     <template #fallback>
-      <div class="waveform-placeholder" />
+      <div class="waveform-placeholder" style="min-height: 96px" />
     </template>
   </ClientOnly>
 </template>
 
-<script setup>
-import WaveformPlayer from '~/components/WaveformPlayer.vue';
-</script>
-```
-
-<Aside type="tip" title="Import the static helper safely">
-The default export and static helpers (`WaveformPlayer.getPeaksUrl()`, `WaveformPlayer.utils`) are safe to *import* on the server — importing the module does not touch the DOM. Only **constructing** an instance or calling `init()` must be client-side. If you call a browser-dependent helper at request time, guard it with <code>import.meta.client</code> (Nuxt) or <code>typeof window !== 'undefined'</code>.
-</Aside>
-
-:::caution[Don't run `WaveformPlayer.init()` on the server]
-For the declarative path under SSR, keep `WaveformPlayer.init()` inside `onMounted` (or `<ClientOnly>`). Running it during server render has no DOM to scan and will not produce a hydrated player.
-:::
-
-## Pre-computed peaks (skip the decode)
-
-To avoid a Web Audio decode on the client — and render instantly — supply pre-computed peaks via the `waveform` option. It accepts an inline `number[]`, a comma-separated string, a JSON-array string, or a `.json` URL (fetched; embedded markers honoured). Use the static `getPeaksUrl()` helper to derive a sibling `.json` URL from your audio URL:
-
-```vue title="WaveformPlayer.vue"
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import WaveformPlayer from '@arraypress/waveform-player';
-
-const props = defineProps({ url: { type: String, required: true } });
-const el = ref(null);
-let player = null;
-
-onMounted(() => {
-  player = new WaveformPlayer(el.value, {
-    url: props.url,
-    // '/audio/track.mp3' -> '/audio/track.json' (undefined if no known extension)
-    waveform: WaveformPlayer.getPeaksUrl(props.url),
-  });
-});
-
-onUnmounted(() => {
-  player?.destroy();
-  player = null;
-});
-</script>
-
-<template>
-  <div ref="el"></div>
-</template>
-```
-
-See [Pre-computed peaks](/player/waveform-data/) for generating and serving `.json` peak files.
-
-## TypeScript
-
-The package ships hand-written types. Import `WaveformPlayerOptions` for prop typing and event-map types for typed listeners:
-
-```vue title="WaveformPlayer.vue"
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import WaveformPlayer, { type WaveformPlayerOptions } from '@arraypress/waveform-player';
-
-const props = defineProps<{
-  url: string;
-  options?: Omit<WaveformPlayerOptions, 'url'>;
-}>();
-
-const el = ref<HTMLDivElement | null>(null);
-let player: WaveformPlayer | null = null;
-
-onMounted(() => {
-  if (!el.value) return;
-  player = new WaveformPlayer(el.value, { url: props.url, ...props.options });
-});
-
-onUnmounted(() => {
-  player?.destroy();
-  player = null;
-});
+import { WaveformPlayer } from '@arraypress/waveform-player-vue';
 </script>
-
-<template>
-  <div ref="el"></div>
-</template>
 ```
 
-<Aside type="note" title="Known type drift">
-A couple of `index.d.ts` defaults lag the runtime: the type file says `height` `60` and `barRadius` `0`, but the runtime defaults are `64` and `1`. `themes.js` `DEFAULT_OPTIONS` is the source of truth. This affects only the documented `@default` values, not behaviour.
+<Aside type="tip" title="Importing on the server is safe">
+Importing the wrapper module does not touch the DOM — the browser-only core is only pulled in (and constructed) client-side inside `onMounted`. If you reach for a browser-dependent core helper at request time, guard it with <code>import.meta.client</code> (Nuxt) or <code>typeof window !== 'undefined'</code>.
 </Aside>
-
-## Which approach?
-
-<CardGrid>
-
-<Card title="Ref-based" icon="setting">
-Dynamic apps, route changes, prop-driven track swaps, event wiring, repeated mount/unmount. Deterministic `onUnmounted` cleanup. **Use this by default.**
-</Card>
-<Card title="Declarative" icon="document">
-Mostly-static markup, no per-instance JS. Render `data-*`, call `WaveformPlayer.init()` once in `onMounted`. Remember to destroy on teardown.
-</Card>
-
-</CardGrid>
 
 ## Related
 
-- [Options](/player/options/) — the full option surface.
-- [Methods](/player/methods/) — imperative API.
-- [Events](/player/events/) — DOM events and callbacks.
-- [Data attributes](/player/data-attributes/) — the declarative contract.
-- [Audio modes](/player/external-mode/) — `self` vs `external`.
-- [Getting started](/getting-started/installation/) — base install and concepts.
+<CardGrid>
+
+  <Card title="Player options" icon="setting">
+    Full inherited option surface — [Player → Options](/player/options/).
+  </Card>
+  <Card title="Events" icon="rss">
+    The `waveformplayer:*` DOM events — [Player → Events](/player/events/).
+  </Card>
+  <Card title="React" icon="seti:react">
+    The same wrappers, typed for React — [React](/frameworks/react/).
+  </Card>
+  <Card title="Installation" icon="download">
+    Bundler, CDN, and CSS setup — [Getting started](/getting-started/installation/).
+  </Card>
+
+</CardGrid>

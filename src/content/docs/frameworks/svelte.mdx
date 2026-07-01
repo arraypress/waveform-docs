@@ -1,0 +1,550 @@
+---
+title: Svelte
+description: Typed Svelte 5 components.
+sidebar:
+  order: 5
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+The `@arraypress` waveform family ships three Svelte 5 wrappers, each a thin, typed component over its vanilla core — built with runes (`$props`, `$effect`, `$derived`):
+
+| Package | Component(s) | Wraps |
+| --- | --- | --- |
+| `@arraypress/waveform-player-svelte` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
+| `@arraypress/waveform-bar-svelte` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/extensions/bar/) |
+| `@arraypress/waveform-playlist-svelte` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/extensions/playlist/) |
+
+Every wrapper follows the same design:
+
+- **Prop types are derived from the core's `WaveformPlayerOptions`**, not re-declared — so they never drift as the core evolves. (The bar is the exception: its core ships no `.d.ts`, so `waveform-bar-svelte` hand-declares `WaveformBarConfig`.)
+- **The core JS is dynamically `import()`ed inside `$effect`**, which only runs in the browser — so the audio + canvas + `fetch` surface never runs during SSR / SvelteKit prerendering.
+- **The imperative API is exposed as Svelte 5 `export function`s**, reached through `bind:this` — `loadTrack`, `seekTo`, playlist navigation, and the rest.
+- **CSS is never auto-loaded** — you import each core's stylesheet once at your app entry (e.g. the SvelteKit root `+layout.svelte`).
+
+:::caution[Use `waveformStyle`, not `style`]
+On all three components, `style` is the standard element attribute applied to the host `<div>` (a CSS string — e.g. for reserving layout height). The core's `style` alias for the *visual* waveform style is not used by the wrappers. To pick a visual style use **`waveformStyle`** (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`). Likewise `class`, `id`, and any other element attribute fall through to the host — the base class is always applied.
+:::
+
+---
+
+## Player — `<WaveformPlayer>`
+
+### Install
+
+`svelte` (`^5.0.0`) and `@arraypress/waveform-player` (`^1.8.0`) are peer dependencies — you bring them so you control the versions.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-player-svelte @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-player-svelte @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-player-svelte @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-player-svelte @arraypress/waveform-player svelte
+```
+
+</TabItem>
+
+</Tabs>
+
+Import the core stylesheet **once** at your app entry. The wrapper does **not** import it for you — your bundler should own that decision:
+
+```svelte title="src/routes/+layout.svelte"
+<script>
+  // also works in main.ts for a plain Vite app
+  import '@arraypress/waveform-player/dist/waveform-player.css';
+</script>
+
+<slot />
+```
+
+### Quick start
+
+```svelte
+<script lang="ts">
+  import { WaveformPlayer } from '@arraypress/waveform-player-svelte';
+</script>
+
+<WaveformPlayer
+  url="/audio/track.mp3"
+  title="My Track"
+  waveformStyle="mirror"
+  waveformColor={['#fafafa', '#71717a']}
+  showBPM
+  ontimeupdate={(currentTime, duration) => {
+    /* live progress */
+  }}
+/>
+```
+
+### Props
+
+`WaveformPlayerProps` is `Omit<WaveformPlayerOptions, …callbacks>`, so **every player option is accepted as a typed prop** — `height`, `samples`, `barRadius`, `colorPreset`, `accessibleSeek`, `markers`, gradient-array colours, and so on. See [Player → Options](/player/options/) for the full inherited surface. Absent props are not forwarded, so the core's own defaults apply.
+
+`src` is a shorthand alias for `url` (provide one; `url` wins if both are set). `class`, `style`, `id`, and any other element attribute fall through to the host `<div>` via `HTMLAttributes<HTMLDivElement>` — the base class `wfp-host` is always applied.
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | Audio file URL. |
+| `src` | `string` | Shorthand alias for `url`. |
+| `class` | `string` | Appended to the always-present base class `wfp-host`. |
+| `style` | `string` | Inline CSS on the host — e.g. `min-height` to reserve space before draw. |
+| `id` | `string` | Forwarded to the host `<div>`. |
+
+### Callback props
+
+Every lifecycle event the core exposes is a lowercase callback prop (matching Svelte's native `onclick` / `oninput` convention), each forwarding the live `WaveformPlayer` instance:
+
+```svelte
+<WaveformPlayer
+  url="/audio/track.mp3"
+  onload={(i) => console.log('loaded', i)}
+  onplay={() => console.log('playing')}
+  onpause={() => console.log('paused')}
+  ontimeupdate={(currentTime, duration) => console.log(`${currentTime}s / ${duration}s`)}
+  onend={() => console.log('finished')}
+  onerror={(err) => console.error('audio failed:', err)}
+/>
+```
+
+| Prop | Signature | Notes |
+| --- | --- | --- |
+| `onload` | `(instance) => void` | Fired once after the waveform is drawn. |
+| `onplay` | `(instance) => void` | Playback started (both audio modes). |
+| `onpause` | `(instance) => void` | Playback paused (both modes). |
+| `onend` | `(instance) => void` | Track ended (external mode synthesizes it at progress ≥ 1). |
+| `ontimeupdate` | `(currentTime, duration, instance) => void` | Progress tick. Same argument order in both modes. |
+| `onerror` | `(error, instance) => void` | Load / decode / audio error. |
+
+:::tip[Callbacks don't trigger re-mounts]
+The lowercase callback props are reactive — the wrapper reads the latest handler through a closure on each call. Passing a fresh inline function never tears the player down; only construction-time props (`url`, `audioMode`, visualization options, …) cause a re-mount.
+:::
+
+:::note[Re-mount semantics]
+A single `$effect` synchronously reads every construction prop, so when any of them changes the wrapper destroys the instance and constructs a new one rather than diffing options. Same-`url` re-mounts are cheap because the core caches decoded peaks keyed by URL. Wrap the component in `{#key url}` to force a clean remount, or use the imperative `loadTrack()` below to swap tracks without one.
+:::
+
+### Imperative control via `bind:this`
+
+The component exports its API as Svelte 5 `export function`s. Grab the instance with `bind:this` and call them directly:
+
+```svelte
+<script lang="ts">
+  import { WaveformPlayer } from '@arraypress/waveform-player-svelte';
+  let player: WaveformPlayer;
+</script>
+
+<WaveformPlayer bind:this={player} url="/audio/track.mp3" />
+<button onclick={() => player.togglePlay()}>Play / Pause</button>
+<button onclick={() => player.seekTo(60)}>Jump to 1:00</button>
+<button onclick={() => player.loadTrack('/audio/next.mp3', 'Next Track', 'Artist')}>
+  Load next
+</button>
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `play` | `() => Promise<void> \| undefined` | Returns the native `play()` promise in self mode; `undefined` in external mode. |
+| `pause` | `() => void` | |
+| `togglePlay` | `() => void` | |
+| `seekTo` | `(seconds: number) => void` | Self mode only. |
+| `seekToPercent` | `(percent: number) => void` | Fraction `0..1`. Self mode only. |
+| `setVolume` | `(volume: number) => void` | `0..1`. Self mode only. |
+| `setPlaybackRate` | `(rate: number) => void` | `0.5..2`. Self mode only. |
+| `setPlayingState` | `(playing: boolean) => void` | **External mode** — push play/pause visual state. |
+| `setProgress` | `(currentTime, duration) => void` | **External mode** — push the progress overlay from your own clock. |
+| `loadTrack` | `(url, title?, subtitle?, options?) => Promise<void>` | Swap track at runtime; auto-plays unless `options.autoplay === false`. |
+| `getInstance` | `() => WaveformPlayer \| null` | Escape hatch — the full core API (`load`, `setWaveformData`, `refreshTheme`, `container`, statics, …). |
+
+Calls before the async import resolves are safe no-ops. The typed handle interface is exported as `WaveformPlayerExpose` for explicit typing.
+
+:::tip[DOM events]
+Prefer the callback props for lifecycle. For the raw `waveformplayer:*` [events](/player/events/) (e.g. `waveformplayer:request-seek` in external mode), reach the container through the instance: `player.getInstance()?.container.addEventListener(...)`.
+:::
+
+### External audio mode
+
+When pairing with `@arraypress/waveform-bar` (or any audio controller you own), the player can render visualization only and surrender playback. Drive it via `setProgress()` / `setPlayingState()`:
+
+```svelte
+<WaveformPlayer
+  url={track.url}
+  audioMode="external"
+  waveformStyle="seekbar"
+  showInfo={false}
+  height={32}
+/>
+```
+
+---
+
+## Bar — `<WaveformBar>` + `<WaveformBarTrigger>`
+
+The bar is a **singleton**: render `<WaveformBar>` once in your root layout, then scatter `<WaveformBarTrigger>` elements anywhere to play or queue tracks.
+
+### Install
+
+Peer deps: `@arraypress/waveform-bar` (`^1.3.1`), `@arraypress/waveform-player` (`^1.7.2`), `svelte` (`^5.0.0`).
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-bar-svelte @arraypress/waveform-bar @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-bar-svelte @arraypress/waveform-bar @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-bar-svelte @arraypress/waveform-bar @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-bar-svelte @arraypress/waveform-bar @arraypress/waveform-player svelte
+```
+
+</TabItem>
+
+</Tabs>
+
+:::caution[Load order matters]
+The bar has a hard runtime dependency on the player global. Import the **player before the bar** at your app entry, or `window.WaveformBar` will be undefined:
+
+```svelte title="src/routes/+layout.svelte"
+<script>
+  import '@arraypress/waveform-player/dist/waveform-player.css';
+  import '@arraypress/waveform-bar/dist/waveform-bar.css';
+  import '@arraypress/waveform-player'; // sets window.WaveformPlayer (first)
+  import '@arraypress/waveform-bar';    // sets window.WaveformBar    (second)
+</script>
+
+<slot />
+```
+:::
+
+### Mount the bar
+
+Render exactly **once** in your root layout. On mount the component renders a persist host, dynamically imports the core, and calls `window.WaveformBar.init(config)`; on unmount it calls `destroy()` so route changes don't leak listeners.
+
+```svelte title="src/routes/+layout.svelte"
+<script lang="ts">
+  import { WaveformBar } from '@arraypress/waveform-bar-svelte';
+</script>
+
+<slot />
+
+<WaveformBar
+  config={{
+    persist: true,
+    continuous: true,
+    showQueue: true,
+    actions: {
+      favorite: { endpoint: '/api/favorites' },
+      cart: { endpoint: '/api/cart' },
+    },
+  }}
+/>
+```
+
+| `<WaveformBar>` prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `config` | `WaveformBarConfig` | `undefined` | Passed verbatim to `init()`. See table below. |
+| `persist` | `boolean` | `true` | Relocate the `.waveform-bar` element under the host `<div>` so it survives route changes. |
+| `hostId` | `string` | `'waveform-bar-host'` | DOM `id` of the persist host. |
+
+`class` and any other attribute fall through to the host `<div>` (base class `wb-host`).
+
+:::note[Config change detection]
+`init()` re-runs only when the config's structural shape changes — compared via a `$derived` `JSON.stringify` key. Passing a fresh object with the same shape on every render is safe. Function endpoints (`actions.*.endpoint`) collapse to a sentinel in that key, so pass **stable references** for those to avoid re-init churn.
+:::
+
+#### `WaveformBarConfig`
+
+`waveform-bar-svelte` hand-declares this type (the bar core ships no `.d.ts`), so this is the source of truth for the typed config surface. Every field is optional.
+
+| Group | Fields |
+| --- | --- |
+| Behaviour | `persist`, `autoResume`, `continuous`, `repeat` (`'off' \| 'all' \| 'one'`) |
+| UI toggles | `showQueue`, `showPrevNext`, `showRepeat`, `showVolume`, `showMute`, `showTime`, `showTrackLink`, `showMeta`, `maxMeta` (number) |
+| Layout | `wide`, `position` (`'bottom' \| 'top'`), `collapsible`, `mode` (`'waveform' \| 'classic'`), `showShuffle`, `shuffle` |
+| Theming | `defaultArtwork` (`string \| null`), `theme` (`'dark' \| 'light' \| null`) |
+| Waveform | `waveform` (boolean), `waveformStyle`, `waveformHeight`, `barWidth`, `barSpacing`, `waveformColor`, `progressColor`, `markerColor` |
+| Sharing / errors | `share`, `shareParam`, `errorText` |
+| Volume / storage | `volume`, `storageKey` |
+| Server actions | `actions` (`{ favorite?, cart? }`, each `{ endpoint, method?, headers? }`) |
+
+:::note[`mode` picks the layout]
+`mode` defaults to `'waveform'` (the standard layout with a width-adjustable waveform canvas — pair it with `wide` to span the viewport). Set `mode: 'classic'` for a Spotify-style centre layout with a full-width seek bar instead of the waveform. There is no `maxWidth` field — width is controlled by `wide` and `mode`.
+:::
+
+### Trigger a track
+
+`<WaveformBarTrigger>` emits the `data-wb-*` attribute contract the bar scans for; the core library handles click delegation. It is polymorphic via `as` — a `<button>` by default — and forwards every standard DOM attribute (`onclick`, `data-testid`, `role`, …) to the rendered element via `...rest`.
+
+```svelte
+<script lang="ts">
+  import { WaveformBarTrigger } from '@arraypress/waveform-bar-svelte';
+  export let track;
+</script>
+
+<article>
+  <h3>{track.title}</h3>
+
+  <!-- Default: a <button> with auto play/pause icons -->
+  <WaveformBarTrigger
+    url={track.url}
+    id={track.id}
+    title={track.title}
+    artist={track.artist}
+    artwork={track.cover}
+  />
+
+  <!-- Append to the queue with custom content -->
+  <WaveformBarTrigger mode="queue" url={track.url} title={track.title}>
+    + Queue
+  </WaveformBarTrigger>
+
+  <!-- Wrap a whole card as the trigger -->
+  <WaveformBarTrigger as="div" url={track.url} title={track.title} noDefaultIcons>
+    <div class="card-body"><!-- … --></div>
+  </WaveformBarTrigger>
+</article>
+```
+
+**Track data props** (`WaveformBarTrackData`) — each maps 1:1 to a `data-wb-*` attribute; arrays are JSON-encoded, and absent props emit no attribute:
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | Play target + identity. |
+| `id` | `string` | Defaults to `url`. |
+| `title`, `artist`, `album`, `artwork`, `link` | `string` | Display metadata. |
+| `duration`, `bpm` | `string \| number` | |
+| `musicalKey` | `string` | → `data-wb-key`. |
+| `meta` | `string[]` | Extra metadata chips. |
+| `waveform` | `number[] \| string` | Pre-computed peaks or `.json` URL. |
+| `markers` | `WaveformBarMarker[]` | DJ-mode cue markers (`{ time, label, title?, artist?, artwork?, bpm?, key?, color? }`). |
+| `favorited`, `inCart` | `boolean` | Initial action state. |
+
+**Trigger-specific props:**
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `mode` | `'play' \| 'queue'` | `'play'` | Immediate play vs. append to queue. |
+| `as` | `'button' \| 'a' \| 'div' \| 'span'` | `'button'` | Rendered tag. |
+| `href` | `string` | — | Used when `as="a"`. |
+| `noDefaultIcons` | `boolean` | `false` | Suppress the injected play/pause SVGs. |
+| `aria-label` | `string` | auto | Auto-generated from `title` when absent. |
+| `class` | `string` | — | Appended to the base class `wb-icon-swap`. |
+
+Slotted children replace the default icons. `class`, native listeners (`onclick`), and any other DOM attribute fall through to the rendered element.
+
+:::note[No callback props on the bar]
+The bar deliberately exposes no callback props (and no imperative handle) — an inline function each render would needlessly re-init the singleton. The core dispatches every state change as a bubbling `waveformbar:*` `CustomEvent` (e.g. `waveformbar:play`, `waveformbar:trackchange`); listen via `addEventListener` in your own effect. That stays framework-agnostic and avoids re-init churn.
+:::
+
+---
+
+## Playlist — `<WaveformPlaylist>`
+
+A declarative `tracks` array with optional chapters, an embedded player, and imperative track / chapter navigation.
+
+### Install
+
+Peer deps: `@arraypress/waveform-playlist` (`^1.3.0`), `@arraypress/waveform-player` (`^1.8.0`), `svelte` (`^5.0.0`).
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-playlist-svelte @arraypress/waveform-playlist @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-playlist-svelte @arraypress/waveform-playlist @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-playlist-svelte @arraypress/waveform-playlist @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-playlist-svelte @arraypress/waveform-playlist @arraypress/waveform-player svelte
+```
+
+</TabItem>
+
+</Tabs>
+
+Import both stylesheets, and import the player core for its global side effect — the playlist constructs `new window.WaveformPlayer(...)` for the active track:
+
+```svelte title="src/routes/+layout.svelte"
+<script>
+  import '@arraypress/waveform-player'; // registers window.WaveformPlayer
+  import '@arraypress/waveform-player/dist/waveform-player.css';
+  import '@arraypress/waveform-playlist/dist/waveform-playlist.css';
+</script>
+
+<slot />
+```
+
+### Quick start
+
+```svelte
+<script lang="ts">
+  import { WaveformPlaylist } from '@arraypress/waveform-playlist-svelte';
+</script>
+
+<WaveformPlaylist
+  continuous
+  waveformStyle="bars"
+  tracks={[
+    { url: '/audio/a.mp3', title: 'Track A', subtitle: 'Artist' },
+    {
+      url: '/audio/b.mp3',
+      title: 'Track B',
+      chapters: [
+        { time: 0, label: 'Intro' },
+        { time: '1:30', label: 'Verse' },
+        { time: 180, label: 'Chorus', color: '#22d3ee' },
+      ],
+    },
+  ]}
+/>
+```
+
+Each track renders into the `[data-track]` / `[data-chapter]` markup the playlist constructor parses on mount. The host carries the base class `wfp-host`.
+
+### `tracks` (required)
+
+`WaveformPlaylistTrackInput[]`:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `url` | `string` | **Required** → `data-url`. |
+| `title` | `string` | Falls back to the filename if omitted. |
+| `subtitle` | `string` | Subtitle row. |
+| `artwork` | `string` | Artwork URL. |
+| `album` | `string` | Media Session metadata. |
+| `duration` | `string` | Display duration, e.g. `'3:45'`. |
+| `markers` | `WaveformPlaylistMarker[]` | JSON-encoded into `data-markers`. |
+| `chapters` | `WaveformPlaylistChapterInput[]` | `{ time: number \| string, label, color? }` — `time` accepts seconds or `'M:SS'`. |
+
+### Props
+
+`WaveformPlaylistProps` combines three groups:
+
+1. **Playlist options** picked from `WaveformPlaylistOptions`: `continuous`, `expandChapters`, `showDuration`, `showChapterMarkers`, `chapterMarkerColor`, `showPlayState`.
+2. **Pass-through player options** — the full `WaveformPlayerOptions` visualization / colour / behaviour surface, **minus** per-track content (`url`, `src`, `title`, `subtitle`, `artwork`, `album`, `markers`, `waveform`), the `style` alias, the player's own `layout`, and the lifecycle callbacks.
+3. **Svelte extras** — the required `tracks`, plus `class`, `style`, `id` and other element attributes (fall through to the host).
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `tracks` | `WaveformPlaylistTrackInput[]` | — | **Required.** An empty array renders an empty playlist (the core skips init). |
+| `layout` | `'list' \| 'minimal'` | `'list'` | Full track list vs. compact button switcher. **Overrides** the player's own `layout`. |
+| `class` | `string` | — | Appended to `wfp-host`. |
+| `style` | `string` | — | Inline CSS on the host. |
+| `id` | `string` | — | Forwarded to the host `<div>`. |
+
+Common pass-through player props include `waveformStyle`, `height`, `colorPreset`, `waveformColor`, `progressColor`, `showBPM`, `accessibleSeek`, and `autoplay` — see [Player → Options](/player/options/) for the complete list.
+
+The same lowercase lifecycle callback props as the player (`onload`, `onplay`, `onpause`, `onend`, `ontimeupdate`, `onerror`) are accepted and forwarded to the embedded player; like the player's, they reach the live instance through reactive closures and never trigger a re-mount. For richer control, reach the embedded player directly through `getPlayer()`.
+
+### Imperative navigation via `bind:this`
+
+```svelte
+<script lang="ts">
+  import { WaveformPlaylist } from '@arraypress/waveform-playlist-svelte';
+  let playlist: WaveformPlaylist;
+  export let tracks;
+</script>
+
+<WaveformPlaylist bind:this={playlist} {tracks} continuous />
+<button onclick={() => playlist.previousTrack()}>Prev</button>
+<button onclick={() => playlist.nextTrack()}>Next</button>
+<button onclick={() => playlist.selectTrack(0)}>First</button>
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `selectTrack` | `(index: number) => void` | Select + load a track by index. |
+| `seekToChapter` | `(trackIndex, time) => void` | Loads the target track first if needed, then seeks. |
+| `nextTrack` | `() => void` | |
+| `previousTrack` | `() => void` | |
+| `getPlayer` | `() => unknown \| null` | The embedded `WaveformPlayer` instance (full player API). |
+| `getCurrentTrackIndex` | `() => number` | |
+| `getTracks` | `() => WaveformPlaylistTrack[]` | Parsed tracks (with resolved `element` / `index`). |
+| `getInstance` | `() => WaveformPlaylist \| null` | Escape hatch for anything else. |
+
+Calls before the async import resolves are safe no-ops. The typed handle interface is exported as `WaveformPlaylistExpose`.
+
+:::note[Re-mount semantics]
+Changing `tracks` (compared by serialized value) or any construction-time option tears the playlist down and rebuilds it against the freshly rendered markup. For navigation without a re-mount, use the handle above.
+:::
+
+---
+
+## Server-side rendering
+
+All three components are SSR / SvelteKit-prerender safe by construction: the host markup (and, for the playlist, the `[data-track]` children) renders on the server, and the browser-only core is dynamically `import()`ed inside `$effect`. Because effects never run during SSR, the audio + canvas surface only evaluates after hydration on the client — no `import.meta.env.SSR` guard or `{#if browser}` wrapper is needed.
+
+Reserve layout space with the `style` attribute (e.g. `style="min-height: 96px"`) to avoid a content shift before the waveform draws, and import each core's CSS once in your root `+layout.svelte` (for the bar, remember the player-before-bar load order above).
+
+## Related
+
+<CardGrid>
+
+  <Card title="Player options" icon="setting">
+    Full inherited option surface — [Player → Options](/player/options/).
+  </Card>
+  <Card title="Events" icon="rss">
+    The `waveformplayer:*` DOM events — [Player → Events](/player/events/).
+  </Card>
+  <Card title="React" icon="seti:react">
+    The same wrappers, typed for React — [React](/frameworks/react/).
+  </Card>
+  <Card title="Installation" icon="download">
+    Bundler, CDN, and CSS setup — [Getting started](/getting-started/installation/).
+  </Card>
+
+</CardGrid>
