@@ -163,7 +163,7 @@ function Controlled() {
 | `setPlaybackRate` | `(rate: number) => void` | Clamped `0.5..2`. Self mode only. |
 | `setPlayingState` | `(playing: boolean) => void` | **External mode** — push play/pause visual state. |
 | `setProgress` | `(currentTime, duration) => void` | **External mode** — push the progress overlay from your own clock. |
-| `loadTrack` | `(url, title?, subtitle?, options?) => Promise<void>` | Swap track at runtime; auto-plays unless `options.autoplay === false`. |
+| `loadTrack` | `(url, title?, artist?, options?) => Promise<void>` | Swap track at runtime; auto-plays unless `options.autoplay === false`. |
 | `instance` | `readonly WaveformPlayer` | Escape hatch — full core API (`load`, `setWaveformData`, `refreshTheme`, `container`, statics, …). |
 
 Calls before the async import resolves are safe no-ops.
@@ -407,7 +407,7 @@ export default function Album() {
       continuous
       waveformStyle="bars"
       tracks={[
-        { url: '/audio/a.mp3', title: 'Track A', subtitle: 'Artist' },
+        { url: '/audio/a.mp3', title: 'Track A', artist: 'Artist' },
         {
           url: '/audio/b.mp3',
           title: 'Track B',
@@ -433,7 +433,7 @@ Each track renders into the `[data-track]` / `[data-chapter]` markup the playlis
 | --- | --- | --- |
 | `url` | `string` | **Required** → `data-url`. |
 | `title` | `string` | Falls back to the filename if omitted. |
-| `subtitle` | `string` | Subtitle row. |
+| `artist` | `string` | Artist row. |
 | `artwork` | `string` | Artwork URL. |
 | `album` | `string` | Media Session metadata. |
 | `duration` | `string` | Display duration, e.g. `'3:45'`. |
@@ -445,7 +445,7 @@ Each track renders into the `[data-track]` / `[data-chapter]` markup the playlis
 `WaveformPlaylistProps` combines three groups:
 
 1. **Playlist options** picked from `WaveformPlaylistOptions`: `continuous`, `expandChapters`, `showDuration`, `showChapterMarkers`, `chapterMarkerColor`, `showPlayState`.
-2. **Pass-through player options** — the full `WaveformPlayerOptions` visualization / colour / behaviour surface, **minus** per-track content (`url`, `src`, `title`, `subtitle`, `artwork`, `album`, `markers`, `waveform`), the `style` alias, the player's own `layout`, and the lifecycle callbacks.
+2. **Pass-through player options** — the full `WaveformPlayerOptions` visualization / colour / behaviour surface, **minus** per-track content (`url`, `src`, `title`, `artist`, `artwork`, `album`, `markers`, `waveform`), the `style` alias, the player's own `layout`, and the lifecycle callbacks.
 3. **React extras** — the required `tracks`, plus `id`, `className`, `style`.
 
 | Prop | Type | Default | Notes |

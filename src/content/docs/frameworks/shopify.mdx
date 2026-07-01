@@ -115,7 +115,7 @@ A player is any element with `data-waveform-player` plus a source. Every constru
 | --- | --- | --- |
 | `data-src` / `data-url` | `url` | Audio file URL. `data-url` wins if both set. |
 | `data-title` | `title` | Falls back to the URL filename if omitted. |
-| `data-subtitle` | `subtitle` | Second info line (e.g. artist). |
+| `data-artist` | `artist` | Second info line (e.g. artist). |
 | `data-artwork` | `artwork` | 40×40 thumbnail + Media Session art. |
 | `data-waveform-style` / `data-style` | `waveformStyle` | `bars` · `mirror` · `line` · `blocks` · `dots` · `seekbar`. |
 | `data-height` | `height` | Waveform height in px (default `64`). |
@@ -133,7 +133,7 @@ Liquid renders everything as text, which is exactly what the parser expects. Boo
 :::
 
 :::caution[Escape dynamic strings]
-When you interpolate merchant- or customer-controlled text (a title, subtitle, or a metafield), pass it through Liquid's `escape` filter so quotes and angle brackets can't break out of the attribute: `data-title="{{ block.settings.title | escape }}"`.
+When you interpolate merchant- or customer-controlled text (a title, artist, or a metafield), pass it through Liquid's `escape` filter so quotes and angle brackets can't break out of the attribute: `data-title="{{ block.settings.title | escape }}"`.
 :::
 
 ## 3. Drive it from Liquid
@@ -193,7 +193,7 @@ Render a player per product in a collection (or per line item in a cart), guardi
           data-waveform-player
           data-src="{{ audio | file_url }}"
           data-title="{{ product.title | escape }}"
-          data-subtitle="{{ product.vendor | escape }}"
+          data-artist="{{ product.vendor | escape }}"
           data-artwork="{{ product.featured_image | image_url: width: 80 }}"
           data-waveform-style="bars"
           data-layout="preview"></div>
@@ -211,7 +211,7 @@ Extract the markup into `snippets/waveform-player.liquid` so templates stay clea
 
 ```liquid
 {% comment %} snippets/waveform-player.liquid
-  Renders a WaveformPlayer. Required: url. Optional: title, subtitle,
+  Renders a WaveformPlayer. Required: url. Optional: title, artist,
   artwork, style, peaks (a .json peaks URL), bpm.
 {% endcomment %}
 {%- if url != blank -%}
@@ -219,7 +219,7 @@ Extract the markup into `snippets/waveform-player.liquid` so templates stay clea
     data-waveform-player
     data-src="{{ url }}"
     {% if title != blank %}data-title="{{ title | escape }}"{% endif %}
-    {% if subtitle != blank %}data-subtitle="{{ subtitle | escape }}"{% endif %}
+    {% if artist != blank %}data-artist="{{ artist | escape }}"{% endif %}
     {% if artwork != blank %}data-artwork="{{ artwork }}"{% endif %}
     {% if peaks != blank %}data-waveform="{{ peaks }}"{% endif %}
     {% if bpm != blank %}data-show-bpm="true" data-bpm="{{ bpm }}"{% endif %}
@@ -233,7 +233,7 @@ Call it from a product template:
 {% render 'waveform-player',
    url: product.metafields.custom.audio_file | file_url,
    title: product.title,
-   subtitle: product.vendor,
+   artist: product.vendor,
    artwork: product.featured_image | image_url: width: 80,
    style: 'mirror' %}
 ```
@@ -253,7 +253,7 @@ A self-contained section with schema settings lets merchants drop a player onto 
       data-waveform-player
       data-src="{{ source | file_url }}"
       data-title="{{ section.settings.title | escape }}"
-      data-subtitle="{{ section.settings.subtitle | escape }}"
+      data-artist="{{ section.settings.artist | escape }}"
       data-waveform-style="{{ section.settings.style }}"
       data-color-preset="{{ section.settings.preset }}"
       data-height="{{ section.settings.height }}"
@@ -272,7 +272,7 @@ A self-contained section with schema settings lets merchants drop a player onto 
   "name": "Audio player",
   "settings": [
     { "type": "text", "id": "title", "label": "Title" },
-    { "type": "text", "id": "subtitle", "label": "Subtitle" },
+    { "type": "text", "id": "artist", "label": "Artist" },
     { "type": "url", "id": "audio_url", "label": "Audio URL" },
     {
       "type": "select", "id": "style", "label": "Waveform style", "default": "mirror",

@@ -14,9 +14,9 @@ The playlist picks one of five UIs based on content and the `layout` option:
 
 2. **Minimal** — `layout: 'minimal'` renders a compact row of pill buttons (`.wp-controls` / `.wp-track-btn`), one per track. Good for album switchers and tight footers.
 
-3. **List** (default) — everything else renders the full track-row list (`.wp-list`), each row showing artwork/number, title, subtitle and duration, with chapters as expandable nested sub-lists under the active track.
+3. **List** (default) — everything else renders the full track-row list (`.wp-list`), each row showing artwork/number, title, artist and duration, with chapters as expandable nested sub-lists under the active track.
 
-4. **Hero** — `layout: 'hero'` (added in 1.4.0) — a "now playing" unit: the cover artwork doubles as the play/pause button beside the waveform, with a title/subtitle and a current/total time readout, shown over a stripped track queue. A single **chaptered** track instead renders a seekable chapter list with chapter markers on the waveform.
+4. **Hero** — `layout: 'hero'` (added in 1.4.0) — a "now playing" unit: the cover artwork doubles as the play/pause button beside the waveform, with a title/artist and a current/total time readout, shown over a stripped track queue. A single **chaptered** track instead renders a seekable chapter list with chapter markers on the waveform.
 
 5. **Grid** — `layout: 'grid'` (added in 1.4.0) — a responsive grid of cover-art cards with a slim "now playing" transport bar (waveform + title/time) docked above or below the grid (via `barPosition`). The active card is ringed.
 
@@ -30,9 +30,9 @@ The playlist picks one of five UIs based on content and the `layout` option:
 
 <!-- Hero "now playing" unit over a track queue -->
 <div data-waveform-playlist data-layout="hero">
-  <div data-track data-url="track-1.mp3" data-title="One"   data-subtitle="Artist" data-artwork="1.jpg"></div>
-  <div data-track data-url="track-2.mp3" data-title="Two"   data-subtitle="Artist" data-artwork="2.jpg"></div>
-  <div data-track data-url="track-3.mp3" data-title="Three" data-subtitle="Artist" data-artwork="3.jpg"></div>
+  <div data-track data-url="track-1.mp3" data-title="One"   data-artist="Artist" data-artwork="1.jpg"></div>
+  <div data-track data-url="track-2.mp3" data-title="Two"   data-artist="Artist" data-artwork="2.jpg"></div>
+  <div data-track data-url="track-3.mp3" data-title="Three" data-artist="Artist" data-artwork="3.jpg"></div>
 </div>
 ```
 
@@ -59,7 +59,7 @@ The following five sizing/position options were added in 1.4.0 and apply to the 
 | `density` | `data-density` | `'comfortable' \| 'compact'` | `'comfortable'` | Row spacing for the hero queue and grid. `'compact'` adds `.wp-density-compact` for tighter rows. |
 | `coverPosition` | `data-cover-position` | `'left' \| 'top'` | `'left'` | Hero only — place the cover beside (`'left'`) or above (`'top'`) the waveform. `'top'` adds `.wp-cover-top`. |
 | `barPosition` | `data-bar-position` | `'top' \| 'bottom'` | `'bottom'` | Grid only — dock the now-playing transport bar above (`'top'`, adds `.wp-now-bar-top`) or below the cards. |
-| `showSubtitle` | `data-show-subtitle` | `boolean` | `true` | Show the now-playing subtitle in the hero/grid bar. `data-show-subtitle="false"` hides it. |
+| `showArtist` | `data-show-artist` | `boolean` | `true` | Show the now-playing artist in the hero/grid bar. `data-show-artist="false"` hides it. |
 
 <Aside type="note" title="Default colour: source vs README">
 The runtime default for `chapterMarkerColor` is grey `rgba(161, 161, 170, 0.85)` (authoritative — the source value). Older README copy lists a purple `rgba(168, 85, 247, 0.8)`; the source value wins at runtime.
@@ -91,10 +91,10 @@ When the same option is provided both ways, the **container `data-*` overrides t
 These keys are deleted from the container's inherited `data-*` surface and **cannot** be set at the container level — the playlist owns them and sets them per-track:
 
 ```text
-audioMode  url  title  subtitle  album  artwork  markers  waveform
+audioMode  url  title  artist  album  artwork  markers  waveform
 ```
 
-`data-audio-mode`, `data-url`, `data-title`, `data-subtitle`, `data-album`, `data-artwork`, `data-markers`, and `data-waveform` on the container are ignored. The playlist always drives a **self-mode** player and populates the content fields from each track. (`data-markers` is still read on individual `[data-track]` elements — only the container-level key is stripped.)
+`data-audio-mode`, `data-url`, `data-title`, `data-artist`, `data-album`, `data-artwork`, `data-markers`, and `data-waveform` on the container are ignored. The playlist always drives a **self-mode** player and populates the content fields from each track. (`data-markers` is still read on individual `[data-track]` elements — only the container-level key is stripped.)
 
 ## Continuous playback
 

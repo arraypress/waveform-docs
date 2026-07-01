@@ -83,7 +83,7 @@ Mark a container with `data-waveform-playlist` and add `[data-track]` children. 
   <div data-track
        data-url="episode.mp3"
        data-title="Episode 42"
-       data-subtitle="with Dr. Chen"
+       data-artist="with Dr. Chen"
        data-artwork="cover.jpg">
     <div data-chapter data-time="0:00">Introduction</div>
     <div data-chapter data-time="5:30">Main Topic</div>
@@ -116,7 +116,7 @@ Set on each `[data-track]` element.
 | --- | --- | --- |
 | `data-url` | Yes | Audio file URL. If `data-title` is absent, the title is derived from this filename. |
 | `data-title` | No | Display title. Defaults to the `data-url` filename with `-`/`_` converted to spaces, or `Untitled` if no URL. |
-| `data-subtitle` | No | Artist / description line (default empty). |
+| `data-artist` | No | Artist / description line (default empty). |
 | `data-artwork` | No | Artwork image URL. Renders `.wp-artwork-container` and enables the play-state overlay on the active row. |
 | `data-album` | No | Album name, passed to the player for the Media Session metadata. |
 | `data-duration` | No | **Display-only** duration string, e.g. `3:45`. It is never parsed — only shown when `showDuration` is on. |

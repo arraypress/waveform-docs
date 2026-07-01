@@ -9,7 +9,7 @@ interface Props {
 	url: string;
 	waveform?: string;
 	title?: string;
-	subtitle?: string;
+	artist?: string;
 	artwork?: string;
 	waveformStyle?: string;
 	height?: number;
@@ -31,7 +31,7 @@ const p = Astro.props;
 		data-url={p.url}
 		data-waveform={p.waveform}
 		data-title={p.title}
-		data-subtitle={p.subtitle}
+		data-artist={p.artist}
 		data-artwork={p.artwork}
 		data-waveform-style={p.waveformStyle ?? 'mirror'}
 		data-height={p.height ?? 64}

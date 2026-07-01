@@ -29,7 +29,7 @@ The constructor resolves the container, verifies `window.WaveformPlayer`, parses
 | `previousTrack(): void` | `selectTrack(currentTrackIndex - 1)` when not already on the first track. |
 | `getPlayer(): WaveformPlayer \| null` | The underlying player instance (`null` before init / after `destroy()`). |
 | `getCurrentTrackIndex(): number` | Zero-based index of the selected track. |
-| `getTracks(): WaveformPlaylistTrack[]` | The parsed track objects (`element`, `index`, `url`, `title`, `subtitle`, `artwork`, `album`, `duration`, `chapters[]`, `markers[]`). |
+| `getTracks(): WaveformPlaylistTrack[]` | The parsed track objects (`element`, `index`, `url`, `title`, `artist`, `artwork`, `album`, `duration`, `chapters[]`, `markers[]`). |
 | `destroy(): void` | Removes the keydown listener, destroys the player, clears `container.innerHTML`, removes the `waveform-playlist` / `wp-minimal` classes, restores the hidden `[data-track]` elements, and nulls `player` / `listElement` / `tracks`. |
 | `WaveformPlaylist.init()` _(static)_ | Auto-initialise every `[data-waveform-playlist]` not already marked initialised. Per-element errors are caught and `console.error`'d. |
 
@@ -90,12 +90,12 @@ The playlist generates a structured DOM you can target for theming. Key hooks:
 | `.wp-item` | Track row (`role="button"`). `.wp-active` marks the active row. |
 | `.wp-indicator` | Track-number badge (shown when a track has no artwork). |
 | `.wp-artwork-container` / `.wp-artwork` / `.wp-artwork-overlay` | Artwork wrapper, image, and the active-track play/pause overlay. |
-| `.wp-info` / `.wp-title` / `.wp-subtitle` / `.wp-duration` | The text column. |
+| `.wp-info` / `.wp-title` / `.wp-artist` / `.wp-duration` | The text column. |
 | `.wp-chapters` / `.wp-chapter` | Nested chapter list and rows under a track (multi-track). `.wp-chapter-time` / `.wp-chapter-label` for the row contents. |
 | `.wp-chapter-item` / `.wp-time` / `.wp-label` | Rows in the single-track chapters-only list. |
 | `.wp-controls` / `.wp-track-btn` | Minimal-layout button container and buttons (`aria-pressed` reflects selection). |
 | `.wp-hero` / `.wp-hero-cover` / `.wp-hero-art` / `.wp-hero-overlay` | **Hero** — the "now playing" unit, the cover play/pause button, its image, and the overlay icon. |
-| `.wp-hero-stage` / `.wp-hero-meta` / `.wp-hero-title` / `.wp-hero-sub` / `.wp-hero-time` | **Hero** — the waveform stage (hosts the player) and the title / subtitle / current-total-time meta row. |
+| `.wp-hero-stage` / `.wp-hero-meta` / `.wp-hero-title` / `.wp-hero-sub` / `.wp-hero-time` | **Hero** — the waveform stage (hosts the player) and the title / artist / current-total-time meta row. |
 | `.wp-queue` / `.wp-queue-item` / `.wp-queue-thumb` / `.wp-queue-state` | **Hero** — the stripped track queue: list, row, thumbnail, and the per-row play-state indicator. |
 | `.wp-now-bar` / `.wp-now-bar-top` / `.wp-now-meta` | **Grid** — the slim now-playing transport bar (`.wp-now-bar-top` when `barPosition: 'top'`) and its title/time meta. |
 | `.wp-grid` / `.wp-grid-item` / `.wp-grid-cover` / `.wp-grid-art` / `.wp-grid-title` | **Grid** — the card container, a card (active card is ringed), the cover wrapper, image, and title. |

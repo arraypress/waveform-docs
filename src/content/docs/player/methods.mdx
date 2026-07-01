@@ -125,15 +125,15 @@ Loads (or reloads) audio into the existing player: sets the title, fetches or ge
 
 `load()` is the low-level primitive. For most runtime swaps prefer `loadTrack()`, which also resets per-track state and updates the info DOM.
 
-### `loadTrack(url, title?, subtitle?, options?)`
+### `loadTrack(url, title?, artist?, options?)`
 
-Swaps the current track at runtime. Pauses, resets the audio / error / progress state, **resets per-track options** (`markers` → `[]` and `waveform` → `null`), merges the supplied `options`, updates the subtitle and artwork DOM, then calls `load()`. It auto-plays the new track unless `options.autoplay === false`.
+Swaps the current track at runtime. Pauses, resets the audio / error / progress state, **resets per-track options** (`markers` → `[]` and `waveform` → `null`), merges the supplied `options`, updates the artist and artwork DOM, then calls `load()`. It auto-plays the new track unless `options.autoplay === false`.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `url` | `string` | New audio URL. |
 | `title` | `string \| null` | Optional. Track title; `null` derives it from the URL filename. |
-| `subtitle` | `string \| null` | Optional. Subtitle row; pass `''` to hide it. |
+| `artist` | `string \| null` | Optional. Artist row; pass `''` to hide it. |
 | `options` | `object` | Optional. Per-track overrides merged over current options (e.g. `markers`, `waveform`, `artwork`, `bpm`, `autoplay`). |
 
 **Returns** `Promise<void>`.
@@ -413,7 +413,7 @@ const label = WaveformPlayer.utils.formatTime(95); // '1:35'
 | `seekTo(seconds)` | self | `void` |
 | `seekToPercent(percent)` | self | `void` |
 | `load(url)` | both | `Promise<void>` |
-| `loadTrack(url, title?, subtitle?, options?)` | both | `Promise<void>` |
+| `loadTrack(url, title?, artist?, options?)` | both | `Promise<void>` |
 | `setVolume(volume)` | self | `void` |
 | `setPlaybackRate(rate)` | self | `void` |
 | `setWaveformData(data)` | both | `void` |

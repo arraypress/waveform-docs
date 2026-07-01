@@ -87,7 +87,7 @@ Call `event.preventDefault()` to **veto** the action (e.g. the track isn't loade
 
 ```js
 player.container.addEventListener('waveformplayer:request-play', (e) => {
-  // e.detail = { url, title, subtitle, artist, artwork, markers, waveform, id, player }
+  // e.detail = { url, title, artist, artwork, markers, waveform, id, player }
   WaveformBar.play(e.detail); // forward straight through
 });
 ```
@@ -96,8 +96,7 @@ player.container.addEventListener('waveformplayer:request-play', (e) => {
 | --- | --- |
 | `url` | `options.url` |
 | `title` | `options.title` |
-| `subtitle` | `options.subtitle` |
-| `artist` | `options.artist`, falling back to `subtitle` |
+| `artist` | `options.artist` |
 | `artwork` | `options.artwork` |
 | `markers` | `options.markers` |
 | `waveform` | `options.waveform` (the peaks you supplied) |
@@ -105,7 +104,7 @@ player.container.addEventListener('waveformplayer:request-play', (e) => {
 | `player` | the `WaveformPlayer` instance itself |
 
 <Aside type="caution">
-Core has no built-in `artist` option, so `detail.artist` is `undefined` unless you set `artist` yourself — it then falls back to `subtitle`. There's no separate `artist` default in `DEFAULT_OPTIONS`.
+`artist` defaults to `null` in `DEFAULT_OPTIONS`, so `detail.artist` is `null` unless you set an `artist` yourself (via the option or `data-artist`).
 </Aside>
 
 ## Full wiring example
@@ -193,7 +192,7 @@ Because only the **active** player receives `setProgress()`, the other waveforms
 
 ## Swapping the track in one player
 
-If instead of many static waveforms you have **one** external-mode player whose track changes (the bottom-bar case), use `loadTrack()` to swap URL, title, subtitle, artwork, markers, and peaks at runtime:
+If instead of many static waveforms you have **one** external-mode player whose track changes (the bottom-bar case), use `loadTrack()` to swap URL, title, artist, artwork, markers, and peaks at runtime:
 
 ```js
 await bar.loadTrack('/audio/next.mp3', 'Next Track', 'Some Artist', {

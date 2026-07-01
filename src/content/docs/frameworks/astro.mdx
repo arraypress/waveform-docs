@@ -107,7 +107,7 @@ import WaveformPlayer from '@arraypress/waveform-player-astro';
 <WaveformPlayer
   url="/audio/track.mp3"
   title="Midnight Drive"
-  subtitle="The Synthwaves"
+  artist="The Synthwaves"
   waveformStyle="mirror"
   waveformColor={['#fafafa', '#71717a']}
   showBPM
@@ -380,7 +380,7 @@ import WaveformPlaylist from '@arraypress/waveform-playlist-astro';
     {
       url: '/audio/ep42.mp3',
       title: 'Episode 42',
-      subtitle: 'with Dr. Sarah Chen',
+      artist: 'with Dr. Sarah Chen',
       artwork: '/img/ep42.jpg',
       duration: '48:12',
       chapters: [
@@ -413,7 +413,7 @@ Each `WaveformPlaylistTrackInput` accepts:
 | Field | Type | Becomes |
 | --- | --- | --- |
 | `url` | `string` | `data-url` |
-| `title`, `subtitle`, `artwork`, `album` | `string` | `data-title`, `-subtitle`, `-artwork`, `-album` |
+| `title`, `artist`, `artwork`, `album` | `string` | `data-title`, `-artist`, `-artwork`, `-album` |
 | `duration` | `string` | `data-duration` (free-form display, e.g. `'3:45'`) |
 | `markers` | `{ time: number; label?: string; color?: string }[]` | `data-markers` (JSON) — waveform cue markers |
 | `chapters` | `{ time: number; label: string; color?: string }[]` | nested `[data-chapter]` rows |
@@ -421,7 +421,7 @@ Each `WaveformPlaylistTrackInput` accepts:
 The component also forwards the embedded player's visual options (`waveformStyle`, `height`, `samples`, `barWidth`, the colour props, `showBPM`, `accessibleSeek`, …) straight onto the container, where the playlist reads and passes them to the player it builds.
 
 <Aside type="caution">
-Per-track content (`url`, `title`, `subtitle`, `artwork`, `album`, `markers`, `waveform`) and `audioMode` live on each `tracks` entry, **not** as container props — the playlist owns those at the track level and strips any container copy. Note also that the player's own `layout` (`'default' | 'preview'`) is removed here because it collides with the playlist's `layout` (`'list' | 'minimal'`) on the same `data-layout` attribute; the playlist's wins.
+Per-track content (`url`, `title`, `artist`, `artwork`, `album`, `markers`, `waveform`) and `audioMode` live on each `tracks` entry, **not** as container props — the playlist owns those at the track level and strips any container copy. Note also that the player's own `layout` (`'default' | 'preview'`) is removed here because it collides with the playlist's `layout` (`'list' | 'minimal'`) on the same `data-layout` attribute; the playlist's wins.
 </Aside>
 
 Both lazy mounting (`lazy` → `data-waveform-playlist-lazy`, deduped via `window.__wfplLazyMountBound`) and View-Transitions re-init (deduped via `window.__wfplInitBound`) work identically to the player component.

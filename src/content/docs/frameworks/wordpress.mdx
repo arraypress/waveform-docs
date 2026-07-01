@@ -161,7 +161,7 @@ A shortcode is the most portable route: it works in the classic editor, the Shor
 
 ```php
 /**
- * [waveform src="…" style="mirror" title="…" subtitle="…" height="64" show-bpm="false" peaks="…"]
+ * [waveform src="…" style="mirror" title="…" artist="…" height="64" show-bpm="false" peaks="…"]
  *
  * Renders a WaveformPlayer container. The enqueued script upgrades it on load.
  */
@@ -171,7 +171,7 @@ function wfp_waveform_shortcode( $atts ) {
 			'src'      => '',          // audio URL (required)  -> data-src
 			'style'    => 'mirror',    // bars|mirror|line|blocks|dots|seekbar
 			'title'    => '',          // -> data-title
-			'subtitle' => '',          // -> data-subtitle
+			'artist' => '',          // -> data-artist
 			'height'   => '64',        // -> data-height
 			'show-bpm' => 'false',     // -> data-show-bpm
 			'peaks'    => '',          // pre-computed peaks: .json URL, CSV, or JSON array -> data-waveform
@@ -196,8 +196,8 @@ function wfp_waveform_shortcode( $atts ) {
 	if ( '' !== $atts['title'] ) {
 		$attributes['data-title'] = sanitize_text_field( $atts['title'] );
 	}
-	if ( '' !== $atts['subtitle'] ) {
-		$attributes['data-subtitle'] = sanitize_text_field( $atts['subtitle'] );
+	if ( '' !== $atts['artist'] ) {
+		$attributes['data-artist'] = sanitize_text_field( $atts['artist'] );
 	}
 	if ( '' !== $atts['peaks'] ) {
 		$attributes['data-waveform'] = $atts['peaks'];
@@ -295,7 +295,7 @@ A quick reference for the attributes you'll reach for most in shortcodes and blo
 | --- | --- | --- |
 | `data-src` / `data-url` | audio source | `data-url` is canonical; `data-src` is the alias. |
 | `data-waveform-style` / `data-style` | visual style | `bars`, `mirror`, `line`, `blocks`, `dots`, `seekbar`. |
-| `data-title` / `data-subtitle` | info block | Title falls back to the filename if omitted. |
+| `data-title` / `data-artist` | info block | Title falls back to the filename if omitted. |
 | `data-artwork` | artwork image | 40×40 thumbnail next to the title. |
 | `data-height` | canvas height (px) | Default `64`. |
 | `data-color-preset` | `dark` / `light` | Omit for auto theme detection. |

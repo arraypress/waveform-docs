@@ -166,7 +166,7 @@ The player publishes metadata from your existing options:
 | Media Session field | Source option |
 | --- | --- |
 | `title` | `title` (falls back to `"Unknown Track"`) |
-| `artist` | `subtitle` |
+| `artist` | `artist` |
 | `album` | `album` |
 | `artwork` | `artwork` (advertised at `512x512`) |
 
@@ -183,7 +183,7 @@ And wires these action handlers:
 new WaveformPlayer('#player', {
   url: '/audio/track.mp3',
   title: 'Midnight City',
-  subtitle: 'M83',
+  artist: 'M83',
   album: 'Hurry Up, We\u2019re Dreaming',
   artwork: '/art/m83.jpg',
   enableMediaSession: true, // default
@@ -216,7 +216,7 @@ What does **not** apply in external mode: digit-key seeking, arrow-key volume, `
 | `seekLabel` | `string \| null` | `null` | Slider accessible name; falls back to `title`, then `"Seek"`. |
 | `enableMediaSession` | `boolean` | `true` | Register system Media Session controls (self mode only). |
 | `title` | `string \| null` | `null` | Media Session title + slider name fallback. |
-| `subtitle` | `string \| null` | `null` | Media Session `artist`. |
+| `artist` | `string \| null` | `null` | Media Session `artist`. |
 | `album` | `string` | `''` | Media Session `album` metadata. |
 | `artwork` | `string \| null` | `null` | Media Session artwork (and the `40×40` info image). |
 | `errorText` | `string` | `'Unable to load audio'` | Message announced in the `role="alert"` overlay. |
@@ -230,7 +230,7 @@ What does **not** apply in external mode: digit-key seeking, arrow-key volume, `
 | `data-seek-label` | `seekLabel` |
 | `data-enable-media-session` | `enableMediaSession` |
 | `data-title` | `title` |
-| `data-subtitle` | `subtitle` |
+| `data-artist` | `artist` |
 | `data-album` | `album` |
 | `data-artwork` | `artwork` |
 | `data-error-text` | `errorText` |

@@ -17,7 +17,7 @@ interface Chapter {
 interface Track {
 	url: string;
 	title: string;
-	subtitle?: string;
+	artist?: string;
 	artwork?: string;
 	chapters?: Chapter[];
 }
@@ -30,20 +30,20 @@ interface Props {
 	density?: 'comfortable' | 'compact';
 	coverPosition?: 'left' | 'top';
 	barPosition?: 'top' | 'bottom';
-	showSubtitle?: boolean;
+	showArtist?: boolean;
 }
 
 const DEFAULT_TRACKS: Track[] = [
-	{ url: '/audio/keys-house-piano.mp3', title: 'House Piano', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
-	{ url: '/audio/pluck-luminous.mp3', title: 'Pluck Luminous', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
-	{ url: '/audio/pad-reach.mp3', title: 'Pad Reach', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
-	{ url: '/audio/drum-loop.mp3', title: 'Drum Loop', subtitle: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/keys-house-piano.mp3', title: 'House Piano', artist: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/pluck-luminous.mp3', title: 'Pluck Luminous', artist: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/pad-reach.mp3', title: 'Pad Reach', artist: 'The Wavelength', artwork: '/img/cover.webp' },
+	{ url: '/audio/drum-loop.mp3', title: 'Drum Loop', artist: 'The Wavelength', artwork: '/img/cover.webp' },
 ];
 
 const tracks = Astro.props.tracks ?? DEFAULT_TRACKS;
 const layout = Astro.props.layout ?? 'list';
 const continuous = Astro.props.continuous ?? true;
-const { coverSize, thumbnailSize, density, coverPosition, barPosition, showSubtitle } = Astro.props;
+const { coverSize, thumbnailSize, density, coverPosition, barPosition, showArtist } = Astro.props;
 ---
 
 <div class="playlist-demo not-content" data-wp-demo>
@@ -56,14 +56,14 @@ const { coverSize, thumbnailSize, density, coverPosition, barPosition, showSubti
 		data-density={density ?? undefined}
 		data-cover-position={coverPosition ?? undefined}
 		data-bar-position={barPosition ?? undefined}
-		data-show-subtitle={showSubtitle === false ? 'false' : undefined}
+		data-show-artist={showArtist === false ? 'false' : undefined}
 	>
 		{tracks.map((t) => (
 			<div
 				data-track
 				data-url={t.url}
 				data-title={t.title}
-				data-subtitle={t.subtitle}
+				data-artist={t.artist}
 				data-artwork={t.artwork}
 			>
 				{(t.chapters ?? []).map((c) => (

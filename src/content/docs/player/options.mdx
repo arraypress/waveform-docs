@@ -11,14 +11,14 @@ Every `WaveformPlayer` is configured through a single option surface. You can se
 
 This page is the complete reference. Options are grouped into [Source](#source), [Appearance](#appearance), [Colors](#colors), and [Metadata & UI](#metadata--ui), with the matching `data-*` attribute and any aliases listed for each.
 
-Here is a fully-loaded player — artwork, title, subtitle, and live BPM — to anchor the options below:
+Here is a fully-loaded player — artwork, title, artist, and live BPM — to anchor the options below:
 
 <PlayerDemo
 	url="/audio/keys-house-piano.mp3"
 	waveform="/waveforms/keys-house-piano.json"
 	artwork="/img/cover.webp"
 	title="House Piano"
-	subtitle="The Wavelength"
+	artist="The Wavelength"
 	waveformStyle="mirror"
 	showBpm={true}
 	bpm={124}
@@ -168,7 +168,7 @@ Every color option defaults to `null`, meaning "follow the active color preset".
 | `buttonColor` | `null` | `string \| null` | Play-button border + icon colour; `null` = preset. `data-button-color`. |
 | `buttonHoverColor` | `null` | `string \| null` | Button hover colour; `null` = preset. `data-button-hover-color`. |
 | `textColor` | `null` | `string \| null` | Title colour; `null` = preset. `data-text-color`. |
-| `textSecondaryColor` | `null` | `string \| null` | Subtitle / time / BPM colour; `null` = preset. `data-text-secondary-color`. |
+| `textSecondaryColor` | `null` | `string \| null` | Artist / time / BPM colour; `null` = preset. `data-text-secondary-color`. |
 | `backgroundColor` | `null` | `string \| null` | Player background token; `null` = preset. `data-background-color`. |
 | `borderColor` | `null` | `string \| null` | Player border token; `null` = preset. `data-border-color`. |
 
@@ -216,7 +216,7 @@ Visibility toggles, track metadata, markers, accessibility, and callbacks.
 | --- | --- | --- | --- |
 | `autoplay` | `false` | `boolean` | Play once loaded. `data-autoplay`. |
 | `showControls` | `true` | `boolean` | Render the play/pause button. `data-show-controls`. |
-| `showInfo` | `true` | `boolean` | Render the info block (artwork/title/subtitle/meta). `data-show-info`. |
+| `showInfo` | `true` | `boolean` | Render the info block (artwork/title/artist/meta). `data-show-info`. |
 | `showTime` | `true` | `boolean` | Render current/total time display. `data-show-time`. |
 | `showHoverTime` | `false` | `boolean` | Show a tooltip that follows the pointer over the waveform, displaying the time at that position (self + external modes). `data-show-hover-time`. |
 | `seekHandle` | `false` | `boolean` | On the `seekbar` style only: a draggable circular handle that expands on hover (Spotify-style). Drag-to-scrub works on every style regardless. `data-seek-handle`. |
@@ -234,7 +234,7 @@ This is the one option whose `data-*` key isn't a literal kebab-casing of the JS
 | Option | Default | Type | Notes |
 | --- | --- | --- | --- |
 | `title` | `null` | `string \| null` | Track title; `null` derives from the URL filename via `extractTitleFromUrl`. `data-title`. |
-| `subtitle` | `null` | `string \| null` | Subtitle row; `''` hides it in `loadTrack`. `data-subtitle`. |
+| `artist` | `null` | `string \| null` | Artist row; `''` hides it in `loadTrack`. `data-artist`. |
 | `artwork` | `null` | `string \| null` | Artwork image URL (40&times;40) + Media Session art. `data-artwork`. |
 | `album` | `''` | `string` | Media Session album metadata only. `data-album`. |
 | `bpm` | `null` | `number \| null` | Known BPM; wins over auto-detection (shows even when peaks are pre-supplied). `data-bpm`. |
@@ -299,11 +299,11 @@ new WaveformPlayer('#player', {
 
 ## Per-track resets
 
-When you swap tracks at runtime with [`loadTrack()`](/player/methods/#loadtrackurl-title-subtitle-options), some options are deliberately reset so the new track can't inherit stale state:
+When you swap tracks at runtime with [`loadTrack()`](/player/methods/#loadtrackurl-title-artist-options), some options are deliberately reset so the new track can't inherit stale state:
 
 - `waveform` &rarr; `null` (otherwise the previous track's peaks would redraw)
 - `markers` &rarr; `[]`
-- `subtitle` &rarr; passing `''` clears the row
+- `artist` &rarr; passing `''` clears the row
 
 :::caution[`mergeOptions` skips `null`]
 The internal merge ignores `null`/`undefined`, so a later source can't clear an earlier value by passing `null`. That's exactly why `loadTrack` explicitly resets `waveform` and `markers` per track. If you add your own per-track options, reset them the same way.
@@ -361,7 +361,7 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-accessible-seek` | `accessibleSeek` | bool. |
 | `data-seek-label` | `seekLabel` | string. |
 | `data-title` | `title` | string. |
-| `data-subtitle` | `subtitle` | string. |
+| `data-artist` | `artist` | string. |
 | `data-album` | `album` | string. |
 | `data-artwork` | `artwork` | string. |
 | `data-error-text` | `errorText` | string. |

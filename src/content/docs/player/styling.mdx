@@ -76,7 +76,7 @@ The player below is auto-themed — flip this site's light/dark toggle (top of t
 	url="/audio/keys-house-piano.mp3"
 	waveform="/waveforms/keys-house-piano.json"
 	title="House Piano"
-	subtitle="Auto-themed — toggle the page theme"
+	artist="Auto-themed — toggle the page theme"
 	waveformStyle="mirror"
 />
 
@@ -107,7 +107,7 @@ Every preset token has a matching option. Set any of them to override the preset
 | `buttonColor`         | `string \| null`           | Play-button border + icon                 | `data-button-color`           |
 | `buttonHoverColor`    | `string \| null`           | Play-button hover color                   | `data-button-hover-color`     |
 | `textColor`           | `string \| null`           | Title color                               | `data-text-color`             |
-| `textSecondaryColor`  | `string \| null`           | Subtitle / time / BPM color               | `data-text-secondary-color`   |
+| `textSecondaryColor`  | `string \| null`           | Artist / time / BPM color               | `data-text-secondary-color`   |
 | `backgroundColor`     | `string \| null`           | Player background token                   | `data-background-color`       |
 | `borderColor`         | `string \| null`           | Player border token                       | `data-border-color`           |
 
@@ -153,7 +153,7 @@ In markup, pass a JSON array string:
 	url="/audio/pad-reach.mp3"
 	waveform="/waveforms/pad-reach.json"
 	title="Gradient stops"
-	subtitle="white→zinc waveform, orange→red progress"
+	artist="white→zinc waveform, orange→red progress"
 	waveformColor={'["#fafafa", "#71717a"]'}
 	progressColor={'["#f97316", "#b91c1c"]'}
 />
@@ -262,7 +262,7 @@ A `minimal` button at `4rem`, live:
 	url="/audio/drum-loop.mp3"
 	waveform="/waveforms/drum-loop.json"
 	title="Drum Loop"
-	subtitle="minimal button · 4rem"
+	artist="minimal button · 4rem"
 	waveformStyle="bars"
 	buttonStyle="minimal"
 	buttonSize="4rem"
@@ -274,7 +274,7 @@ A `minimal` button at `4rem`, live:
 
 | Value       | Result                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------ |
-| `'default'` | Play button + waveform with a left-aligned info row (artwork / title / subtitle / meta) below. |
+| `'default'` | Play button + waveform with a left-aligned info row (artwork / title / artist / meta) below. |
 | `'preview'` | Compact: the title is centered under the waveform and the meta row (time / speed / BPM) is trimmed. Adds `.waveform-layout-preview` to the root — ideal for sample-pack previews and dense grids. |
 
 ```js

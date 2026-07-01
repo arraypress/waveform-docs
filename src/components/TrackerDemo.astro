@@ -15,7 +15,7 @@ interface Props {
 	url?: string;
 	waveform?: string;
 	title?: string;
-	subtitle?: string;
+	artist?: string;
 	/** Seconds of cumulative playback before a `listen` event fires. */
 	listen?: number;
 }
@@ -23,7 +23,7 @@ const p = Astro.props;
 const url = p.url ?? '/audio/keys-house-piano.mp3';
 const waveform = p.waveform ?? '/waveforms/keys-house-piano.json';
 const title = p.title ?? 'House Piano';
-const subtitle = p.subtitle ?? 'Tracked — events appear on the right';
+const artist = p.artist ?? 'Tracked — events appear on the right';
 const listen = p.listen ?? 5;
 ---
 
@@ -34,7 +34,7 @@ const listen = p.listen ?? 5;
 			data-url={url}
 			data-waveform={waveform}
 			data-title={title}
-			data-subtitle={subtitle}
+			data-artist={artist}
 			data-waveform-style="mirror"
 			data-height={64}
 		>
