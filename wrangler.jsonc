@@ -1,0 +1,10 @@
+{
+  // Static-assets-only Worker — no `main` script, so requests are served at no
+  // charge (free/unlimited). Keeping this file also stops wrangler from
+  // auto-running `astro add cloudflare`, which would add a billable SSR Worker.
+  "name": "waveform-docs",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
