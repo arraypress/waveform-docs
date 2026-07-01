@@ -165,12 +165,8 @@ Every color option defaults to `null`, meaning "follow the active color preset".
 | `waveformColor` | `null` | `string \| string[] \| null` | Unplayed colour; `null` = preset. Array = gradient stops (axis via `waveformGradient`), e.g. `['#fafafa','#71717a']`. `data-waveform-color` (legacy: `data-color`). |
 | `progressColor` | `null` | `string \| string[] \| null` | Played-through colour; `null` = preset; array = gradient. `data-progress-color`. |
 | `waveformGradient` | `'vertical'` | `'vertical' \| 'horizontal' \| 'diagonal'` | Axis for gradient stop arrays: `'vertical'` (top→bottom), `'horizontal'` (hue sweep across the wave), `'diagonal'`. Ignored for single colours. `data-waveform-gradient`. |
-| `buttonColor` | `null` | `string \| null` | Play-button border + icon colour; `null` = preset. `data-button-color`. |
-| `buttonHoverColor` | `null` | `string \| null` | Button hover colour; `null` = preset. `data-button-hover-color`. |
-| `textColor` | `null` | `string \| null` | Title colour; `null` = preset. `data-text-color`. |
-| `textSecondaryColor` | `null` | `string \| null` | Artist / time / BPM colour; `null` = preset. `data-text-secondary-color`. |
-| `backgroundColor` | `null` | `string \| null` | Player background token; `null` = preset. `data-background-color`. |
-| `borderColor` | `null` | `string \| null` | Player border token; `null` = preset. `data-border-color`. |
+
+The DOM chrome (button, title, meta text) is themed via CSS variables — `--wfp-button-color`, `--wfp-text-color`, `--wfp-text-secondary-color` — not JS options; override them in your own CSS. See [Styling](/player/styling/).
 
 ### Gradients
 
@@ -193,12 +189,6 @@ When `colorPreset` is `null`, the library resolves a theme automatically and app
 | --- | --- | --- |
 | `waveformColor` | `rgba(255,255,255,0.3)` | `rgba(0,0,0,0.2)` |
 | `progressColor` | `rgba(255,255,255,0.9)` | `rgba(0,0,0,0.8)` |
-| `buttonColor` | `rgba(255,255,255,0.9)` | `rgba(0,0,0,0.8)` |
-| `buttonHoverColor` | `rgba(255,255,255,1)` | `rgba(0,0,0,0.9)` |
-| `textColor` | `#ffffff` | `#333333` |
-| `textSecondaryColor` | `rgba(255,255,255,0.6)` | `rgba(0,0,0,0.6)` |
-| `backgroundColor` | `rgba(255,255,255,0.03)` | `rgba(0,0,0,0.02)` |
-| `borderColor` | `rgba(255,255,255,0.1)` | `rgba(0,0,0,0.1)` |
 
 :::note[Auto-theme opt-out]
 Auto-detection (and live re-detection on `<html>`/`<body>` theme flips or OS `prefers-color-scheme` changes) only runs while `colorPreset` is `null` and a colour is left unset. Setting an explicit `colorPreset` **or** any colour opts that out. Call [`refreshTheme()`](/player/methods/#refreshtheme) to re-detect manually.
@@ -339,12 +329,6 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-color-preset` / `data-theme` | `colorPreset` | `data-theme` is legacy. |
 | `data-waveform-color` / `data-color` | `waveformColor` | CSS colour or JSON gradient array; `data-color` is legacy. |
 | `data-progress-color` | `progressColor` | CSS colour or JSON gradient array. |
-| `data-button-color` | `buttonColor` | CSS colour. |
-| `data-button-hover-color` | `buttonHoverColor` | CSS colour. |
-| `data-text-color` | `textColor` | CSS colour. |
-| `data-text-secondary-color` | `textSecondaryColor` | CSS colour. |
-| `data-background-color` | `backgroundColor` | CSS colour. |
-| `data-border-color` | `borderColor` | CSS colour. |
 | `data-autoplay` | `autoplay` | bool (`'true'`). |
 | `data-show-controls` | `showControls` | bool. |
 | `data-show-info` | `showInfo` | bool. |

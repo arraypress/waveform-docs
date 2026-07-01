@@ -19,18 +19,14 @@ The CSS variables and class hooks below only exist once the stylesheet is loaded
 
 ## Color presets
 
-Every player resolves to one of two built-in presets. Each preset is a flat map of eight color tokens, deliberately translucent black/white so they sit on any host background:
+Every player resolves to one of two built-in presets. Each preset sets the two waveform color tokens as JS options, deliberately translucent black/white so they sit on any host background:
 
 | Token (option)        | `dark`                       | `light`                  |
 | --------------------- | ---------------------------- | ------------------------ |
 | `waveformColor`       | `rgba(255, 255, 255, 0.3)`   | `rgba(0, 0, 0, 0.2)`     |
 | `progressColor`       | `rgba(255, 255, 255, 0.9)`   | `rgba(0, 0, 0, 0.8)`     |
-| `buttonColor`         | `rgba(255, 255, 255, 0.9)`   | `rgba(0, 0, 0, 0.8)`     |
-| `buttonHoverColor`    | `rgba(255, 255, 255, 1)`     | `rgba(0, 0, 0, 0.9)`     |
-| `textColor`           | `#ffffff`                    | `#333333`                |
-| `textSecondaryColor`  | `rgba(255, 255, 255, 0.6)`   | `rgba(0, 0, 0, 0.6)`     |
-| `backgroundColor`     | `rgba(255, 255, 255, 0.03)`  | `rgba(0, 0, 0, 0.02)`    |
-| `borderColor`         | `rgba(255, 255, 255, 0.1)`   | `rgba(0, 0, 0, 0.1)`     |
+
+The DOM chrome (button, title, meta text) is themed via CSS variables — `--wfp-button-color`, `--wfp-text-color`, `--wfp-text-secondary-color` — not JS options; override them in your own CSS.
 
 Select a preset with `colorPreset` (`'dark'` | `'light'` | `null`). The default, `null`, triggers auto-detection.
 
@@ -98,32 +94,23 @@ Mix and match: leave `colorPreset` on auto, but pin `progressColor` to your bran
 
 ## Explicit colors
 
-Every preset token has a matching option. Set any of them to override the preset for that token only; leave it `null` to inherit.
+The two waveform tokens have matching options. Set either to override the preset for that token only; leave it `null` to inherit.
 
 | Option                | Type                       | Controls                                  | `data-*` attribute            |
 | --------------------- | -------------------------- | ----------------------------------------- | ----------------------------- |
 | `waveformColor`       | `string \| string[] \| null` | Unplayed waveform fill                  | `data-waveform-color`         |
 | `progressColor`       | `string \| string[] \| null` | Played-through fill                     | `data-progress-color`         |
-| `buttonColor`         | `string \| null`           | Play-button border + icon                 | `data-button-color`           |
-| `buttonHoverColor`    | `string \| null`           | Play-button hover color                   | `data-button-hover-color`     |
-| `textColor`           | `string \| null`           | Title color                               | `data-text-color`             |
-| `textSecondaryColor`  | `string \| null`           | Artist / time / BPM color               | `data-text-secondary-color`   |
-| `backgroundColor`     | `string \| null`           | Player background token                   | `data-background-color`       |
-| `borderColor`         | `string \| null`           | Player border token                       | `data-border-color`           |
 
 ```js
 new WaveformPlayer('#player', {
   url: '/audio/track.mp3',
   waveformColor: '#3f3f46',
   progressColor: '#f97316',
-  buttonColor: '#f97316',
-  textColor: '#fafafa',
-  textSecondaryColor: '#a1a1aa',
 });
 ```
 
-:::caution
-`backgroundColor` and `borderColor` are resolved color **tokens**, but the base stylesheet keeps the `.waveform-player` root transparent and borderless — so setting them alone will not paint a card. To render a visible surface, style `.waveform-player` yourself (see [CSS custom properties](#css-custom-properties)). The waveform/progress/button/text tokens are applied directly to the canvas and DOM.
+:::note
+The DOM chrome (button, title, meta text) is themed via CSS variables — `--wfp-button-color`, `--wfp-text-color`, `--wfp-text-secondary-color` — not JS options; override them in your own CSS. The `.waveform-player` root also ships transparent and borderless, so add a visible card background/border yourself (see [CSS custom properties](#css-custom-properties)). The waveform/progress tokens are applied directly to the canvas.
 :::
 
 ### Gradients
@@ -170,6 +157,9 @@ For look-and-feel that the stylesheet owns, override CSS variables rather than p
 | -------------------- | ---------- | ---------------------------------------------------------------------- |
 | `--wfp-btn-size`     | `36px`     | Scales **both** play-button styles — box and glyph — proportionally.   |
 | `--wfp-accent`       | `#71717a`  | Keyboard focus-ring outline + active-state accent (monochrome default).|
+| `--wfp-button-color` | preset     | Play-button border + icon color.                                       |
+| `--wfp-text-color`   | preset     | Title color.                                                           |
+| `--wfp-text-secondary-color` | preset | Artist / time / BPM color.                                        |
 | `--waveform-line-height` | `1.4`  | Root `line-height` of the player.                                      |
 | `--waveform-body-gap`    | `8px`  | Vertical gap between the track row and the info block.                 |
 | `--waveform-track-gap`   | `12px` | Horizontal gap between the play button and the waveform.               |

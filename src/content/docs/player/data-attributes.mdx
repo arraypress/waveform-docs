@@ -189,16 +189,12 @@ If you do **not** set `barWidth`/`barSpacing` (via option or attribute), each st
 | `data-color-preset` | `colorPreset` | `dark` \| `light` | `null` (auto-detect) |
 | `data-waveform-color` | `waveformColor` | CSS color **or** JSON gradient array | `null` (preset) |
 | `data-progress-color` | `progressColor` | CSS color **or** JSON gradient array | `null` (preset) |
-| `data-button-color` | `buttonColor` | CSS color | `null` (preset) |
-| `data-button-hover-color` | `buttonHoverColor` | CSS color | `null` (preset) |
-| `data-text-color` | `textColor` | CSS color | `null` (preset) |
-| `data-text-secondary-color` | `textSecondaryColor` | CSS color | `null` (preset) |
-| `data-background-color` | `backgroundColor` | CSS color | `null` (preset) |
-| `data-border-color` | `borderColor` | CSS color | `null` (preset) |
 | `data-color` | `waveformColor` *(legacy alias)* | CSS color | — |
 | `data-theme` | `colorPreset` *(legacy alias)* | `dark` \| `light` | — |
 
 Leaving a color `null` lets it follow the resolved preset, and any color you leave `null` participates in **auto-theme** re-detection. Setting an explicit `colorPreset` (or hand-setting a color) opts that aspect out of re-detection. See [Theming](/player/styling/).
+
+The DOM chrome (button, title, meta text) is themed via CSS variables — `--wfp-button-color`, `--wfp-text-color`, `--wfp-text-secondary-color` — not `data-*` attributes; override them in your own CSS.
 
 ### Behavior flags
 
