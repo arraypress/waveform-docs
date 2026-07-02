@@ -11,6 +11,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "build:og": "node scripts/build-og.mjs",
     "sync:changelogs": "node scripts/sync-changelogs.mjs"
   },
   "dependencies": {
