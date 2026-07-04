@@ -366,10 +366,89 @@ The library ships **no** built-in translations — that keeps the core lean and 
 ```
 </TabItem>
 
+<TabItem label="Hindi">
+```js
+// हिन्दी — reorders to "Y में से X" (X of Y)
+{
+  playPauseLabel: 'चलाएँ/रोकें',
+  speedLabel: 'प्लेबैक गति',
+  artworkAlt: 'एल्बम कलाकृति',
+  errorText: 'ऑडियो लोड नहीं हो सका',
+  seekValueText: '%2$s में से %1$s',
+  unknownTrackText: 'अज्ञात ट्रैक',
+}
+```
+</TabItem>
+
+<TabItem label="Indonesian">
+```js
+{
+  playPauseLabel: 'Putar/Jeda',
+  speedLabel: 'Kecepatan pemutaran',
+  artworkAlt: 'Sampul album',
+  errorText: 'Tidak dapat memuat audio',
+  seekValueText: '%1$s dari %2$s',
+  unknownTrackText: 'Trek tidak dikenal',
+}
+```
+</TabItem>
+
+<TabItem label="Vietnamese">
+```js
+{
+  playPauseLabel: 'Phát/Tạm dừng',
+  speedLabel: 'Tốc độ phát',
+  artworkAlt: 'Ảnh bìa album',
+  errorText: 'Không thể tải âm thanh',
+  seekValueText: '%1$s / %2$s',
+  unknownTrackText: 'Bản nhạc không xác định',
+}
+```
+</TabItem>
+
+<TabItem label="Thai">
+```js
+{
+  playPauseLabel: 'เล่น/หยุดชั่วคราว',
+  speedLabel: 'ความเร็วในการเล่น',
+  artworkAlt: 'ปกอัลบั้ม',
+  errorText: 'ไม่สามารถโหลดเสียงได้',
+  seekValueText: '%1$s จาก %2$s',
+  unknownTrackText: 'แทร็กที่ไม่รู้จัก',
+}
+```
+</TabItem>
+
+<TabItem label="Ukrainian">
+```js
+{
+  playPauseLabel: 'Відтворення/Пауза',
+  speedLabel: 'Швидкість відтворення',
+  artworkAlt: 'Обкладинка альбому',
+  errorText: 'Не вдалося завантажити аудіо',
+  seekValueText: '%1$s з %2$s',
+  unknownTrackText: 'Невідомий трек',
+}
+```
+</TabItem>
+
+<TabItem label="Czech">
+```js
+{
+  playPauseLabel: 'Přehrát/Pozastavit',
+  speedLabel: 'Rychlost přehrávání',
+  artworkAlt: 'Obal alba',
+  errorText: 'Nelze načíst zvuk',
+  seekValueText: '%1$s z %2$s',
+  unknownTrackText: 'Neznámá stopa',
+}
+```
+</TabItem>
+
 </Tabs>
 
 <Aside type="note">
-Treat these as a starting point, not gospel — have a native speaker or your normal translation workflow confirm them before shipping. Keep the `%1$s` / `%2$s` placeholders intact in `seekValueText`; only the surrounding words should change. The Japanese and Korean entries deliberately reorder them (`%2$s … %1$s`, "X of Y" → "Y 中/중 X") — that resolves correctly because positional args are matched by index, not source order. Arabic is right-to-left; the strings themselves need no special handling (screen readers and the DOM apply bidi), just make sure your page sets `dir="rtl"` where appropriate.
+Treat these as a starting point, not gospel — have a native speaker or your normal translation workflow confirm them before shipping. Keep the `%1$s` / `%2$s` placeholders intact in `seekValueText`; only the surrounding words should change. The Japanese, Korean, and Hindi entries deliberately reorder them (`%2$s … %1$s`, "X of Y" → "Y 中/중/में से X") — that resolves correctly because positional args are matched by index, not source order. Arabic is right-to-left; the strings themselves need no special handling (screen readers and the DOM apply bidi), just make sure your page sets `dir="rtl"` where appropriate.
 </Aside>
 
 ## Visible focus
