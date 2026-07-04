@@ -174,6 +174,96 @@ new WaveformPlayer('#player', {
 On WordPress/Gutenberg pass each string through `__()` (or `esc_attr__()` for the `data-*` output) so the labels ship with your text domain. `seekValueText`'s `%1$s` / `%2$s` placeholders are `sprintf`-style and may be reordered by a translation — the library resolves positional args independently of source order.
 </Aside>
 
+### Localization cookbook
+
+The library ships **no** built-in translations — that keeps the core lean and lets your own i18n pipeline (WordPress text domains, `react-i18next`, etc.) own the strings. But if you just want a drop-in, here are ready-made objects for a few common languages. Spread one into your options (or emit the matching `data-*` attributes).
+
+<Tabs>
+
+<TabItem label="French">
+```js
+{
+  playPauseLabel: 'Lecture/Pause',
+  speedLabel: 'Vitesse de lecture',
+  artworkAlt: 'Pochette de l’album',
+  errorText: 'Impossible de charger l’audio',
+  seekValueText: '%1$s sur %2$s',
+  unknownTrackText: 'Piste inconnue',
+}
+```
+</TabItem>
+
+<TabItem label="Spanish">
+```js
+{
+  playPauseLabel: 'Reproducir/Pausar',
+  speedLabel: 'Velocidad de reproducción',
+  artworkAlt: 'Portada del álbum',
+  errorText: 'No se pudo cargar el audio',
+  seekValueText: '%1$s de %2$s',
+  unknownTrackText: 'Pista desconocida',
+}
+```
+</TabItem>
+
+<TabItem label="German">
+```js
+{
+  playPauseLabel: 'Wiedergabe/Pause',
+  speedLabel: 'Wiedergabegeschwindigkeit',
+  artworkAlt: 'Albumcover',
+  errorText: 'Audio konnte nicht geladen werden',
+  seekValueText: '%1$s von %2$s',
+  unknownTrackText: 'Unbekannter Titel',
+}
+```
+</TabItem>
+
+<TabItem label="Italian">
+```js
+{
+  playPauseLabel: 'Riproduci/Pausa',
+  speedLabel: 'Velocità di riproduzione',
+  artworkAlt: 'Copertina dell’album',
+  errorText: 'Impossibile caricare l’audio',
+  seekValueText: '%1$s di %2$s',
+  unknownTrackText: 'Traccia sconosciuta',
+}
+```
+</TabItem>
+
+<TabItem label="Portuguese">
+```js
+{
+  playPauseLabel: 'Reproduzir/Pausar',
+  speedLabel: 'Velocidade de reprodução',
+  artworkAlt: 'Capa do álbum',
+  errorText: 'Não foi possível carregar o áudio',
+  seekValueText: '%1$s de %2$s',
+  unknownTrackText: 'Faixa desconhecida',
+}
+```
+</TabItem>
+
+<TabItem label="Russian">
+```js
+{
+  playPauseLabel: 'Воспроизведение/Пауза',
+  speedLabel: 'Скорость воспроизведения',
+  artworkAlt: 'Обложка альбома',
+  errorText: 'Не удалось загрузить аудио',
+  seekValueText: '%1$s из %2$s',
+  unknownTrackText: 'Неизвестный трек',
+}
+```
+</TabItem>
+
+</Tabs>
+
+<Aside type="note">
+Treat these as a starting point, not gospel — have a native speaker or your normal translation workflow confirm them before shipping. Keep the `%1$s` / `%2$s` placeholders intact in `seekValueText`; only the surrounding words should change.
+</Aside>
+
 ## Visible focus
 
 Focus is never suppressed for keyboard users. The stylesheet ships `:focus-visible` rings on each interactive surface, so a mouse click stays quiet while <kbd>Tab</kbd> navigation shows a clear indicator:
