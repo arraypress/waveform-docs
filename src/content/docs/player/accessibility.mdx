@@ -176,7 +176,7 @@ On WordPress/Gutenberg pass each string through `__()` (or `esc_attr__()` for th
 
 ### Localization cookbook
 
-The library ships **no** built-in translations — that keeps the core lean and lets your own i18n pipeline (WordPress text domains, `react-i18next`, etc.) own the strings. But if you just want a drop-in, here are ready-made objects for a few common languages. Spread one into your options (or emit the matching `data-*` attributes).
+The library ships **no** built-in translations — that keeps the core lean and lets your own i18n pipeline (WordPress text domains, `react-i18next`, etc.) own the strings. But if you just want a drop-in, here are ready-made objects for common languages. Spread one into your options (or emit the matching `data-*` attributes).
 
 <Tabs>
 
@@ -258,10 +258,118 @@ The library ships **no** built-in translations — that keeps the core lean and 
 ```
 </TabItem>
 
+<TabItem label="Chinese">
+```js
+// 简体中文 (Simplified)
+{
+  playPauseLabel: '播放/暂停',
+  speedLabel: '播放速度',
+  artworkAlt: '专辑封面',
+  errorText: '无法加载音频',
+  seekValueText: '%1$s / %2$s',
+  unknownTrackText: '未知曲目',
+}
+```
+</TabItem>
+
+<TabItem label="Japanese">
+```js
+// 日本語 — reorders to "Y 中 X" (X of Y)
+{
+  playPauseLabel: '再生/一時停止',
+  speedLabel: '再生速度',
+  artworkAlt: 'アルバムアートワーク',
+  errorText: '音声を読み込めませんでした',
+  seekValueText: '%2$s 中 %1$s',
+  unknownTrackText: '不明なトラック',
+}
+```
+</TabItem>
+
+<TabItem label="Korean">
+```js
+// 한국어 — reorders to "Y 중 X" (X of Y)
+{
+  playPauseLabel: '재생/일시정지',
+  speedLabel: '재생 속도',
+  artworkAlt: '앨범 아트워크',
+  errorText: '오디오를 불러올 수 없습니다',
+  seekValueText: '%2$s 중 %1$s',
+  unknownTrackText: '알 수 없는 트랙',
+}
+```
+</TabItem>
+
+<TabItem label="Arabic">
+```js
+// العربية — right-to-left (see note below)
+{
+  playPauseLabel: 'تشغيل/إيقاف مؤقت',
+  speedLabel: 'سرعة التشغيل',
+  artworkAlt: 'صورة الألبوم',
+  errorText: 'تعذّر تحميل الصوت',
+  seekValueText: '%1$s من %2$s',
+  unknownTrackText: 'مقطع غير معروف',
+}
+```
+</TabItem>
+
+<TabItem label="Dutch">
+```js
+{
+  playPauseLabel: 'Afspelen/Pauzeren',
+  speedLabel: 'Afspeelsnelheid',
+  artworkAlt: 'Albumhoes',
+  errorText: 'Kan audio niet laden',
+  seekValueText: '%1$s van %2$s',
+  unknownTrackText: 'Onbekend nummer',
+}
+```
+</TabItem>
+
+<TabItem label="Polish">
+```js
+{
+  playPauseLabel: 'Odtwórz/Wstrzymaj',
+  speedLabel: 'Prędkość odtwarzania',
+  artworkAlt: 'Okładka albumu',
+  errorText: 'Nie można załadować dźwięku',
+  seekValueText: '%1$s z %2$s',
+  unknownTrackText: 'Nieznany utwór',
+}
+```
+</TabItem>
+
+<TabItem label="Turkish">
+```js
+{
+  playPauseLabel: 'Oynat/Duraklat',
+  speedLabel: 'Oynatma hızı',
+  artworkAlt: 'Albüm kapağı',
+  errorText: 'Ses yüklenemedi',
+  seekValueText: '%1$s / %2$s',
+  unknownTrackText: 'Bilinmeyen parça',
+}
+```
+</TabItem>
+
+<TabItem label="Swedish">
+```js
+{
+  playPauseLabel: 'Spela/Pausa',
+  speedLabel: 'Uppspelningshastighet',
+  artworkAlt: 'Albumomslag',
+  errorText: 'Det gick inte att läsa in ljudet',
+  seekValueText: '%1$s av %2$s',
+  unknownTrackText: 'Okänt spår',
+}
+```
+</TabItem>
+
 </Tabs>
 
 <Aside type="note">
-Treat these as a starting point, not gospel — have a native speaker or your normal translation workflow confirm them before shipping. Keep the `%1$s` / `%2$s` placeholders intact in `seekValueText`; only the surrounding words should change.
+Treat these as a starting point, not gospel — have a native speaker or your normal translation workflow confirm them before shipping. Keep the `%1$s` / `%2$s` placeholders intact in `seekValueText`; only the surrounding words should change. The Japanese and Korean entries deliberately reorder them (`%2$s … %1$s`, "X of Y" → "Y 中/중 X") — that resolves correctly because positional args are matched by index, not source order. Arabic is right-to-left; the strings themselves need no special handling (screen readers and the DOM apply bidi), just make sure your page sets `dir="rtl"` where appropriate.
 </Aside>
 
 ## Visible focus
