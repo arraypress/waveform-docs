@@ -17,6 +17,25 @@ The thin framework wrappers version independently of the core libraries they wra
 
 ### [Unreleased]
 
+### [0.5.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
+
+#### Removed
+
+- **BREAKING:** the six DOM-chrome colour props — `buttonColor`,
+  `buttonHoverColor`, `textColor`, `textSecondaryColor`, `backgroundColor`,
+  and `borderColor` — are gone (the core library moved this chrome to CSS
+  variables). Theme the button and text via `--wfp-button-color`,
+  `--wfp-text-color`, `--wfp-text-secondary-color`, etc. in your own CSS
+  instead. `waveformColor`, `progressColor`, `colorPreset`, and
+  `waveformGradient` remain props.
+
 #### Changed
 
 - Types are now sourced directly from the core
@@ -72,7 +91,7 @@ Initial release.
   - UI toggle props (`showControls`, `showInfo`, `showTime`,
     `showHoverTime`, `showBPM`, `buttonAlign`)
   - Marker props (`markers`, `showMarkers`)
-  - Content metadata props (`title`, `subtitle`, `artwork`, `album`)
+  - Content metadata props (`title`, `artist`, `artwork`, `album`)
   - Behaviour flags (`autoplay`, `singlePlay`, `playOnSeek`,
     `enableMediaSession`)
   - Icon props (`playIcon`, `pauseIcon`)
@@ -94,6 +113,15 @@ Initial release.
 ## `@arraypress/waveform-player-react`
 
 ### [Unreleased]
+
+### [0.5.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
 
 #### Changed
 
@@ -151,7 +179,7 @@ Initial release.
   - UI toggles (`showControls`, `showInfo`, `showTime`,
     `showHoverTime`, `showBPM`, `buttonAlign`)
   - Markers (`markers`, `showMarkers`)
-  - Metadata (`title`, `subtitle`, `artwork`, `album`)
+  - Metadata (`title`, `artist`, `artwork`, `album`)
   - Behaviour (`autoplay`, `singlePlay`, `playOnSeek`,
     `enableMediaSession`)
   - Icons (`playIcon`, `pauseIcon`)
@@ -196,6 +224,15 @@ Initial release.
 
 ## `@arraypress/waveform-player-vue`
 
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
+
 ### [0.1.0] — Unreleased
 
 Initial release.
@@ -208,14 +245,15 @@ Initial release.
   - Waveform visualisation (`waveformStyle`, `height`, `samples`,
     `barWidth`, `barSpacing`, `barRadius`, `waveform`)
   - Colours (`colorPreset`, `waveformColor`, `progressColor`,
-    `buttonColor`, `buttonHoverColor`, `textColor`,
-    `textSecondaryColor`, `backgroundColor`, `borderColor` — strings or
-    `string[]` gradients)
+    `waveformGradient` — strings or `string[]` gradients). DOM chrome
+    (button, title, meta text) is themed via CSS variables
+    (`--wfp-button-color`, `--wfp-text-color`,
+    `--wfp-text-secondary-color`), not JS options.
   - Playback (`playbackRate`, `showPlaybackSpeed`, `playbackRates`)
   - UI toggles (`showControls`, `showInfo`, `showTime`, `showHoverTime`,
     `showBPM`, `buttonAlign`, `accessibleSeek`, `seekLabel`, `errorText`)
   - Markers (`markers`, `showMarkers`)
-  - Metadata (`title`, `subtitle`, `artwork`, `album`)
+  - Metadata (`title`, `artist`, `artwork`, `album`)
   - Behaviour (`autoplay`, `singlePlay`, `playOnSeek`,
     `enableMediaSession`)
   - Icons (`playIcon`, `pauseIcon`)
@@ -255,6 +293,15 @@ Initial release.
 
 ## `@arraypress/waveform-player-svelte`
 
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
+
 ### [0.1.0] — Unreleased
 
 Initial release.
@@ -266,15 +313,15 @@ Initial release.
   - Audio source (`url`, `src` alias, `audioMode`, `preload`)
   - Waveform visualisation (`waveformStyle`, `height`, `samples`,
     `barWidth`, `barSpacing`, `barRadius`, `waveform`)
-  - Colours (`colorPreset`, `waveformColor`, `progressColor`,
-    `buttonColor`, `buttonHoverColor`, `textColor`,
-    `textSecondaryColor`, `backgroundColor`, `borderColor` — strings or
-    `string[]` gradients)
+  - Colours (`colorPreset`, `waveformColor`, `progressColor` — strings
+    or `string[]` gradients). DOM chrome (button, title, meta text) is
+    themed via CSS variables (`--wfp-button-color`, `--wfp-text-color`,
+    `--wfp-text-secondary-color`), not JS options.
   - Playback (`playbackRate`, `showPlaybackSpeed`, `playbackRates`)
   - UI toggles (`showControls`, `showInfo`, `showTime`, `showHoverTime`,
     `showBPM`, `buttonAlign`, `accessibleSeek`, `seekLabel`, `errorText`)
   - Markers (`markers`, `showMarkers`)
-  - Metadata (`title`, `subtitle`, `artwork`, `album`)
+  - Metadata (`title`, `artist`, `artwork`, `album`)
   - Behaviour (`autoplay`, `singlePlay`, `playOnSeek`,
     `enableMediaSession`)
   - Icons (`playIcon`, `pauseIcon`)
@@ -315,6 +362,15 @@ Initial release.
   seven copy-paste-ready snippets.
 
 ## `@arraypress/waveform-bar-astro`
+
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Accept the new localizable player-string keys — `seekValueText`,
+  `playPauseLabel`, `speedLabel`, `artworkAlt`, and `unknownTrackText` — in
+  the bar config; they are forwarded to the embedded player. Requires
+  `@arraypress/waveform-bar@^1.10.0`.
 
 ### [0.2.0] — 2026-07-01
 
@@ -414,6 +470,15 @@ Initial release.
 
 ## `@arraypress/waveform-bar-react`
 
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Accept the new localizable player-string keys — `seekValueText`,
+  `playPauseLabel`, `speedLabel`, `artworkAlt`, and `unknownTrackText` — in
+  the bar config; they are forwarded to the embedded player. Requires
+  `@arraypress/waveform-bar@^1.10.0`.
+
 ### [0.2.0] — 2026-07-01
 
 #### Changed
@@ -486,6 +551,15 @@ Initial release.
 
 ## `@arraypress/waveform-bar-vue`
 
+### [0.2.0] — 2026-07-05
+
+#### Added
+
+- Accept the new localizable player-string keys — `seekValueText`,
+  `playPauseLabel`, `speedLabel`, `artworkAlt`, and `unknownTrackText` — in
+  the bar config; they are forwarded to the embedded player. Requires
+  `@arraypress/waveform-bar@^1.10.0`.
+
 ### [0.1.0] — Unreleased
 
 Initial release.
@@ -528,6 +602,15 @@ Initial release.
 
 ## `@arraypress/waveform-bar-svelte`
 
+### [0.2.0] — 2026-07-05
+
+#### Added
+
+- Accept the new localizable player-string keys — `seekValueText`,
+  `playPauseLabel`, `speedLabel`, `artworkAlt`, and `unknownTrackText` — in
+  the bar config; they are forwarded to the embedded player. Requires
+  `@arraypress/waveform-bar@^1.10.0`.
+
 ### [0.1.0] — Unreleased
 
 Initial release.
@@ -568,6 +651,15 @@ Initial release.
 
 ## `@arraypress/waveform-playlist-astro`
 
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
+
 ### [0.1.0] — Initial release
 
 #### Added
@@ -590,12 +682,12 @@ Initial release.
   `buttonAlign`, `buttonStyle`, `accessibleSeek`, `seekLabel`,
   `errorText`, `showMarkers`, `autoplay`, `singlePlay`, `playOnSeek`,
   `enableMediaSession`, `preload`, `playIcon`, `pauseIcon`. The
-  per-track content fields (`url`, `title`, `subtitle`, `artwork`,
+  per-track content fields (`url`, `title`, `artist`, `artwork`,
   `album`, `markers`) live on each `tracks` entry instead, and the
   player's `layout` / `audioMode` are intentionally not exposed (the
   playlist owns `data-layout` and always drives a self-mode player).
 - A typed `tracks` array (`WaveformPlaylistTrackInput[]`) with per-track
-  `url`, `title`, `subtitle`, `artwork`, `album`, `duration`, `markers`,
+  `url`, `title`, `artist`, `artwork`, `album`, `duration`, `markers`,
   and `chapters` (`{ time, label, color? }`).
 - Astro-specific `lazy` prop that switches the init attribute to
   `data-waveform-playlist-lazy` and ships a single deduplicated
@@ -619,6 +711,15 @@ Initial release.
 
 ## `@arraypress/waveform-playlist-react`
 
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
+
 ### [0.1.0] — Unreleased
 
 Initial release.
@@ -630,7 +731,7 @@ Initial release.
   - A declarative, required `tracks` array
     (`WaveformPlaylistTrackInput[]`) rendered into the `[data-track]` /
     `[data-chapter]` child markup the playlist constructor parses on
-    mount. Each track accepts `url`, `title`, `subtitle`, `artwork`,
+    mount. Each track accepts `url`, `title`, `artist`, `artwork`,
     `album`, `duration`, `markers`, and `chapters`
     (`{ time, label, color? }`, where `time` is a seconds number or a
     `'M:SS'` string).
@@ -685,6 +786,15 @@ Initial release.
 
 ## `@arraypress/waveform-playlist-vue`
 
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
+
 ### [0.1.0] — Unreleased
 
 Initial release.
@@ -728,6 +838,15 @@ Initial release.
   navigation API. The core is mocked at the module boundary.
 
 ## `@arraypress/waveform-playlist-svelte`
+
+### [0.3.0] — 2026-07-05
+
+#### Added
+
+- Forward the core player's new localizable UI-string options —
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt`, and
+  `unknownTrackText` — through to the underlying player. Requires
+  `@arraypress/waveform-player@^1.20.0`.
 
 ### [0.1.0] — Unreleased
 

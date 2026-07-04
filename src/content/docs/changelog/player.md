@@ -11,6 +11,104 @@ sidebar:
 Generated from [`@arraypress/waveform-player`'s CHANGELOG](https://github.com/arraypress/waveform-player/blob/main/CHANGELOG.md). Run `npm run sync:changelogs` after a release to refresh.
 :::
 
+## [Unreleased]
+
+## [1.20.0] — 2026-07-05
+
+### Added
+
+- **Localizable seek value text (`seekValueText`).** New option templating the
+  seek slider's spoken `aria-valuetext`; `%1$s` is the current time and `%2$s`
+  the total duration (both formatted `M:SS`), with sequential `%s` and reordered
+  positional args supported for translation. Defaults to `'%1$s of %2$s'`, so
+  existing output is unchanged. Also settable via `data-seek-value-text`. Lets
+  consumers localize the connective text without reformatting the times.
+- **Localizable UI strings.** The remaining hardcoded English strings are now
+  options (each also settable via `data-*`), so non-English UIs can translate
+  every screen-reader / lock-screen string: `playPauseLabel` (play button
+  `aria-label`, default `'Play/Pause'`), `speedLabel` (speed button + menu
+  `aria-label`, default `'Playback speed'`), `artworkAlt` (artwork `<img>` alt
+  text, default `'Album artwork'`), and `unknownTrackText` (Media Session
+  title fallback when no `title` is set, default `'Unknown Track'`). Defaults
+  reproduce the previous output, so existing behavior is unchanged.
+
+## [1.19.3] — 2026-07-02
+
+### Fixed
+
+- **Duplicate scrub time (readout + tooltip).** During a seek-drag both the
+  current-time display and the hover tooltip showed the same target time. The
+  current-time readout now owns the live scrub time and the duplicate tooltip is
+  suppressed while dragging (it still shows when there is no current-time readout
+  to fall back on).
+
+## [1.19.1] — 2026-07-01
+
+### Changed
+
+- **Accessible playback-speed menu (#11).** The speed selector is now a proper
+  `role="menu"` of `menuitemradio` options (`aria-checked` reflects the active
+  rate) with full arrow-key / Home / End navigation and focus management —
+  keyboard- and screen-reader-complete, while keeping the custom styling (no
+  native `<select>`).
+
+### Fixed
+
+- **Multi-player Media Session hijack.** `navigator.mediaSession` is a single
+  global, but every player registered its action handlers (and metadata) at
+  *load*, so on a page with several players the last one to load captured the
+  lock-screen controls — play/pause and the scrubber drove the wrong track. A
+  player now (re)claims the handlers **and** metadata when it starts playing, so
+  the lock screen always controls the track you're actually listening to.
+
+## [1.19.0] — 2026-07-01
+
+### Added
+
+- **Media Session track navigation.** New `onNextTrack` / `onPreviousTrack`
+  options register lock-screen / Now-Playing **skip-track** buttons (called with
+  the player). Wired automatically by `waveform-bar` (queue) and
+  `waveform-playlist` (track nav).
+
+### Fixed
+
+- **Space starts playback while the waveform itself is focused** (#10). The seek
+  slider swallowed Space, so play/pause only worked when the player root was
+  focused. Reported by @jeryj.
+- **iOS lock-screen metadata.** Media Session metadata was set once at load
+  (iOS ignores that) and `playbackState` was never set — a blank Now-Playing
+  card. It's now re-asserted on play, with `playbackState` + `setPositionState`.
+- **Drag-seek double-fire.** The synthetic click after a pointer drag re-seeked
+  from a stale coordinate, which could snap the playhead (e.g. to the start)
+  near the beginning of a track.
+
+## [1.18.0] — 2026-07-01
+
+### Added
+
+- **Gradient direction.** `waveformColor` / `progressColor` stop arrays now
+  render along a configurable axis — `waveformGradient: 'vertical'` (default,
+  top→bottom), `'horizontal'` (a hue sweep across the whole waveform)
+  or `'diagonal'` (also `data-waveform-gradient`).
+
+### Changed
+
+- **BREAKING — renamed the `subtitle` option to `artist`** (`data-subtitle` ->
+  `data-artist`, the `.waveform-subtitle` class -> `.waveform-artist`, and the
+  `loadTrack(url, title, artist, ...)` parameter). Aligns with the bar/playlist
+  and the standard "title + artist" convention. No back-compat alias.
+- **BREAKING — DOM chrome colours moved to CSS variables.** Removed the
+  `buttonColor`, `buttonHoverColor`, `textColor`, `textSecondaryColor`,
+  `backgroundColor` and `borderColor` options (and their `data-*` attributes;
+  the last three were already dead). Theme the button/title/meta text via
+  `--wfp-button-color` / `--wfp-text-color` / `--wfp-text-secondary-color` in
+  CSS instead — the player adds a `.waveform-theme-light` class when it detects
+  a light page. Canvas colours (`waveformColor` / `progressColor`) stay options.
+- **Live time while scrubbing.** Dragging to seek now updates the time readout
+  and a tooltip live at the drag position (Spotify-style) instead of only on
+  release. The tooltip appears on any waveform style during a drag (the seekbar
+  handle stays seekbar-only); `showHoverTime` still governs the hover tooltip.
+
 ## [1.17.0] — 2026-07-01
 
 ### Added
@@ -238,7 +336,7 @@ Generated from [`@arraypress/waveform-player`'s CHANGELOG](https://github.com/ar
   reaching into internals):
   - `waveformplayer:destroy` event — the symmetric counterpart to
     `:ready`; lets listeners release references on teardown.
-  - `loadTrack(url, title, subtitle, { autoplay: false })` — load / restore /
+  - `loadTrack(url, title, artist, { autoplay: false })` — load / restore /
     enqueue without forcing playback.
   - `waveformplayer:ended` now carries `{ currentTime, duration }`, and is
     synthesized in `external` mode when progress reaches the end (fires once).
@@ -260,7 +358,7 @@ Generated from [`@arraypress/waveform-player`'s CHANGELOG](https://github.com/ar
     `http`/`https`/relative URLs; rejects `javascript:`/`data:` script schemes).
   - `setVolume()` now coerces + guards non-finite input (no more `NaN` reaching
     `audio.volume`).
-  - The `request-*` event detail's `artist` now falls back to `subtitle`, so the
+  - The `request-*` event detail now always includes an `artist` field, so the
     published contract is self-consistent.
 - **`errorText` option** (default `'Unable to load audio'`) — customize/localize
   the message shown when audio fails to load. Escaped before render. Also
@@ -441,7 +539,7 @@ Fully additive. `audioMode` defaults to `'self'` — every existing instance beh
 
 - **JSON Config Files** — Load track configuration from external JSON files via `data-config` attribute
     - Single attribute setup: `<div data-waveform-player data-config="waveforms/track.json"></div>`
-    - JSON supports `url`, `title`, `subtitle`, `artwork`, `album`, `samples`, `peaks`, `markers`, and `meta`
+    - JSON supports `url`, `title`, `artist`, `artwork`, `album`, `samples`, `peaks`, `markers`, and `meta`
     - Priority order: JSON config (base) → data attributes (override) → JS options (override)
     - Config files are cached in memory — subsequent loads of the same file are instant
     - Works with `loadTrack()` via `options.config` for dynamic track loading
@@ -453,7 +551,7 @@ Fully additive. `audioMode` defaults to `'self'` — every existing instance beh
 {
   "url": "audio/track.mp3",
   "title": "Track Title",
-  "subtitle": "Artist Name",
+  "artist": "Artist Name",
   "artwork": "covers/artwork.webp",
   "samples": 200,
   "peaks": [
@@ -514,7 +612,7 @@ npx @arraypress/waveform-gen ./audio/*.mp3 --output ./waveforms/
 ### Features
 
 - **`showControls` option** - Hide the play/pause button for custom UI implementations (`data-show-controls="false"`)
-- **`showInfo` option** - Hide the title, subtitle, time, and metadata bar (`data-show-info="false"`)
+- **`showInfo` option** - Hide the title, artist, time, and metadata bar (`data-show-info="false"`)
 - Both options work via HTML data attributes or JavaScript API
 - Waveform automatically fills the full width when controls are hidden
 
