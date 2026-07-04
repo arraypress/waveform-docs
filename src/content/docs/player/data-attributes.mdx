@@ -220,7 +220,9 @@ The DOM chrome (button, title, meta text) is themed via CSS variables — `--wfp
 | `data-title` | `title` | string (`null` derives from URL filename) | `null` |
 | `data-artist` | `artist` | string | `null` |
 | `data-artwork` | `artwork` | string (40×40 image URL + Media Session art) | `null` |
+| `data-artwork-alt` | `artworkAlt` | string (artwork image alt text) | `Album artwork` |
 | `data-album` | `album` | string (Media Session metadata only) | `''` |
+| `data-unknown-track-text` | `unknownTrackText` | string (Media Session title fallback when no `title`) | `Unknown Track` |
 | `data-error-text` | `errorText` | string (shown in the error overlay, escaped) | `Unable to load audio` |
 
 ### BPM
@@ -274,6 +276,9 @@ Use single quotes around the attribute so the JSON's double quotes survive in HT
 | --- | --- | --- | --- |
 | `data-accessible-seek` | `accessibleSeek` | boolean | `true` |
 | `data-seek-label` | `seekLabel` | string (slider accessible name) | `null` |
+| `data-seek-value-text` | `seekValueText` | string (spoken `aria-valuetext` template; `%1$s` current, `%2$s` total) | `null` |
+| `data-play-pause-label` | `playPauseLabel` | string (play button `aria-label`) | `Play/Pause` |
+| `data-speed-label` | `speedLabel` | string (speed button + menu `aria-label`) | `Playback speed` |
 
 With `accessibleSeek` on (the default), the waveform becomes a `role=slider` with arrow/page/home/end keyboard seeking. `seekLabel` falls back to the title, then to `"Seek"`. See [Accessibility](/player/accessibility/).
 

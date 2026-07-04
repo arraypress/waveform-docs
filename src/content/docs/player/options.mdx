@@ -226,7 +226,9 @@ This is the one option whose `data-*` key isn't a literal kebab-casing of the JS
 | `title` | `null` | `string \| null` | Track title; `null` derives from the URL filename via `extractTitleFromUrl`. `data-title`. |
 | `artist` | `null` | `string \| null` | Artist row; `''` hides it in `loadTrack`. `data-artist`. |
 | `artwork` | `null` | `string \| null` | Artwork image URL (40&times;40) + Media Session art. `data-artwork`. |
+| `artworkAlt` | `'Album artwork'` | `string` | Alt text for the artwork image. Localize for non-English UIs. `data-artwork-alt`. |
 | `album` | `''` | `string` | Media Session album metadata only. `data-album`. |
+| `unknownTrackText` | `'Unknown Track'` | `string` | Media Session (lock-screen) title fallback used when no `title` is set. Localize for non-English UIs. `data-unknown-track-text`. |
 | `bpm` | `null` | `number \| null` | Known BPM; wins over auto-detection (shows even when peaks are pre-supplied). `data-bpm`. |
 | `errorText` | `'Unable to load audio'` | `string` | Message shown in the error overlay (escaped). `data-error-text`. |
 | `playIcon` | (built-in SVG) | `string` | Raw SVG markup for the play glyph. `data-play-icon`. |
@@ -256,6 +258,9 @@ new WaveformPlayer('#player', {
 | --- | --- | --- | --- |
 | `accessibleSeek` | `true` | `boolean` | Expose `.waveform-container` as `role="slider"` with arrow/page/home/end keyboard seeking. `data-accessible-seek`. |
 | `seekLabel` | `null` | `string \| null` | Slider accessible name; falls back to `title`, then `'Seek'`. `data-seek-label`. |
+| `seekValueText` | `null` | `string \| null` | Template for the slider's spoken `aria-valuetext`; `%1$s` is the current time, `%2$s` the total (both `M:SS`). Sequential `%s` and reordered positional args supported. Falls back to `'%1$s of %2$s'`. `data-seek-value-text`. |
+| `playPauseLabel` | `'Play/Pause'` | `string` | Play button `aria-label` (screen-reader name). Localize for non-English UIs. `data-play-pause-label`. |
+| `speedLabel` | `'Playback speed'` | `string` | Speed button + menu `aria-label`. Localize for non-English UIs. `data-speed-label`. |
 
 :::tip[Keyboard seeking]
 With `accessibleSeek` (the default), the waveform is focusable and keyboard-seekable: Arrows &plusmn;5s, PageUp/PageDown &plusmn;10s, Home/End to the edges, digits 0–9 jump to tenths, and Space toggles playback. See [Accessibility](/player/accessibility/).
@@ -344,10 +349,15 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-markers` | `markers` | JSON (warn + skip on bad JSON). |
 | `data-accessible-seek` | `accessibleSeek` | bool. |
 | `data-seek-label` | `seekLabel` | string. |
+| `data-seek-value-text` | `seekValueText` | string (printf template). |
+| `data-play-pause-label` | `playPauseLabel` | string. |
+| `data-speed-label` | `speedLabel` | string. |
 | `data-title` | `title` | string. |
 | `data-artist` | `artist` | string. |
 | `data-album` | `album` | string. |
 | `data-artwork` | `artwork` | string. |
+| `data-artwork-alt` | `artworkAlt` | string. |
+| `data-unknown-track-text` | `unknownTrackText` | string. |
 | `data-error-text` | `errorText` | string. |
 | `data-play-icon` | `playIcon` | raw SVG. |
 | `data-pause-icon` | `pauseIcon` | raw SVG. |

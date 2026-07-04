@@ -103,18 +103,76 @@ new WaveformPlayer('#player', {
 ></div>
 ```
 
+### The spoken value text
+
+As playback moves, the slider's `aria-valuetext` is announced as the current position out of the total — by default `"0:30 of 2:00"`. `seekValueText` templates that string so the connective word is translatable: `%1$s` is the current time and `%2$s` the total (both formatted `M:SS`, still formatted by the library). Sequential `%s` works too, and positional args may be reordered for languages that need the total first.
+
+```js title="Localized value text"
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  seekValueText: '%1$s de %2$s', // → "0:30 de 2:00"
+});
+```
+
+The default `'%1$s of %2$s'` reproduces the previous hardcoded output exactly, so existing players are unchanged.
+
 ## Other ARIA labelling
 
-Beyond the slider, the rendered DOM is labelled throughout:
+Beyond the slider, the rendered DOM is labelled throughout. Every string is an option (each also settable via `data-*`), so a non-English UI can translate all of it:
 
-| Element | CSS class | Accessibility |
-| --- | --- | --- |
-| Play / pause button | `.waveform-btn` | `aria-label="Play/Pause"` |
-| Speed menu trigger | `.speed-btn` | `aria-label="Playback speed"` |
-| Cue markers | `.waveform-marker` | `aria-label` set to each marker's `label` |
-| Error overlay | `.waveform-error` | `role="alert"` — announced when load fails |
+| Element | CSS class | ARIA | Localize with |
+| --- | --- | --- | --- |
+| Play / pause button | `.waveform-btn` | `aria-label` | `playPauseLabel` (default `"Play/Pause"`) |
+| Speed trigger + menu | `.speed-btn` / `.speed-menu` | `aria-label` | `speedLabel` (default `"Playback speed"`) |
+| Artwork image | `.waveform-artwork` | `alt` | `artworkAlt` (default `"Album artwork"`) |
+| Cue markers | `.waveform-marker` | `aria-label` | each marker's `label` |
+| Error overlay | `.waveform-error` | `role="alert"` | `errorText` (default `"Unable to load audio"`) |
 
 Marker labels come straight from your [`markers`](/player/data-attributes/#markers) data, so give each cue a meaningful `label`. The error overlay text comes from `errorText` (escaped) and is announced live via `role="alert"`.
+
+## Localizing the interface
+
+All screen-reader / lock-screen text is exposed as options so you can translate it without touching the DOM. Combined with [`seekLabel`](#naming-the-slider) and [`seekValueText`](#the-spoken-value-text), these cover every string the library renders:
+
+| Option | Default | Where it is announced |
+| --- | --- | --- |
+| `playPauseLabel` | `'Play/Pause'` | Play button `aria-label` |
+| `speedLabel` | `'Playback speed'` | Speed button + menu `aria-label` |
+| `artworkAlt` | `'Album artwork'` | Artwork image `alt` |
+| `errorText` | `'Unable to load audio'` | `role="alert"` error overlay |
+| `seekValueText` | `'%1$s of %2$s'` | Seek slider spoken `aria-valuetext` |
+| `unknownTrackText` | `'Unknown Track'` | Media Session title when no `title` is set |
+
+```js title="Spanish UI"
+new WaveformPlayer('#player', {
+  url: '/audio/track.mp3',
+  seekLabel: 'Buscar',
+  seekValueText: '%1$s de %2$s',
+  playPauseLabel: 'Reproducir/Pausar',
+  speedLabel: 'Velocidad',
+  artworkAlt: 'Portada del álbum',
+  errorText: 'No se pudo cargar el audio',
+  unknownTrackText: 'Pista desconocida',
+});
+```
+
+```html title="Declarative equivalent"
+<div
+  data-waveform-player
+  data-src="/audio/track.mp3"
+  data-seek-label="Buscar"
+  data-seek-value-text="%1$s de %2$s"
+  data-play-pause-label="Reproducir/Pausar"
+  data-speed-label="Velocidad"
+  data-artwork-alt="Portada del álbum"
+  data-error-text="No se pudo cargar el audio"
+  data-unknown-track-text="Pista desconocida"
+></div>
+```
+
+<Aside type="tip">
+On WordPress/Gutenberg pass each string through `__()` (or `esc_attr__()` for the `data-*` output) so the labels ship with your text domain. `seekValueText`'s `%1$s` / `%2$s` placeholders are `sprintf`-style and may be reordered by a translation — the library resolves positional args independently of source order.
+</Aside>
 
 ## Visible focus
 
@@ -165,7 +223,7 @@ The player publishes metadata from your existing options:
 
 | Media Session field | Source option |
 | --- | --- |
-| `title` | `title` (falls back to `"Unknown Track"`) |
+| `title` | `title` (falls back to `unknownTrackText`, default `"Unknown Track"`) |
 | `artist` | `artist` |
 | `album` | `album` |
 | `artwork` | `artwork` (advertised at `512x512`) |
@@ -214,11 +272,16 @@ What does **not** apply in external mode: digit-key seeking, arrow-key volume, `
 | --- | --- | --- | --- |
 | `accessibleSeek` | `boolean` | `true` | Expose the waveform as a keyboard-seekable `role="slider"`. |
 | `seekLabel` | `string \| null` | `null` | Slider accessible name; falls back to `title`, then `"Seek"`. |
+| `seekValueText` | `string \| null` | `null` | Spoken `aria-valuetext` template (`%1$s` current, `%2$s` total); falls back to `'%1$s of %2$s'`. |
+| `playPauseLabel` | `string` | `'Play/Pause'` | Play button `aria-label`. |
+| `speedLabel` | `string` | `'Playback speed'` | Speed button + menu `aria-label`. |
 | `enableMediaSession` | `boolean` | `true` | Register system Media Session controls (self mode only). |
 | `title` | `string \| null` | `null` | Media Session title + slider name fallback. |
+| `unknownTrackText` | `string` | `'Unknown Track'` | Media Session title fallback when no `title` is set. |
 | `artist` | `string \| null` | `null` | Media Session `artist`. |
 | `album` | `string` | `''` | Media Session `album` metadata. |
 | `artwork` | `string \| null` | `null` | Media Session artwork (and the `40×40` info image). |
+| `artworkAlt` | `string` | `'Album artwork'` | Artwork image `alt` text. |
 | `errorText` | `string` | `'Unable to load audio'` | Message announced in the `role="alert"` overlay. |
 
 </TabItem>
@@ -228,11 +291,16 @@ What does **not** apply in external mode: digit-key seeking, arrow-key volume, `
 | --- | --- |
 | `data-accessible-seek` | `accessibleSeek` (`"true"` / `"false"`) |
 | `data-seek-label` | `seekLabel` |
+| `data-seek-value-text` | `seekValueText` |
+| `data-play-pause-label` | `playPauseLabel` |
+| `data-speed-label` | `speedLabel` |
 | `data-enable-media-session` | `enableMediaSession` |
 | `data-title` | `title` |
+| `data-unknown-track-text` | `unknownTrackText` |
 | `data-artist` | `artist` |
 | `data-album` | `album` |
 | `data-artwork` | `artwork` |
+| `data-artwork-alt` | `artworkAlt` |
 | `data-error-text` | `errorText` |
 
 </TabItem>
