@@ -127,14 +127,14 @@ Loads (or reloads) audio into the existing player: sets the title, fetches or ge
 
 ### `loadTrack(url, title?, artist?, options?)`
 
-Swaps the current track at runtime. Pauses, resets the audio / error / progress state, **resets per-track options** (`markers` → `[]` and `waveform` → `null`), merges the supplied `options`, updates the artist and artwork DOM, then calls `load()`. It auto-plays the new track unless `options.autoplay === false`.
+Swaps the current track at runtime. Pauses, resets the audio / error / progress state, **resets per-track options** (`markers` → `[]` and `waveform` → `null`), merges the supplied `options`, **reconciles the artist and artwork DOM in place** — adding, updating, or removing each to match the new track — then calls `load()`. It auto-plays the new track unless `options.autoplay === false`.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `url` | `string` | New audio URL. |
 | `title` | `string \| null` | Optional. Track title; `null` derives it from the URL filename. |
-| `artist` | `string \| null` | Optional. Artist row; pass `''` to hide it. |
-| `options` | `object` | Optional. Per-track overrides merged over current options (e.g. `markers`, `waveform`, `artwork`, `bpm`, `autoplay`). |
+| `artist` | `string \| null` | Optional. Any string adds or updates the artist row; `''` removes it; `null` keeps the current one. |
+| `options` | `object` | Optional. Per-track overrides merged over current options (e.g. `markers`, `waveform`, `artwork`, `artworkAlt`, `bpm`, `autoplay`). |
 
 **Returns** `Promise<void>`.
 
@@ -146,6 +146,16 @@ await player.loadTrack('/audio/next.mp3', 'Next Track', 'Some Artist', {
   autoplay: false,
 });
 ```
+
+<Aside type="note" title="Artist & artwork reconcile in place (1.21.0+)">
+`loadTrack` reconciles the info-row metadata against the new track, so you can swap tracks whose metadata *presence* differs without rebuilding the player:
+
+- **`artist`** (3rd argument) — a string adds or updates the `.waveform-artist` row, `''` removes it, `null` leaves the current one untouched.
+- **`options.artwork`** — a URL adds or updates the `.waveform-artwork` image; `null` (or `''`) removes it; omit the key to leave existing artwork as-is.
+- **`options.artworkAlt`** — sets the artwork's `alt` text. Pass it alongside `artwork`, or on its own to relabel the current image.
+
+Only the fields you pass are touched — omitted metadata is preserved. Before 1.21.0, `loadTrack` could only update artist/artwork that *already existed*; adding or removing them needed a full teardown.
+</Aside>
 
 <Aside type="caution" title="Why the per-track reset matters">
 `mergeOptions` skips `null` / `undefined`, so a later call can't clear an earlier value by passing `null`. That is exactly why `loadTrack` explicitly resets `options.waveform = null` and `options.markers = []` for every track — otherwise the previous track's peaks and markers would persist and the new track would redraw the *old* waveform (the 1.8.1 fix). If you add your own per-track options, reset them here too.
