@@ -163,8 +163,11 @@ Defaults shown are the runtime `DEFAULT_OPTIONS` values (`themes.js` is the sour
 | `data-button-align` | `buttonAlign` | `auto` \| `top` \| `center` \| `bottom` | `auto` |
 | `data-button-style` | `buttonStyle` | `circle` \| `minimal` | `circle` |
 | `data-button-size` | `buttonSize` | int (px) **or** unit string (`4rem`) | `null` |
+| `data-button-radius` | `buttonRadius` | int (px) **or** unit string (`0.5rem`) | `null` |
 
-`data-button-size`: a bare number (`data-button-size="64"`) is treated as pixels; a value with a unit (`data-button-size="4rem"`) is kept verbatim and assigned to the `--wfp-btn-size` CSS variable.
+`data-button-size` and `data-button-radius` share one rule: a bare number (`data-button-size="64"`) is treated as pixels; a value with a unit (`data-button-radius="0.5rem"`) is kept verbatim. They set `--wfp-btn-size` and `--wfp-btn-radius`.
+
+`data-button-radius="0"` squares the button — the `0` is read, not skipped as an empty value. Unset leaves the stylesheet's circular `50%`.
 
 ### Waveform style
 
@@ -220,7 +223,8 @@ The DOM chrome (button, title, meta text) is themed via CSS variables — `--wfp
 | `data-title` | `title` | string (`null` derives from URL filename) | `null` |
 | `data-artist` | `artist` | string | `null` |
 | `data-artwork` | `artwork` | string (40×40 image URL + Media Session art) | `null` |
-| `data-artwork-alt` | `artworkAlt` | string (artwork image alt text) | `Album artwork` |
+| `data-artwork-alt` | `artworkAlt` | string (artwork image alt text — info-row placement only) | `Album artwork` |
+| `data-artwork-position` | `artworkPosition` | `info` \| `button` | `info` |
 | `data-album` | `album` | string (Media Session metadata only) | `''` |
 | `data-unknown-track-text` | `unknownTrackText` | string (Media Session title fallback when no `title`) | `Unknown Track` |
 | `data-error-text` | `errorText` | string (shown in the error overlay, escaped) | `Unable to load audio` |

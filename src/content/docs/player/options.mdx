@@ -132,6 +132,7 @@ Layout, button, and waveform-style geometry.
 | `layout` | `'default'` | `'default' \| 'preview'` | `'preview'` centers the title under the waveform and trims the meta row; adds `.waveform-layout-preview`. `data-layout`. |
 | `buttonStyle` | `'circle'` | `'circle' \| 'minimal'` | `'minimal'` = bare glyph (`.waveform-btn-minimal`), no circle. `data-button-style`. |
 | `buttonSize` | `null` | `number \| string \| null` | `null` = stylesheet default; number = px; string (`'4rem'`) used verbatim. Sets `--wfp-btn-size`, scaling box + glyph. `data-button-size`. |
+| `buttonRadius` | `null` | `number \| string \| null` | **1.22.0+** `null` = stylesheet default (`50%`, a circle); `0` = square; number = px; string (`'0.5rem'`) verbatim. Sets `--wfp-btn-radius`. Shapes the `circle` style — the bare `minimal` glyph has no box to round. `data-button-radius`. |
 | `buttonAlign` | `'auto'` | `'auto' \| 'top' \| 'center' \| 'bottom'` | Play-button vertical align; `'auto'` resolves to `'bottom'` for `waveformStyle: 'bars'`, else `'center'`. `data-button-align`. |
 | `showPlaybackSpeed` | `false` | `boolean` | Render the speed menu in the meta row. `data-show-playback-speed`. |
 | `playbackRates` | `[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]` | `number[]` | Selectable rates in the speed menu. `data-playback-rates` (JSON array). |
@@ -226,7 +227,8 @@ This is the one option whose `data-*` key isn't a literal kebab-casing of the JS
 | `title` | `null` | `string \| null` | Track title; `null` derives from the URL filename via `extractTitleFromUrl`. `data-title`. |
 | `artist` | `null` | `string \| null` | Artist row; `''` hides it in `loadTrack`. `data-artist`. |
 | `artwork` | `null` | `string \| null` | Artwork image URL (40&times;40) + Media Session art. `data-artwork`. |
-| `artworkAlt` | `'Album artwork'` | `string` | Alt text for the artwork image. Localize for non-English UIs. `data-artwork-alt`. |
+| `artworkAlt` | `'Album artwork'` | `string` | Alt text for the artwork image. Localize for non-English UIs. Info-row placement only — button artwork is decorative. `data-artwork-alt`. |
+| `artworkPosition` | `'info'` | `'info' \| 'button'` | **1.22.0+** Where `artwork` renders. `'info'` = the info row beside the title (needs `showInfo`). `'button'` = the cover becomes the play button, and still works with the info row hidden. Only one placement ever renders, so a cover can't appear twice. `data-artwork-position`. |
 | `album` | `''` | `string` | Media Session album metadata only. `data-album`. |
 | `unknownTrackText` | `'Unknown Track'` | `string` | Media Session (lock-screen) title fallback used when no `title` is set. Localize for non-English UIs. `data-unknown-track-text`. |
 | `bpm` | `null` | `number \| null` | Known BPM; wins over auto-detection (shows even when peaks are pre-supplied). `data-bpm`. |
@@ -328,6 +330,7 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-layout` | `layout` | string. |
 | `data-button-style` | `buttonStyle` | string. |
 | `data-button-size` | `buttonSize` | bare number &rarr; px float; unit string (`'4rem'`) verbatim. |
+| `data-button-radius` | `buttonRadius` | bare number &rarr; px float; unit string (`'0.5rem'`) verbatim. `"0"` is read, not skipped. |
 | `data-button-align` | `buttonAlign` | string. |
 | `data-show-playback-speed` | `showPlaybackSpeed` | bool. |
 | `data-playback-rates` | `playbackRates` | JSON array. |
@@ -357,6 +360,7 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-album` | `album` | string. |
 | `data-artwork` | `artwork` | string. |
 | `data-artwork-alt` | `artworkAlt` | string. |
+| `data-artwork-position` | `artworkPosition` | string (`info` \| `button`). |
 | `data-unknown-track-text` | `unknownTrackText` | string. |
 | `data-error-text` | `errorText` | string. |
 | `data-play-icon` | `playIcon` | raw SVG. |

@@ -11,11 +11,13 @@ package's own `CHANGELOG.md`.
 
 - **[Core Player](/changelog/player/)** — `@arraypress/waveform-player`, the canvas player everything else builds on.
 - **[Bar](/changelog/bar/)** — `@arraypress/waveform-bar`, the persistent bottom-bar singleton.
-- **[Framework wrappers](/changelog/frameworks/)** — the Astro and React wrappers (`waveform-player-astro`, `waveform-player-react`, `waveform-bar-astro`, `waveform-bar-react`).
+- **[Playlist](/changelog/playlist/)** — `@arraypress/waveform-playlist`, playlist and chapter navigation.
+- **[Generator](/changelog/gen/)** — `@arraypress/waveform-gen`, offline peak generation.
+- **[Framework wrappers](/changelog/frameworks/)** — the Astro, React, Vue and Svelte wrappers.
 
 :::note
-**Playlist**, **Tracker**, and **Generator** don't keep a `CHANGELOG.md` yet —
-their releases are tracked on GitHub. They'll appear here once they do.
+**Tracker** doesn't keep a `CHANGELOG.md` yet — its releases are tracked on
+GitHub. It'll appear here once it does.
 :::
 
 All packages follow [Keep a Changelog](https://keepachangelog.com/) and

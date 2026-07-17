@@ -156,6 +156,7 @@ For look-and-feel that the stylesheet owns, override CSS variables rather than p
 | Variable             | Default    | Effect                                                                 |
 | -------------------- | ---------- | ---------------------------------------------------------------------- |
 | `--wfp-btn-size`     | `36px`     | Scales **both** play-button styles — box and glyph — proportionally.   |
+| `--wfp-btn-radius`   | `50%`      | Play-button corner radius; `0` squares it. Set by `buttonRadius`.       |
 | `--wfp-accent`       | `#71717a`  | Keyboard focus-ring outline + active-state accent (monochrome default).|
 | `--wfp-button-color` | preset     | Play-button border + icon color.                                       |
 | `--wfp-text-color`   | preset     | Title color.                                                           |
@@ -257,6 +258,49 @@ A `minimal` button at `4rem`, live:
 	buttonStyle="minimal"
 	buttonSize="4rem"
 />
+
+### Shape
+
+Added in **1.22.0**. `buttonRadius` drives `--wfp-btn-radius`, the same way `buttonSize` drives the size:
+
+- `null` *(default)* — the stylesheet default of `50%`, a circle.
+- `0` — square.
+- a **number** — pixels (e.g. `8` → `8px`); a **string** — verbatim (e.g. `'0.5rem'`).
+
+It shapes the `circle` style's box. The bare `minimal` glyph has no box, so it's a no-op there.
+
+```css
+/* Equivalent, applied to a group of players */
+.preview-grid .waveform-player {
+  --wfp-btn-radius: 8px;
+}
+```
+
+### Cover art on the button
+
+Added in **1.22.0**. `artworkPosition: 'button'` makes the `artwork` image *become* the play button, rather than sitting in the info row. It works with `showInfo: false`, and only one placement ever renders — the cover can't appear twice.
+
+It needs no other options. Cover mode drops the button's ring and swaps in cover-sized defaults (`64px`, `8px` rounding), because the transport button's defaults are wrong for artwork in both directions: `36px` shrinks a cover to a smudge, and `50%` crops square album art into a circle. `buttonSize` / `buttonRadius` still override, for a different tile.
+
+The glyph sits on a scrim, themed by two variables:
+
+| Variable                   | Default                | Effect                                     |
+| -------------------------- | ---------------------- | ------------------------------------------ |
+| `--wfp-btn-artwork-color`  | `rgba(255,255,255,0.9)`| Glyph (and border) color over the cover.   |
+| `--wfp-btn-artwork-scrim`  | `rgba(0,0,0,0.5)`      | Darkening between the cover and the glyph. |
+
+Neither is re-themed for light pages, on purpose: the cover underneath is an arbitrary image, so a light *page* tells you nothing about the *cover* — flipping the glyph dark is exactly the unreadable case.
+
+:::caution
+The scrim is what keeps the glyph legible. At the defaults it clears WCAG 1.4.11's 3:1 non-text contrast minimum against even a pure-white cover; any darker cover only improves on that. Softening it (`rgba(0,0,0,0.25)` suits a catalogue of reliably dark covers) or removing it is your call — but re-theme the scrim and the glyph colour **together**, or the guarantee goes with it.
+:::
+
+```css
+/* Dark catalogue — let more of the artwork through */
+.waveform-player {
+  --wfp-btn-artwork-scrim: rgba(0, 0, 0, 0.25);
+}
+```
 
 ## Layout: default vs preview
 
