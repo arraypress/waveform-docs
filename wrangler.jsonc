@@ -5,6 +5,9 @@
   "name": "waveform-docs",
   "compatibility_date": "2026-06-01",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    // Serve dist/404.html for unmatched routes (default "none" returns an empty
+    // 404). This is static-asset behaviour, not a script, so it stays free.
+    "not_found_handling": "404-page"
   }
 }
