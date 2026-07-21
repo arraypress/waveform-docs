@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLlmsTxt from 'starlight-llms-txt';
 import sitemap from '@astrojs/sitemap';
 
 // Site-wide structured data: the publisher, the docs site, and the product.
@@ -50,11 +51,12 @@ export default defineConfig({
 				// Per-section og:image — picks a card by the page's top-level section.
 				Head: './src/overrides/Head.astro',
 			},
-			// llms.txt lives on the marketing site; link agents there.
+			// llms.txt / llms-full.txt are generated from these docs by the
+			// starlight-llms-txt plugin (see plugins below); link agents to them.
 			head: [
 				{
 					tag: 'link',
-					attrs: { rel: 'alternate', type: 'text/plain', href: 'https://waveformplayer.com/llms.txt' },
+					attrs: { rel: 'alternate', type: 'text/plain', href: '/llms.txt' },
 				},
 				// Live <PlayerDemo> embeds — load the real runtime (CDN) and re-init
 				// after Starlight view-transition navigations.
@@ -63,6 +65,20 @@ export default defineConfig({
 				{ tag: 'script', content: "document.addEventListener('astro:page-load',function(){window.WaveformPlayer&&WaveformPlayer.init&&WaveformPlayer.init()});" },
 				// og:image is per-section — see src/overrides/Head.astro. Site-wide JSON-LD:
 				{ tag: 'script', attrs: { type: 'application/ld+json' }, content: JSON_LD },
+			],
+			plugins: [
+				// Generates /llms.txt (index) and /llms-full.txt (all docs concatenated)
+				// from this content at build time, so they stay in sync automatically.
+				starlightLlmsTxt({
+					projectName: 'WaveformPlayer',
+					description:
+						'A small, zero-dependency family of vanilla-JS audio components: a canvas waveform player, a persistent bottom bar, playlists, listen analytics, and build-time peak tooling. Auto-initializes from HTML data-* attributes; ships typed Astro and React wrappers.',
+					details:
+						'These docs cover the core player, its extensions (Bar, Playlist, Tracker, Generator), and framework/platform integrations. Full site: https://waveformplayer.com',
+					// Changelogs are noisy for the abridged set — keep them out of
+					// llms-small.txt (they remain in the complete llms-full.txt).
+					exclude: ['changelog', 'changelog/**'],
+				}),
 			],
 			sidebar: [
 				{ label: 'Getting Started', items: [{ autogenerate: { directory: 'getting-started' } }] },
