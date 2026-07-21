@@ -45,7 +45,7 @@ add_action( 'wp_enqueue_scripts', function () {
 ```
 
 <Aside type="tip" title="Load it only where it's used">
-Enqueue conditionally to keep pages lean — for example `if ( is_singular() && has_shortcode( get_post()->post_content ?? '', 'waveform' ) ) { … }`, or gate on a page template. The whole player is ~10 KB of JS gzipped plus the stylesheet.
+Enqueue conditionally to keep pages lean — for example `if ( is_singular() && has_shortcode( get_post()->post_content ?? '', 'waveform' ) ) { … }`, or gate on a page template. The whole player is ~12 KB of JS gzipped plus the stylesheet.
 </Aside>
 
 ### Bundled in your theme or plugin
