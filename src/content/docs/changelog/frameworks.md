@@ -17,6 +17,16 @@ The thin framework wrappers version independently of the core libraries they wra
 
 ### [Unreleased]
 
+### [0.7.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` prop.** Exposes the option added in
+  `@arraypress/waveform-player@1.23.0`, emitted as `data-cross-origin`
+  (`'anonymous'` | `'use-credentials'`). Omitted by default so the player
+  behaves like a native `<audio>` and never forces a CORS request that would
+  break CDN media without `Access-Control-Allow-Origin`.
+
 ### [0.6.0] — 2026-07-17
 
 #### Added
@@ -131,6 +141,16 @@ Initial release.
 ## `@arraypress/waveform-player-react`
 
 ### [Unreleased]
+
+### [0.7.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` prop.** Exposes the option added in
+  `@arraypress/waveform-player@1.23.0`: sets the CORS mode of the underlying
+  `<audio>` (`'anonymous'` | `'use-credentials'`). Omitted from the options bag
+  by default so the player behaves like a native `<audio>` and never forces a
+  CORS request that would break CDN media without `Access-Control-Allow-Origin`.
 
 ### [0.6.0] — 2026-07-17
 
@@ -260,6 +280,17 @@ Initial release.
 
 ## `@arraypress/waveform-player-vue`
 
+### [0.5.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` prop.** Exposes the option added in
+  `@arraypress/waveform-player@1.23.0`: sets the CORS mode of the underlying
+  `<audio>` (`'anonymous'` | `'use-credentials'`). Declared as a runtime prop
+  and omitted from the options bag by default so the player behaves like a
+  native `<audio>` and never forces a CORS request that would break CDN media
+  without `Access-Control-Allow-Origin`.
+
 ### [0.4.0] — 2026-07-17
 
 #### Added
@@ -354,6 +385,16 @@ Initial release.
 
 ## `@arraypress/waveform-player-svelte`
 
+### [0.5.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` prop.** Exposes the option added in
+  `@arraypress/waveform-player@1.23.0`: sets the CORS mode of the underlying
+  `<audio>` (`'anonymous'` | `'use-credentials'`). Omitted from the options bag
+  by default so the player behaves like a native `<audio>` and never forces a
+  CORS request that would break CDN media without `Access-Control-Allow-Origin`.
+
 ### [0.4.0] — 2026-07-17
 
 #### Added
@@ -441,6 +482,14 @@ Initial release.
   seven copy-paste-ready snippets.
 
 ## `@arraypress/waveform-bar-astro`
+
+### [0.4.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` config key.** Added to `WaveformBarConfig` and forwarded
+  verbatim to `window.WaveformBar.init()`. Requires
+  `@arraypress/waveform-bar@^1.11.0` for it to reach the embedded player.
 
 ### [0.3.0] — 2026-07-05
 
@@ -549,6 +598,14 @@ Initial release.
 
 ## `@arraypress/waveform-bar-react`
 
+### [0.4.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` config key.** Added to `WaveformBarConfig` and forwarded
+  verbatim to `window.WaveformBar.init()`. Requires
+  `@arraypress/waveform-bar@^1.11.0` for it to reach the embedded player.
+
 ### [0.3.0] — 2026-07-05
 
 #### Added
@@ -630,6 +687,14 @@ Initial release.
 
 ## `@arraypress/waveform-bar-vue`
 
+### [0.3.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` config key.** Added to `WaveformBarConfig` and forwarded
+  verbatim to `window.WaveformBar.init()`. Requires
+  `@arraypress/waveform-bar@^1.11.0` for it to reach the embedded player.
+
 ### [0.2.0] — 2026-07-05
 
 #### Added
@@ -680,6 +745,14 @@ Initial release.
   handling, class merge, and click forwarding.
 
 ## `@arraypress/waveform-bar-svelte`
+
+### [0.3.0] — 2026-07-22
+
+#### Added
+
+- **`crossOrigin` config key.** Added to `WaveformBarConfig` and forwarded
+  verbatim to `window.WaveformBar.init()`. Requires
+  `@arraypress/waveform-bar@^1.11.0` for it to reach the embedded player.
 
 ### [0.2.0] — 2026-07-05
 

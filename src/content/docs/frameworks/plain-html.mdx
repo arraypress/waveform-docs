@@ -26,7 +26,7 @@ The fastest way to ship a waveform player: one stylesheet, one script, and a `<d
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css"
+      href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.css"
     />
   </head>
   <body>
@@ -40,7 +40,7 @@ The fastest way to ship a waveform player: one stylesheet, one script, and a `<d
     ></div>
 
     <script
-      src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js"
+      src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.min.js"
     ></script>
   </body>
 </html>
@@ -141,7 +141,7 @@ Options merge in precedence order **defaults &lt; `data-*` &lt; constructor opti
 
 ## CDN providers
 
-The package publishes a minified IIFE bundle and a stylesheet. Pin to a major version (`@1`) for automatic patch/minor updates, or pin an exact version for fully reproducible builds.
+The package publishes a minified IIFE bundle and a stylesheet. The examples use `@latest` so you always get the current release; pin an exact version (e.g. `@1.23.0`) instead when you need fully reproducible builds.
 
 <Tabs syncKey="cdn">
 
@@ -149,9 +149,9 @@ The package publishes a minified IIFE bundle and a stylesheet. Pin to a major ve
 
 ```html
 <link rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css" />
+  href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.css" />
 <script
-  src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js"></script>
+  src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.min.js"></script>
 ```
 
 </TabItem>
@@ -159,9 +159,9 @@ The package publishes a minified IIFE bundle and a stylesheet. Pin to a major ve
 
 ```html
 <link rel="stylesheet"
-  href="https://unpkg.com/@arraypress/waveform-player@1/dist/waveform-player.css" />
+  href="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.css" />
 <script
-  src="https://unpkg.com/@arraypress/waveform-player@1/dist/waveform-player.min.js"></script>
+  src="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.min.js"></script>
 ```
 
 </TabItem>
@@ -169,7 +169,7 @@ The package publishes a minified IIFE bundle and a stylesheet. Pin to a major ve
 </Tabs>
 
 <Aside type="caution">
-For production, pin an **exact** version (for example `@1.22.0`) rather than `@1`. A floating major range means a CDN-cached patch can change behaviour without a deploy on your side.
+For fully reproducible builds, pin an **exact** version (for example `@1.23.0`) instead of `@latest`. A floating tag means a CDN-cached update can change behaviour without a deploy on your side.
 </Aside>
 
 ### Files in `dist/`
@@ -197,20 +197,20 @@ So the rule is simple: **load the core player first, then any extension.**
 <head>
   <!-- Core player styles + any extension styles -->
   <link rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css" />
+    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.css" />
   <link rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-bar@1/dist/waveform-bar.css" />
+    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-bar@latest/dist/waveform-bar.css" />
 </head>
 <body>
   <!-- … your players / triggers … -->
 
   <!-- 1. Core player — defines window.WaveformPlayer -->
   <script
-    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js"></script>
+    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.min.js"></script>
 
   <!-- 2. Extension — consumes window.WaveformPlayer -->
   <script
-    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-bar@1/dist/waveform-bar.min.js"></script>
+    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-bar@latest/dist/waveform-bar.min.js"></script>
 </body>
 ```
 
@@ -274,8 +274,8 @@ Then reference the local copies — identical markup, local paths:
 No package manager? Download the same files straight from a CDN (these URLs serve the raw artifacts):
 
 ```bash
-curl -O https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1.22.0/dist/waveform-player.min.js
-curl -O https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1.22.0/dist/waveform-player.css
+curl -O https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.min.js
+curl -O https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.css
 ```
 
 <Aside type="tip">

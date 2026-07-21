@@ -13,6 +13,17 @@ Generated from [`@arraypress/waveform-bar`'s CHANGELOG](https://github.com/array
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-07-22
+
+### Added
+
+- **`crossOrigin` config option.** Forwarded to the embedded `<audio>` player
+  (`'anonymous'` | `'use-credentials'` | `null`). Defaults to `null` — the bar
+  no longer implies any CORS mode, matching the core player's new default, so
+  CDN-hosted media without `Access-Control-Allow-Origin` plays out of the box.
+  Only passed to the player when truthy. Pairs with
+  `@arraypress/waveform-player@^1.23.0`.
+
 ## [1.10.0] — 2026-07-05
 
 ### Added

@@ -67,7 +67,7 @@ The runtime default for `chapterMarkerColor` is grey `rgba(161, 161, 170, 0.85)`
 
 ### Forwarded player options
 
-Every core **WaveformPlayer** option is forwarded to the inner player — `height`, `waveformStyle`, `colorPreset`, `barWidth`, `barSpacing`, `barRadius`, `buttonAlign`, `autoplay`, `showControls`, `showInfo`, `showTime`, `showHoverTime`, `showBPM`, `singlePlay`, `playOnSeek`, `showPlaybackSpeed`, `enableMediaSession`, `showMarkers`, `accessibleSeek`, `playbackRate`, `playbackRates`, `preload`, `samples`, all `*Color` options, `seekLabel`, `errorText`, `playIcon`, `pauseIcon`, and so on. See the full [player options reference](/player/options/).
+Every core **WaveformPlayer** option is forwarded to the inner player — `height`, `waveformStyle`, `colorPreset`, `barWidth`, `barSpacing`, `barRadius`, `buttonAlign`, `autoplay`, `showControls`, `showInfo`, `showTime`, `showHoverTime`, `showBPM`, `singlePlay`, `playOnSeek`, `showPlaybackSpeed`, `enableMediaSession`, `showMarkers`, `accessibleSeek`, `playbackRate`, `playbackRates`, `preload`, `crossOrigin`, `samples`, all `*Color` options, `seekLabel`, `errorText`, `playIcon`, `pauseIcon`, and so on. See the full [player options reference](/player/options/).
 
 Set them either as a constructor option or as a container `data-*`. The playlist inherits the player's complete `data-*` contract through `WaveformPlayer.utils.parseDataAttributes`, so it never drifts as the player gains options.
 

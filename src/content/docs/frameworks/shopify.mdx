@@ -82,21 +82,21 @@ If audio appears on a handful of templates, skip `theme.liquid` and load the ass
 
 ### Option B — CDN
 
-For prototypes or themes where you would rather not manage asset files, point at jsDelivr or unpkg. Pin a major version (`@1`) so you get patches without surprise breakage.
+For prototypes or themes where you would rather not manage asset files, point at jsDelivr or unpkg. These use `@latest` for the current release; pin an exact version (`@1.23.0`) if you need reproducible builds.
 
 ```liquid
 {# jsDelivr #}
 <link
   rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css">
+  href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.css">
 <script
-  src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js"
+  src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.min.js"
   defer></script>
 ```
 
 ```liquid
 {# unpkg (the package's "unpkg" entry resolves to the min build) #}
-<script src="https://unpkg.com/@arraypress/waveform-player@1" defer></script>
+<script src="https://unpkg.com/@arraypress/waveform-player@latest" defer></script>
 ```
 
 ## 2. The markup contract

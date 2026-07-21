@@ -22,21 +22,21 @@ The browser build is an IIFE that exposes `window.WaveformPlayer`, so it works a
 
 ### From a CDN
 
-The fastest path — point WordPress at jsDelivr or unpkg. Pin to a major (`@1`) for automatic patch/minor updates, or to an exact version (`@1.22.0`) for reproducible builds.
+The fastest path — point WordPress at jsDelivr or unpkg. These use `@latest` for the current release; pin an exact version (`@1.23.0`) instead for reproducible builds.
 
 ```php
 // functions.php (theme) or your plugin's main file
 add_action( 'wp_enqueue_scripts', function () {
 	wp_enqueue_style(
 		'waveform-player',
-		'https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.css',
+		'https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.css',
 		array(),
 		'1.14.0'
 	);
 
 	wp_enqueue_script(
 		'waveform-player',
-		'https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@1/dist/waveform-player.min.js',
+		'https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.min.js',
 		array(),     // no dependencies
 		'1.14.0',
 		true         // load in the footer

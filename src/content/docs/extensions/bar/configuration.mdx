@@ -69,6 +69,7 @@ These pass through to the bar's single embedded WaveformPlayer instance.
 | `progressColor` | `string \| null` | `null` | Progress color. Only passed when truthy. |
 | `markerColor` | `string` | `'rgba(255, 255, 255, 0.25)'` | Default marker line color for markers lacking their own `color`. |
 | `errorText` | `string \| null` | `null` | Custom "audio failed to load" message passed to the player. `null` = the player's own default. |
+| `crossOrigin` | `'anonymous' \| 'use-credentials' \| null` | `null` | CORS mode forwarded to the embedded `<audio>`. Only passed when truthy. `null` leaves it unset (native `<audio>` behavior — avoids breaking CDN media without CORS headers). |
 
 <Aside type="note" title="barSpacing default">
 The code default for `barSpacing` is `2`. Some older docs list `0` — the running default is `2`.

@@ -96,6 +96,7 @@ What to load and how to drive it.
 | `waveform` | `null` | `number[] \| string \| null` | Pre-computed peaks: inline array, comma-separated string, JSON-array string, or a `.json` URL (fetched; embedded markers applied). Skips Web Audio decode. Reset per-track in `loadTrack`. `data-waveform`. |
 | `samples` | `1800` | `number` | Source peak resolution decoded; resampled to fit the visible bars (fidelity headroom, **not** bar count). `data-samples`. |
 | `preload` | `'metadata'` | `'auto' \| 'metadata' \| 'none'` | `<audio>` preload hint (self mode). `data-preload`. |
+| `crossOrigin` | `null` | `'anonymous' \| 'use-credentials' \| null` | CORS mode for the `<audio>` (self mode). Unset by default so the player behaves like a plain `<audio>` and never forces a CORS request — setting it breaks playback of media on origins without `Access-Control-Allow-Origin` (default-config S3/CDN). Set only if you need it. `data-cross-origin`. |
 | `audioMode` | `'self'` | `'self' \| 'external'` | `'self'` owns an `<audio>`; `'external'` is visualization-only. `data-audio-mode`. |
 | `playbackRate` | `1` | `number` | Initial playback rate (self mode). `data-playback-rate`. |
 
@@ -320,6 +321,7 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-waveform` | `waveform` | peaks string / JSON array / `.json` URL. |
 | `data-samples` | `samples` | int. |
 | `data-preload` | `preload` | string. |
+| `data-cross-origin` | `crossOrigin` | string (`anonymous` / `use-credentials`). |
 | `data-audio-mode` | `audioMode` | string. |
 | `data-playback-rate` | `playbackRate` | float. |
 | `data-height` | `height` | int. |

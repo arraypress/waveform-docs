@@ -131,6 +131,7 @@ Props are inherited verbatim from the core's `WaveformPlayerOptions`, so the [fu
 | `colorPreset` | `'dark' \| 'light'` | Forces a theme; omit for auto-detection. |
 | `markers` | `Array<{ time: number; label: string; color?: string }>` | Cue markers; JSON-encoded for you. |
 | `audioMode` | `'self' \| 'external'` | `'self'` owns an `<audio>`; `'external'` is visualization-only. |
+| `crossOrigin` | `'anonymous' \| 'use-credentials'` | CORS mode for the `<audio>`. Unset by default (native `<audio>` behavior); set only if you need it. |
 | `showBPM`, `showControls`, `showInfo`, `showTime` | `boolean` | UI toggles. Astro boolean shorthand works: `showBPM` ≡ `showBPM={true}`. |
 
 ### Astro-specific props
