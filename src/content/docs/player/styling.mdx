@@ -182,6 +182,10 @@ Set them on `.waveform-player` (or any ancestor) — and this is also where you'
 
 The full set of class hooks (`.waveform-btn`, `.waveform-container`, `.waveform-title`, `.waveform-meta`, …) is available on the rendered DOM if you need finer-grained targeting.
 
+### The `waveform-is-placeholder` state class
+
+Since 1.24.0, when waveform analysis fails and the player falls back to decorative placeholder peaks (e.g. a CORS-blocked track), the container gets a `waveform-is-placeholder` class, removed again when the next load starts. It ships no styles of its own — it's a hook for detecting that the peaks shown aren't real, so you can restyle the fallback (for example, flat-line it into a plain progress bar).
+
 ## The play button
 
 ### Style
