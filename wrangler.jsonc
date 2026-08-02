@@ -2,8 +2,23 @@
   // Static-assets-only Worker — no `main` script, so requests are served at no
   // charge (free/unlimited). Keeping this file also stops wrangler from
   // auto-running `astro add cloudflare`, which would add a billable SSR Worker.
-  "name": "waveform-docs",
+  // Named after the domain it serves (docs.waveformplayer.com), apex first so
+  // Cloudflare's alphabetical Workers list groups it with `waveformplayer`.
+  // Named `docs-waveformplayer` it would sort under D, away from its sibling.
+  //
+  // wrangler deploys BY NAME: if this drifts from the dashboard, the next deploy
+  // creates a second Worker instead of updating this one.
+  "name": "waveformplayer-docs",
   "compatibility_date": "2026-06-01",
+  // Both default to TRUE, which publishes the whole docs site at extra public
+  // hostnames — waveformplayer-docs.arraypress.workers.dev, plus a per-version
+  // preview URL for every deploy. That is a second full copy for Google to index
+  // as a duplicate, and it is invisible unless you read the deploy log.
+  //
+  // DO NOT set these before the custom domain is confirmed serving — .workers.dev
+  // is the only way to reach the docs until then.
+  "workers_dev": false,
+  "preview_urls": false,
   "assets": {
     "directory": "./dist",
     // Serve dist/404.html for unmatched routes (default "none" returns an empty
