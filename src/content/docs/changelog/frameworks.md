@@ -803,6 +803,20 @@ Initial release.
 
 ## `@arraypress/waveform-playlist-astro`
 
+### [0.4.0] — 2026-08-07
+
+#### Added
+
+- Forward the core player's `crossOrigin` option to the embedded player.
+  Added to the `Astro.props` destructure and emitted as the
+  `data-cross-origin` container attribute.
+  This option shipped across the rest of the waveform family in
+  `@arraypress/waveform-player@1.23.0` but was missed in the playlist
+  wrappers, so it was previously accepted by the types and silently
+  dropped at runtime. Requires `@arraypress/waveform-player@^1.23.0`
+  and `@arraypress/waveform-playlist@^1.7.2` (the version that began
+  forwarding it to each track's player).
+
 ### [0.3.0] — 2026-07-05
 
 #### Added
@@ -862,6 +876,20 @@ Initial release.
   (`examples/basic.astro`).
 
 ## `@arraypress/waveform-playlist-react`
+
+### [0.4.0] — 2026-08-07
+
+#### Added
+
+- Forward the core player's `crossOrigin` option to the embedded player.
+  Forwarded in the constructor options builder and added to the
+  remount `useEffect` dependency array.
+  This option shipped across the rest of the waveform family in
+  `@arraypress/waveform-player@1.23.0` but was missed in the playlist
+  wrappers, so it was previously accepted by the types and silently
+  dropped at runtime. Requires `@arraypress/waveform-player@^1.23.0`
+  and `@arraypress/waveform-playlist@^1.7.2` (the version that began
+  forwarding it to each track's player).
 
 ### [0.3.0] — 2026-07-05
 
@@ -938,6 +966,20 @@ Initial release.
 
 ## `@arraypress/waveform-playlist-vue`
 
+### [0.4.0] — 2026-08-07
+
+#### Added
+
+- Forward the core player's `crossOrigin` option to the embedded player.
+  Added as a runtime `props` declaration (`PropType<AudioCrossOrigin>`),
+  set in the options builder, and added to the remount watcher.
+  This option shipped across the rest of the waveform family in
+  `@arraypress/waveform-player@1.23.0` but was missed in the playlist
+  wrappers, so it was previously accepted by the types and silently
+  dropped at runtime. Requires `@arraypress/waveform-player@^1.23.0`
+  and `@arraypress/waveform-playlist@^1.7.2` (the version that began
+  forwarding it to each track's player).
+
 ### [0.3.0] — 2026-07-05
 
 #### Added
@@ -990,6 +1032,20 @@ Initial release.
   navigation API. The core is mocked at the module boundary.
 
 ## `@arraypress/waveform-playlist-svelte`
+
+### [0.4.0] — 2026-08-07
+
+#### Added
+
+- Forward the core player's `crossOrigin` option to the embedded player.
+  Added to the `$props()` destructure (an undestructured prop falls
+  into `...rest` and is never forwarded) and set in the options builder.
+  This option shipped across the rest of the waveform family in
+  `@arraypress/waveform-player@1.23.0` but was missed in the playlist
+  wrappers, so it was previously accepted by the types and silently
+  dropped at runtime. Requires `@arraypress/waveform-player@^1.23.0`
+  and `@arraypress/waveform-playlist@^1.7.2` (the version that began
+  forwarding it to each track's player).
 
 ### [0.3.0] — 2026-07-05
 
