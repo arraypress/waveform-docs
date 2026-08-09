@@ -13,6 +13,87 @@ Generated from [`@arraypress/waveform-player`'s CHANGELOG](https://github.com/ar
 
 ## [Unreleased]
 
+## [1.24.3] — 2026-08-09
+
+### Changed
+
+- **Stopped shipping sourcemaps.** The three `.map` files were 681KB of the
+  package's 1.2MB unpacked size — more than half of every install — and nothing
+  could load them: esbuild's `--sourcemap=external` writes the file but omits
+  the `//# sourceMappingURL=` comment, so no bundler or devtools had a way to
+  find them. The bundle bytes are unchanged, and `src/` still ships for anyone
+  who wants to read the original source. Packed 330.7KB → 144.1KB, unpacked
+  1.2MB → 538.0KB.
+
+## [1.24.2] — 2026-08-09
+
+### Fixed
+
+- **`formatTime()` rendered `'Infinity:NaN:NaN'` for a non-finite duration.**
+  A streamed or unseekable source reports `audio.duration === Infinity`, which
+  is truthy, not `NaN` and not negative, so it slipped every guard —
+  `Infinity % 3600` is `NaN`, and the literal string landed in the time display.
+  Non-finite and non-numeric input now formats as `'0:00'` like the other
+  invalid cases. Numeric strings are still coerced.
+
+## [1.24.1] — 2026-08-09
+
+### Fixed
+
+- **Auto-theme no longer reads an unpainted page as dark.** A page that doesn't
+  set a background on `<body>` computes to `rgba(0, 0, 0, 0)`, and the old
+  detector scored that as pure black — so the player picked the dark preset
+  (white waveform, white controls) and went invisible on a white page. The
+  `prefers-color-scheme` fallback was never reached, and re-detection hit the
+  same short-circuit, so an OS theme switch didn't recover it either. Reported
+  by [@sporteka2](https://github.com/sporteka2) in
+  [#21](https://github.com/arraypress/waveform-player/issues/21).
+
+### Changed
+
+- **Detection now reads the backdrop actually behind the player**, not just
+  `<body>`: it walks the container's ancestors up to `<html>`,
+  alpha-compositing each background over the browser canvas. Three consequences
+  worth knowing:
+  - A player inside a themed card now matches the **card** rather than the page.
+  - Pages that paint their background on a wrapper `<div>` or on `<html>` (both
+    of which the old `<body>`-only read missed) are now detected properly.
+  - Translucent layers are composited, so a `rgba(0, 0, 0, 0.05)` scrim over
+    white reads as light instead of as black.
+- **Where the page paints nothing, the page's own palette decides — not
+  `prefers-color-scheme`.** The scheme is read from the resolved text colour
+  (`color` inherits the `canvastext` system colour, which goes white exactly
+  when the document's used colour-scheme is dark). This is the only signal that
+  catches the `<meta name="color-scheme">` form, which Chrome does *not* reflect
+  into the computed `color-scheme` property — so the exact setup in #21 would be
+  invisible to that.
+
+  `prefers-color-scheme` is deliberately **not** used here, and now only serves
+  as a last resort when no text colour resolves at all. It describes the user,
+  not the page, and what a browser paints behind an unpainted page under a dark
+  preference turns out to be engine-specific: screenshotting the same page in
+  each, Chromium composites a dark `#121212` base background, while WebKit and
+  Firefox both keep it white. No scripted signal distinguishes them, so a page
+  whose text is black is treated as the light design it says it is — which
+  matches two of the three engines.
+
+  Consequence worth knowing, and it is Chrome-only: on a page that paints no
+  background *and* never declares `color-scheme`, viewed in Chrome with a dark
+  OS preference, the player takes the light preset against Chrome's dark base
+  background. Such a page is already rendering its own body text
+  black-on-`#121212`; declaring `color-scheme` (or setting `colorPreset`) fixes
+  both. Firefox and Safari paint that page white, where the light preset is
+  correct.
+- `perceivedBrightness()` now parses `rgb()`/`rgba()` properly — including the
+  modern `rgb(0 0 0 / 50%)` form — and returns `null` for a fully transparent
+  colour instead of scoring it as black. New `parseColor()` helper alongside it.
+- `detectColorScheme(element)` is exposed on `WaveformPlayer.utils` so
+  `@arraypress/waveform-bar` can share it instead of keeping its own copy (which
+  had drifted, and carried this same bug).
+
+Explicit `colorPreset` / `data-color-preset` and the `dark` / `data-theme` page
+hints are unaffected — they still win before any of this runs.
+
 ## [1.24.0] — 2026-07-30
 
 ### Added
