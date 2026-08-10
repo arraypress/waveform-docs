@@ -179,7 +179,7 @@ Sets the playback speed.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `rate` | `number` | Clamped to `0.5`–`2`. |
+| `rate` | `number` | Clamped to `0.25`–`4` — the range browsers keep audible. Non-numeric values are ignored. |
 
 Applies to the audio, persists to `options.playbackRate`, and refreshes the speed menu UI. No-op in external mode. **Returns** `void`.
 

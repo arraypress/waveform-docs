@@ -11,6 +11,21 @@ sidebar:
 Generated from [`@arraypress/waveform-gen`'s CHANGELOG](https://github.com/arraypress/waveform-gen/blob/main/CHANGELOG.md). Run `npm run sync:changelogs` after a release to refresh.
 :::
 
+## [Unreleased]
+
+## [1.6.0] — 2026-08-11
+
+### Fixed
+
+- **Bad CLI flags are rejected instead of silently producing wrong output.**
+  `--samples abc` became `NaN` and wrote a peaks file with nothing usable in it;
+  `--precision two` was likewise `NaN`, which skipped rounding entirely (the
+  `precision >= 0` test is false for `NaN`). Both now exit with a message naming
+  the flag. Negative `--precision` still means "don't round".
+- **`--format` is validated.** Only `inline` was ever tested for downstream, so
+  an unrecognised format quietly behaved as `json` — writing files for someone
+  who asked for stdout.
+
 ## [1.5.1] — 2026-07-01
 
 ### Changed

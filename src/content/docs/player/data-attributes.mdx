@@ -123,8 +123,23 @@ new WaveformPlayer('#player', { waveformStyle: 'mirror' }); // → mirror
 | **Number (int)** | `parseInt(value, 10)` — e.g. `data-height`, `data-bar-width`, `data-bpm`. Empty value is skipped. |
 | **Number (float)** | `parseFloat(value)` — `data-playback-rate`, and `data-button-size` when given a bare number. |
 | **Boolean** | Compared against the literal string `'true'`. Any other value (including `"false"`, `""`, `"1"`) resolves to `false`. |
-| **JSON** | `JSON.parse(value)` — `data-markers`, `data-playback-rates`. Malformed JSON is **warned about and skipped** (the attribute is ignored, never thrown). |
+| **JSON** | `data-markers` takes a JSON **array**. Malformed JSON — and valid JSON that isn't an array, such as `2` or `{"a":1}` — is **warned about and skipped** (the attribute is ignored, never thrown). `data-playback-rates` additionally accepts a bare comma-separated list (`0.5, 1, 2`). |
 | **Color** | `data-waveform-color` / `data-progress-color` accept a CSS color string **or** a JSON array of gradient stops. A value starting with `[` is parsed as JSON; on parse failure it falls back to the raw string. |
+
+Since **1.25.0**, every option is normalized after parsing, whichever path it
+arrived by — attribute, constructor, or framework wrapper. A value the player
+can't use resolves to its documented default and warns, naming the option,
+rather than reaching the code that consumes it:
+
+- **Numbers** that don't parse (`data-height="tall"`) fall back to the default;
+  values outside a sane range are clamped.
+- **Enumerated options** (`layout`, `buttonStyle`, `waveformStyle`, `preload`,
+  `crossOrigin`, …) fall back when the value isn't one of the documented ones.
+- **Lists** (`markers`, `playbackRates`) must be lists; individual entries that
+  aren't usable — a marker with no numeric `time`, a rate outside `0.25`–`4` —
+  are dropped rather than rendered broken.
+
+So a typo costs you that one option, never the player.
 
 :::caution[Booleans need the exact string `true`]
 To **disable** a flag that defaults to on, you must write the value explicitly:

@@ -136,7 +136,7 @@ Layout, button, and waveform-style geometry.
 | `buttonRadius` | `null` | `number \| string \| null` | **1.22.0+** `null` = stylesheet default (`50%`, a circle); `0` = square; number = px; string (`'0.5rem'`) verbatim. Sets `--wfp-btn-radius`. Shapes the `circle` style — the bare `minimal` glyph has no box to round. `data-button-radius`. |
 | `buttonAlign` | `'auto'` | `'auto' \| 'top' \| 'center' \| 'bottom'` | Play-button vertical align; `'auto'` resolves to `'bottom'` for `waveformStyle: 'bars'`, else `'center'`. `data-button-align`. |
 | `showPlaybackSpeed` | `false` | `boolean` | Render the speed menu in the meta row. `data-show-playback-speed`. |
-| `playbackRates` | `[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]` | `number[]` | Selectable rates in the speed menu. `data-playback-rates` (JSON array). |
+| `playbackRates` | `[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]` | `number[]` | Selectable rates in the speed menu. Entries outside `0.25`–`4` are dropped, so the menu can never offer a rate [`setPlaybackRate`](/player/methods/#setplaybackraterate) would refuse. `data-playback-rates` (JSON array **or** a bare comma-separated list). |
 
 ### Per-style bar defaults
 
@@ -335,7 +335,7 @@ Every attribute the parser recognises, including the marker and library-managed 
 | `data-button-radius` | `buttonRadius` | bare number &rarr; px float; unit string (`'0.5rem'`) verbatim. `"0"` is read, not skipped. |
 | `data-button-align` | `buttonAlign` | string. |
 | `data-show-playback-speed` | `showPlaybackSpeed` | bool. |
-| `data-playback-rates` | `playbackRates` | JSON array. |
+| `data-playback-rates` | `playbackRates` | JSON array (`[0.5,1,2]`) or a bare list (`0.5, 1, 2`). |
 | `data-color-preset` / `data-theme` | `colorPreset` | `data-theme` is legacy. |
 | `data-waveform-color` / `data-color` | `waveformColor` | CSS colour or JSON gradient array; `data-color` is legacy. |
 | `data-progress-color` | `progressColor` | CSS colour or JSON gradient array. |

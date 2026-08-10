@@ -169,7 +169,7 @@ The component exports its API as Svelte 5 `export function`s. Grab the instance 
 | `seekTo` | `(seconds: number) => void` | Self mode only. |
 | `seekToPercent` | `(percent: number) => void` | Fraction `0..1`. Self mode only. |
 | `setVolume` | `(volume: number) => void` | `0..1`. Self mode only. |
-| `setPlaybackRate` | `(rate: number) => void` | `0.5..2`. Self mode only. |
+| `setPlaybackRate` | `(rate: number) => void` | `0.25..4`. Self mode only. |
 | `setPlayingState` | `(playing: boolean) => void` | **External mode** — push play/pause visual state. |
 | `setProgress` | `(currentTime, duration) => void` | **External mode** — push the progress overlay from your own clock. |
 | `loadTrack` | `(url, title?, artist?, options?) => Promise<void>` | Swap track at runtime; auto-plays unless `options.autoplay === false`. |
