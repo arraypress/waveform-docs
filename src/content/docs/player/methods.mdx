@@ -47,7 +47,7 @@ const b = new WaveformPlayer(el, { url: '/audio/b.mp3', waveformStyle: 'bars' })
 ```
 
 <Aside type="tip">
-You rarely need `new` for declarative markup. Any element carrying `data-waveform-player` is instantiated automatically on `DOMContentLoaded`, and you can re-scan the DOM at any time with [`WaveformPlayer.init()`](#waveformplayerinit). See [Installation](/getting-started/installation/).
+You rarely need `new` for declarative markup. Any element carrying `data-waveform-player` is instantiated automatically on `DOMContentLoaded`, and you can re-scan the DOM at any time with [`WaveformPlayer.init()`](#waveformplayerinitroot). See [Installation](/getting-started/installation/).
 </Aside>
 
 ## Playback control
@@ -331,9 +331,13 @@ WaveformPlayer.getAllInstances().forEach((p) => p.pause());
 
 Calls `destroy()` on every live instance and clears the instance map. **Returns** `void`. Useful in SPA route teardown or hot-module-reload disposal.
 
-### `WaveformPlayer.init()`
+### `WaveformPlayer.init(root?)`
 
-Re-scans the DOM for `[data-waveform-player]` elements and instantiates any that aren't yet initialized. Idempotent: the library marks each handled element with `data-waveform-initialized="true"`, so re-running skips them. It also runs automatically on `DOMContentLoaded`. **Returns** `void`.
+Re-scans for `[data-waveform-player]` elements and instantiates any that aren't yet initialized. Idempotent: the library marks each handled element with `data-waveform-initialized="true"`, so re-running skips them. It also runs automatically on `DOMContentLoaded`. **Returns** `void`.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `root` | `Document \| Element` | `document` | Subtree to scan. Matched against itself as well as its descendants, so passing a single player element works. |
 
 Call it after injecting new markup (AJAX, client-side routing, a CMS preview pane):
 
@@ -341,6 +345,18 @@ Call it after injecting new markup (AJAX, client-side routing, a CMS preview pan
 container.innerHTML = '<div data-waveform-player data-src="/audio/new.mp3"></div>';
 WaveformPlayer.init(); // mounts the freshly injected player
 ```
+
+Pass a root to initialise only the part of the page you control — the usual pairing with the [`data-waveform-autoinit="false"` opt-out](/player/data-attributes/#initialising-only-what-you-control):
+
+```js
+WaveformPlayer.init( document.querySelector( '#my-app' ) );
+```
+
+Scanning this way keeps the idempotency flagging and per-element error isolation, so one element that fails to construct never takes the rest of the subtree down with it — worth preferring over a hand-rolled `querySelectorAll` loop.
+
+<Aside type="tip" title="Added in 1.26.0">
+The `root` parameter. Calling `init()` with no argument scans the whole document exactly as before.
+</Aside>
 
 ### `WaveformPlayer.getPeaksUrl(audioUrl)`
 
@@ -436,7 +452,7 @@ const label = WaveformPlayer.utils.formatTime(95); // '1:35'
 | `WaveformPlayer.getInstance(idOrElement)` | static | `WaveformPlayer \| undefined` |
 | `WaveformPlayer.getAllInstances()` | static | `WaveformPlayer[]` |
 | `WaveformPlayer.destroyAll()` | static | `void` |
-| `WaveformPlayer.init()` | static | `void` |
+| `WaveformPlayer.init(root?)` | static | `void` |
 | `WaveformPlayer.getPeaksUrl(audioUrl)` | static | `string \| undefined` |
 | `WaveformPlayer.generateWaveformData(url, samples?)` | static | `Promise<number[]>` |
 

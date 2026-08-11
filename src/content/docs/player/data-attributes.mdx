@@ -96,6 +96,34 @@ WaveformPlayer.init();
 `data-waveform-initialized` is written **by** the library — it is not an attribute you author. Leave it off your markup.
 :::
 
+### Initialising only what you control
+
+<Aside type="tip" title="Added in 1.26.0">
+Set `data-waveform-autoinit="false"` on the document element to switch the automatic scan off entirely.
+</Aside>
+
+If your page renders markup you did not author — user-submitted content, a CMS, an editor canvas — you may not want *every* `[data-waveform-player]` on the page to become a player. Opt the whole document out:
+
+```html
+<html data-waveform-autoinit="false">
+```
+
+Nothing is initialised until you ask for it. Pass `init()` a root to scan only the subtree you own:
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player';
+
+WaveformPlayer.init( document.querySelector( '#my-app' ) );
+```
+
+The root is matched as well as its descendants, so handing `init()` a single player element works too. Constructing players directly with `new WaveformPlayer( el )` also still works — only the scan on import is suppressed.
+
+The attribute goes on `<html>` rather than a JS global because ES module imports are evaluated *before* the importing module's body runs, so a bundled consumer never gets the chance to set a flag first. Markup is in place before any script executes.
+
+:::caution
+This scopes **initialisation**, not sanitisation. [`playIcon` / `pauseIcon`](/player/options/) (and their `data-play-icon` / `data-pause-icon` equivalents) inject raw markup by design, for any player you *do* build. Untrusted content still needs sanitising before it reaches the page.
+:::
+
 ## Configuration precedence
 
 When a player is built, options are merged from three sources, last writer winning:
