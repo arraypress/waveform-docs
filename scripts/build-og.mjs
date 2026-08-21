@@ -102,6 +102,7 @@ const CARDS = [
 	{ out: 'og/playlist.png', badge: 'docs · @arraypress/waveform-playlist', title: 'WaveformPlaylist', subtitle: 'Multi-track playlists — chapters, options and API.' },
 	{ out: 'og/tracker.png', badge: 'docs · @arraypress/waveform-tracker', title: 'WaveformTracker', subtitle: 'Privacy-first listen analytics — config, payload, privacy.' },
 	{ out: 'og/gen.png', badge: 'docs · @arraypress/waveform-gen', title: 'WaveformGen', subtitle: 'Build-time peaks — CLI, library, output and notes.' },
+	{ out: 'og/news.png', badge: 'docs · news', title: 'News', subtitle: 'Announcements from the waveform family — where it ships and what changed.' },
 	{ out: 'og/changelog.png', badge: 'docs · changelog', title: 'Changelog', subtitle: 'Release history for the player, bar and framework wrappers.' },
 ];
 

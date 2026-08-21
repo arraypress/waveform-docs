@@ -14,7 +14,7 @@ const path = Astro.url.pathname.replace(/^\/+|\/+$/g, '');
 const seg = path.split('/');
 // `extensions/<pkg>/…` → the package; otherwise the first segment.
 const key = seg[0] === 'extensions' ? seg[1] : seg[0];
-const SECTIONS = ['getting-started', 'player', 'frameworks', 'bar', 'playlist', 'tracker', 'gen', 'changelog'];
+const SECTIONS = ['getting-started', 'player', 'frameworks', 'bar', 'playlist', 'tracker', 'gen', 'news', 'changelog'];
 const file = SECTIONS.includes(key) ? `/img/og/${key}.png` : '/img/og.png';
 const og = new URL(file, Astro.site).href;
 ---

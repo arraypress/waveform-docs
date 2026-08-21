@@ -88,6 +88,7 @@ export default defineConfig({
 				{ label: 'Tracker', collapsed: true, items: [{ autogenerate: { directory: 'extensions/tracker' } }] },
 				{ label: 'Generator', collapsed: true, items: [{ autogenerate: { directory: 'extensions/gen' } }] },
 				{ label: 'Frameworks & Platforms', collapsed: true, items: [{ autogenerate: { directory: 'frameworks' } }] },
+				{ label: 'News', items: [{ autogenerate: { directory: 'news' } }] },
 				{ label: 'Changelog', collapsed: true, items: [{ autogenerate: { directory: 'changelog' } }] },
 			],
 		}),

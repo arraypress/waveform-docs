@@ -1,0 +1,49 @@
+---
+title: WaveformPlayer is in WordPress core
+description: WordPress 7.1 ships a new Playlist block, and @arraypress/waveform-player draws its waveforms.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+On **19 August 2026**, WordPress 7.1 "Mary Lou" shipped with a brand-new **Playlist block** — and
+the waveform your listeners see inside it is ours.
+
+We're enormously proud of this one. WaveformPlayer started as a small, zero-dependency script for
+getting a good-looking audio player onto a page without dragging a framework along behind it. It now
+ships *inside* the most widely used CMS on the web. No plugin, no CDN link, nothing to enqueue: on
+any site running 7.1, the player is already there the moment a Playlist block hits the page.
+
+> Bring multiple audio tracks together in one playlist, with an optional waveform that gives
+> listeners a visual sense of each track as it plays.
+>
+> — [The WordPress 7.1 release post](https://wordpress.org/news/2026/08/mary-lou/)
+
+## Thank you, Ben
+
+None of this would have happened without **Ben Dwyer** (`scruffian`), who proposed the visualization,
+[built it](https://github.com/WordPress/gutenberg/pull/75203), and carried it through review and into
+core back in March. Getting a third-party library into WordPress core is not a small thing to take
+on, and he did it with a lot of care. Thank you.
+
+## What you get in the block
+
+A **Visualization style** dropdown in the block sidebar, offering the same six
+[waveform styles](/player/waveform-styles/) documented here — bars, mirror, line, blocks, dots and
+seekbar — plus the option to show each track's artwork inside the play button.
+
+<Aside type="caution" title="It's the player, not the Playlist extension">
+	Core bundles **`@arraypress/waveform-player`**. The Playlist block is WordPress's own block — it
+	just uses the player to draw each track's waveform. If you want to build playlists in your own
+	HTML, that's [`@arraypress/waveform-playlist`](/extensions/playlist/), a separate extension.
+</Aside>
+
+## Using the player outside the block
+
+Core's copy is scoped to the Playlist block. To put a player anywhere else in a theme or plugin — a
+shortcode, a template, your own block — enqueue it yourself, as described in
+[Frameworks & Platforms → WordPress](/frameworks/wordpress/).
+
+That copy is yours to version. Core pins its own (7.1 shipped with 1.26.0) and tracks WordPress's
+release cycle, not ours.
