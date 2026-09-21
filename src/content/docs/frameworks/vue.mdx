@@ -42,6 +42,10 @@ On all three components, `style` (and `class`, `id`) is a standard HTML attribut
 npm install @arraypress/waveform-player-vue @arraypress/waveform-player vue
 ```
 
+:::note[Requires core 1.27.0 or newer]
+The component loads the core library's [`/no-autoinit` entry point](/player/data-attributes/#if-you-dont-control-the-page-either), so mounting it never scans the page for markup it doesn't own. That subpath was added in `@arraypress/waveform-player` 1.27.0 — if you upgrade the wrapper on its own, bump the core alongside it.
+:::
+
 </TabItem>
 <TabItem label="pnpm">
 
