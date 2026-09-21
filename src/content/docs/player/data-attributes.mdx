@@ -118,7 +118,33 @@ WaveformPlayer.init( document.querySelector( '#my-app' ) );
 
 The root is matched as well as its descendants, so handing `init()` a single player element works too. Constructing players directly with `new WaveformPlayer( el )` also still works — only the scan on import is suppressed.
 
-The attribute goes on `<html>` rather than a JS global because ES module imports are evaluated *before* the importing module's body runs, so a bundled consumer never gets the chance to set a flag first. Markup is in place before any script executes.
+The attribute goes on `<html>` rather than a JS global because ES module imports are evaluated *before* the importing module's body runs, so a consumer with a static `import` never gets the chance to set a flag first. Markup is in place before any script executes.
+
+### If you don't control the page either
+
+<Aside type="tip" title="Added in 1.27.0">
+`@arraypress/waveform-player/no-autoinit` is the same library with no import-time scan at all.
+</Aside>
+
+The attribute above assumes you own the document element. Plenty of consumers don't: a CMS block, a plugin, a widget dropped into someone else's template. Your bundle is evaluated inside a page whose `<html>` belongs to the host theme — and in an editor, to an iframe you don't own either. There is nothing to mark.
+
+Import the library without the scan instead:
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player/no-autoinit';
+
+// Identical in every other way.
+WaveformPlayer.init( myContainer );
+new WaveformPlayer( el, { url: 'track.mp3' } );
+```
+
+Same class, same options, same events, same `window.WaveformPlayer`. Ships as ESM and CJS with its own types. The only thing it drops is the document-wide scan that the default entry point runs when it loads.
+
+Use the attribute if you render the page; use this entry point if you're bundled into one.
+
+:::caution
+Load **one entry point per bundle**. Each carries its own copy of the class and its own instance registry, so importing both gives you two libraries that can't see each other's players — the same way the IIFE and ESM builds always have.
+:::
 
 :::caution
 This scopes **initialisation**, not sanitisation. [`playIcon` / `pauseIcon`](/player/options/) (and their `data-play-icon` / `data-pause-icon` equivalents) inject raw markup by design, for any player you *do* build. Untrusted content still needs sanitising before it reaches the page.

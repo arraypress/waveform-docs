@@ -346,7 +346,7 @@ container.innerHTML = '<div data-waveform-player data-src="/audio/new.mp3"></div
 WaveformPlayer.init(); // mounts the freshly injected player
 ```
 
-Pass a root to initialise only the part of the page you control — the usual pairing with the [`data-waveform-autoinit="false"` opt-out](/player/data-attributes/#initialising-only-what-you-control):
+Pass a root to initialise only the part of the page you control — the usual pairing with either opt-out, the [`data-waveform-autoinit="false"` attribute](/player/data-attributes/#initialising-only-what-you-control) or the [`/no-autoinit` entry point](/player/data-attributes/#if-you-dont-control-the-page-either):
 
 ```js
 WaveformPlayer.init( document.querySelector( '#my-app' ) );
