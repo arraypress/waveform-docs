@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
 WaveformPlayer is plain, dependency-free JavaScript. Add the stylesheet and the
 script, and it upgrades any `[data-waveform-player]` element on the page — no
@@ -61,6 +61,34 @@ Then import the core and the stylesheet:
 import { WaveformPlayer } from '@arraypress/waveform-player';
 import '@arraypress/waveform-player/dist/waveform-player.css';
 ```
+
+## Entry points
+
+The package exposes two JavaScript entry points. They are the same library — same class, same options, same events — and differ in one thing: whether importing scans the page.
+
+| Import | What loading it does |
+| --- | --- |
+| `@arraypress/waveform-player` | Builds a player for every `[data-waveform-player]` on the page, then hands you the class. |
+| `@arraypress/waveform-player/no-autoinit` | Hands you the class. Nothing else. |
+
+The default is what you want on a page you author: drop the markup in, import once, and the players appear.
+
+Reach for `/no-autoinit` when your code is **bundled into a page you don't author** — a CMS block, a WordPress plugin, a widget embedded in someone else's template. There, the markup on the page isn't yours to upgrade, and you have no `<html>` in scope to mark with the [`data-waveform-autoinit` opt-out](/player/data-attributes/#initialising-only-what-you-control) before your `import` is evaluated:
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player/no-autoinit';
+import '@arraypress/waveform-player/dist/waveform-player.css';
+
+// Nothing has been initialised. You decide what becomes a player:
+new WaveformPlayer( myElement, { url: '/audio/track.mp3' } );
+WaveformPlayer.init( myContainer );   // or scan a subtree you own
+```
+
+<Aside type="caution">
+Pick **one entry point per bundle**. Each carries its own copy of the class and its own instance registry, so importing both leaves you with two libraries that can't see each other's players.
+</Aside>
+
+`/no-autoinit` was added in 1.27.0. Full detail: [choosing an entry point](/player/data-attributes/#if-you-dont-control-the-page-either).
 
 ## Framework wrappers
 

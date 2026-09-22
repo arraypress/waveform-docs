@@ -131,6 +131,30 @@ add_action( 'wp_enqueue_scripts', function () {
 Use the package version as the enqueue `$ver` argument (here `'1.14.0'`). Bump it whenever you update the bundled files so WordPress busts the asset cache. For long-term caching you can use `filemtime()` on the local file instead.
 </Aside>
 
+### Bundled into a block (`@wordpress/scripts`)
+
+The two routes above enqueue the browser build as a classic script, which self-initialises — right for a theme, where the page is yours.
+
+A **block** is a different situation. Your JavaScript is bundled and runs inside a page built from post content you didn't author, and in the editor inside an iframe you don't own. Importing the package root there would scan that whole document and upgrade every `[data-waveform-player]` it found, including markup belonging to other plugins. Import the non-scanning entry point instead:
+
+```js
+import WaveformPlayer from '@arraypress/waveform-player/no-autoinit';
+
+// Build your own container, then mount exactly that one:
+const container = document.createElement( 'div' );
+container.setAttribute( 'data-waveform-player', '' );
+container.setAttribute( 'data-url', url );
+blockRoot.appendChild( container );
+
+new WaveformPlayer( container );
+```
+
+Constructing the container yourself has a second benefit: the player only ever reads `data-*` attributes you set, so nothing an author typed into post content can reach the option surface.
+
+<Aside type="note">
+This is how WordPress core does it. The Playlist block added in [7.1](/news/wordpress-7-1/) bundles the library and mounts its own containers rather than letting the page scan. Requires `@arraypress/waveform-player` 1.27.0 or newer — see [choosing an entry point](/player/data-attributes/#if-you-dont-control-the-page-either).
+</Aside>
+
 ## 2. Add a player to the page
 
 A player is just a marker `<div>` carrying `data-*` attributes. The minimum is `data-waveform-player` plus an audio source:
@@ -312,6 +336,7 @@ See the [full data attributes reference](/player/data-attributes/) for every key
 - **Footer vs. head.** Enqueue in the footer (`true`). The script attaches a `DOMContentLoaded` listener, so it upgrades players regardless of where it lands, but the footer keeps it out of the critical path.
 - **Escaping is your job.** WordPress doesn't escape shortcode output — always run URLs through `esc_url()` and other values through `esc_attr()` / `sanitize_text_field()`, as in the example above.
 - **Console prefix.** Every log and error the library emits is prefixed `[WaveformPlayer]`, which makes front-end debugging in WordPress straightforward.
+- **Enqueuing in a theme vs. bundling in a block.** An enqueued classic script scanning the page is the point — that's how the markup in post content becomes players. Inside a block bundle it is a liability, because the document isn't yours. Use [`/no-autoinit`](/player/data-attributes/#if-you-dont-control-the-page-either) there. If you need to suppress the scan on a page you *do* control, `data-waveform-autoinit="false"` on `<html>` (via the `language_attributes` filter) does it without changing your import.
 
 ## Related
 
