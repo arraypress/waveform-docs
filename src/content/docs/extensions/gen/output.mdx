@@ -8,7 +8,7 @@ import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/
 
 ## Output JSON shape
 
-In `json` format, each input file produces `<nameNoExt>.json` in the output directory. The object is pretty-printed (2-space indent) with a trailing newline. Key order is always `peaks`, then `bpm`, then `markers`:
+In `json` format, each input file produces `<nameNoExt>.json` — next to the audio, or under `--output` at the same relative path it had inside its input directory (see [File resolution](#file-resolution)). The object is pretty-printed (2-space indent) with a trailing newline. Key order is always `peaks`, then `bpm`, then `markers`:
 
 ```json
 {
@@ -42,13 +42,20 @@ Normalization divides by the max peak (loudest = `1.0`), deliberately matching t
 
 ### `inline` format
 
-`--format inline` prints `JSON.stringify(peaks)` — the raw array, one line per file — to stdout and **writes no file**. It ignores `bpm` and `markers` entirely. Use it for piping or inlining into another build step:
+`--format inline` prints peaks to stdout and **writes no file**. It ignores `bpm` and `markers` entirely. Use it for piping or inlining into another build step. A single file argument prints the raw array:
 
 ```bash
 # Capture peaks into a variable / file
 waveform-gen song.mp3 --format inline > song.peaks.json
 
 # → [0.2,0.37,0.41,0.55,1,0.82]
+```
+
+Several files, or any directory input, print **one** JSON object keyed by each file's path relative to the working directory (forward slashes). Files that fail are left out — their errors go to stderr (2.0.0+; earlier versions printed one unlabelled array per file):
+
+```bash
+waveform-gen audio/ --format inline
+# → {"audio/intro.mp3":[0.2,0.37,…],"audio/outro.mp3":[0.1,0.44,…]}
 ```
 
 ## Markers (sidecar files)
@@ -81,6 +88,8 @@ The parsed markers land in the JSON's `markers` array and feed the player's mark
 | M4A | ❌ | ✅ (then errors) |
 | AAC | ❌ | ✅ (then errors) |
 
+A supported file that won't decode is reported as `the file appears to be corrupt or unreadable`, and a file that decodes to no audio at all is an error rather than an empty `{"peaks": []}` (2.0.0+).
+
 <Aside type="caution" title="M4A / AAC are matched but cannot be decoded">
 The input scanner's extension set includes `.m4a` and `.aac`, so those files are picked up as inputs — but the bundled decoder cannot handle them. WaveformGen turns the cryptic decoder crash into a clear, actionable error and advises converting first:
 
@@ -96,4 +105,6 @@ This is a per-file error: it's counted and reported, but the rest of the batch s
 - Each positional path is resolved. **Files** are kept if their extension is a known audio type. **Directories** are scanned.
 - Directories are scanned **top level only** unless `--recursive` is passed.
 - The final file list is **de-duplicated**.
-- Output path is `<output-dir or input-dir>/<nameNoExt>.json`. With `--output`, the directory is created recursively up front. Without it, each JSON is written **next to its source audio file**.
+- Without `--output`, each JSON is written **next to its source audio file**.
+- With `--output`, a file argument writes `<output-dir>/<nameNoExt>.json`. A file found by scanning a directory keeps its path relative to that directory: `waveform-gen audio/ --recursive --output out/` turns `audio/a/intro.wav` into `out/a/intro.json`. Folders are created as needed (2.0.0+; earlier versions flattened everything into `<output-dir>`).
+- Two inputs that map to the same JSON in one run — `song.mp3` and `song.wav` in one folder, or two same-named file arguments with `--output` — don't overwrite each other: the later one fails with a message naming the first (matched case-insensitively). Rename one of them.

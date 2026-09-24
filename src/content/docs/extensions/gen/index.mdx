@@ -21,6 +21,17 @@ The JSON it produces drops straight into the player's [`waveform`](/player/optio
 
 </CardGrid>
 
+<Aside type="caution" title="Upgrading to 2.0">
+2.0.0 makes the CLI stricter. Check your build scripts for:
+
+- **Nested `--output`.** With `--recursive`, subfolders are now mirrored under `--output` (`out/a/intro.json`) instead of flattened into it — update any paths that pointed at the flat layout.
+- **Exit codes.** A run where any file fails now exits `1` (it used to exit `0`), so a corrupt file stops a `prebuild`. Unknown flags and missing flag values exit `2`.
+- **`--quiet` still shows errors.** It hides progress and the summary only.
+- **Two inputs that map to the same JSON** (`song.mp3` + `song.wav`) fail instead of overwriting each other.
+- **`--format inline` with several files** prints one object keyed by path instead of back-to-back arrays.
+- **`generatePeaks()` rejects a bad `samples`** — `0`, negatives and non-integers now throw.
+</Aside>
+
 ## Install
 
 Run it on demand with `npx`, install globally for a reusable `waveform-gen` command, or add it as a dev dependency to call the library from a build script.
@@ -79,7 +90,7 @@ Run it on demand with `npx`, install globally for a reusable `waveform-gen` comm
 waveform-gen <files|directories...> [options]
 ```
 
-Positional arguments are audio files and/or directories. Everything starting with `--` is an option; everything else is treated as an input path.
+Positional arguments are audio files and/or directories. Anything starting with `-` must be a known flag — an unknown one stops the run with exit code `2`. Value flags take `--flag value` or `--flag=value`. Use `--` to end flag parsing, so later arguments are paths even if they start with `-` (a lone `-` is always a path).
 
 ```bash
 # Generate one JSON per file into ./waveforms/
@@ -103,18 +114,17 @@ WaveformGen does not expand globs itself — `./audio/*.mp3` is expanded by your
 
 | Flag | Default | Type | Description |
 |------|---------|------|-------------|
-| `--samples <n>` | `1800` | integer | Number of peaks (array length) generated per file. Higher = finer detail, larger JSON. |
-| `--precision <n>` | `2` | integer | Decimal places each peak is rounded to. |
-| `--output <dir>` | _same dir as each input_ | path | Output directory. Created recursively before writing. |
-| `--format <type>` | `json` | `json` \| `inline` | `json` writes a `<name>.json` file; `inline` prints the peaks array to stdout. |
+| `--samples <n>` | `1800` | integer | Number of peaks (array length) generated per file. Higher = finer detail, larger JSON. Must be an integer of `1` or more, or the run exits `1`. |
+| `--precision <n>` | `2` | integer | Decimal places each peak is rounded to. Must be an integer (negative = unrounded), or the run exits `1`. |
+| `--output <dir>` | _same dir as each input_ | path | Output directory. A file found inside a directory input keeps its path relative to that directory (`out/a/intro.json`), with folders created as needed; file arguments write straight into `<dir>` (2.0.0+). |
+| `--format <type>` | `json` | `json` \| `inline` | `json` writes a `<name>.json` file; `inline` prints peaks to stdout — a bare array for a single file argument, or one object keyed by path for several files or any directory (2.0.0+). Any other value exits `1`. |
 | `--bpm` | `false` | flag | Run BPM detection and write an integer `"bpm"` into the JSON (only when a tempo is found). |
 | `--recursive` | `false` | flag | Scan passed directories recursively. Default scans the top level only. |
-| `--quiet` | `false` | flag | Suppress all progress, per-file, and warning logs. |
+| `--quiet` | `false` | flag | Suppress progress and the summary line. Errors always go to stderr (2.0.0+). |
 | `--help`, `-h` | — | flag | Print help and `exit(0)`. Also shown when run with zero arguments. |
+| `--` | — | — | End of flags: every later argument is an input path. |
 
-<Aside type="caution" title="Numeric flags are not validated">
-`--samples` and `--precision` are parsed with `parseInt` and **no validation**. A non-numeric value (e.g. `--samples abc`) silently becomes `NaN`, which produces a broken peaks array. Always pass integers.
-</Aside>
+Boolean flags (`--bpm`, `--recursive`, `--quiet`) take no value — `--bpm=true` is a usage error (exit `2`).
 
 ### Default samples
 
@@ -129,9 +139,13 @@ As of `waveform-gen` 1.5.0 the library default was raised from `200` to `1800`, 
 | Situation | Behavior |
 |-----------|----------|
 | `--help` / `-h` / no args | Prints help, `exit(0)`. |
+| Every file generated | `exit(0)`. |
+| Unknown flag, flag missing its value, value on a boolean flag | `[WaveformGen] … (see --help)`, `exit(2)` before anything runs. |
+| Invalid flag value (`--samples 0`, `--samples abc`, `--format xml`) | Error message, `exit(1)` before anything runs. |
 | No audio files resolved | `[WaveformGen] No audio files found.`, `exit(1)`. |
 | Fatal / uncaught error | `[WaveformGen] Fatal error: …`, `exit(1)`. |
-| A single file fails to decode | Counted and reported (`❌ name: message`), **run continues**, exit code unchanged. |
-| Unreadable / non-audio path | Skipped with a `[WaveformGen] Skipping …` warning (silenced by `--quiet`). |
+| A single file fails to decode, or its output path is already taken | Reported on stderr (`❌ name: message`), **run continues**, then `exit(1)` (2.0.0+). |
+| Input path doesn't exist or can't be read | `[WaveformGen] Skipping …` on stderr, **run continues**, then `exit(1)` (2.0.0+). |
+| File argument with a non-audio extension | Ignored silently. |
 
-Per-file failures never abort a batch — a run over 100 files where 3 fail still writes the other 97 and exits `0`. Check the closing `Done: N generated, M failed` summary line. Every log and error is prefixed `[WaveformGen]`.
+Per-file failures never abort a batch — a run over 100 files where 3 fail still writes the other 97 — but the run then exits `1`, so a `prebuild` step fails instead of shipping with missing JSON (2.0.0+; earlier versions exited `0`). Errors go to stderr even with `--quiet`. Without `--quiet`, a closing `Done: N generated, M failed` line summarises the run. Every log and error is prefixed `[WaveformGen]`.

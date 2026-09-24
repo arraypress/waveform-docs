@@ -11,7 +11,7 @@ import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/
 - **No DOM, no events, no CSS.** WaveformGen produces JSON only. Async results come back exclusively via the `generatePeaks()` Promise.
 - **Multi-channel audio** is mono-summed: each peak is the max amplitude across all channels for that bin.
 - **`inline` ignores `bpm` and `markers`** — it emits only the raw peaks array.
-- **Logs are prefixed `[WaveformGen]`** and can be fully silenced with `--quiet`.
+- **Logs are prefixed `[WaveformGen]`.** `--quiet` silences progress and the summary, but never errors.
 
 ## Related
 
