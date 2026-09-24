@@ -144,9 +144,9 @@ WaveformTracker is purely reactive — it listens to player events and never ren
 | --- | --- | --- |
 | `document` | `waveformplayer:ready` | Captured (capture phase) → `trackPlayer(detail.player)`. |
 | `document` | `waveformplayer:destroy` | Captured → `untrackPlayer(detail.player)`. Prevents SPA leaks (player v1.8.0+). |
-| container | `waveformplayer:play` | Start tracking; reset the media-time baseline (`lastTime = null`). |
+| container | `waveformplayer:play` | If the player's URL changed since the last event, reset `sentEvents` / `elapsedTime` (1.0.2+). Start tracking; reset the media-time baseline (`lastTime = null`). |
 | container | `waveformplayer:pause` | Stop tracking; clear the baseline. Accumulated `elapsedTime` is **kept**. |
-| container | `waveformplayer:timeupdate` | `{ currentTime, duration }` → accumulate deltas and run threshold checks. |
+| container | `waveformplayer:timeupdate` | `{ currentTime, duration }` → reset on a URL change (as for `play`), then accumulate deltas and run threshold checks. |
 | container | `waveformplayer:ended` | `{ currentTime, duration }` → maybe fire `complete`, then reset `sentEvents` / `elapsedTime` for replay. Reads time from the detail, so it works in the player's external audio mode. |
 
 :::tip[Works in external audio mode]

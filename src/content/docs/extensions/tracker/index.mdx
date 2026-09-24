@@ -44,7 +44,7 @@ WaveformTracker credits **media-time consumed**, derived from the player's `wave
 | `delta <= 0` | No | A loop, rewind, or non-advance — nothing was consumed |
 | `delta >= 5s` | No | Treated as a **seek** (see `SEEK_THRESHOLD` below) and dropped |
 
-The result is an honest "seconds of content heard" number. Pausing stops crediting and clears the delta baseline, but it does **not** reset the accumulated total — resuming continues where you left off. The accumulated total and the fired-event set reset only when the track `ended` fires, which re-arms every event for a replay.
+The result is an honest "seconds of content heard" number. Pausing stops crediting and clears the delta baseline, but it does **not** reset the accumulated total — resuming continues where you left off. The accumulated total and the fired-event set reset when the track `ended` fires, which re-arms every event for a replay, and when the player moves to a different URL, so a track swapped in mid-play starts from zero instead of inheriting the previous track's time (1.0.2+).
 
 :::note[Engagement is content, not attention]
 Thresholds for `play` and `listen` are **seconds of accumulated media-time**, not seconds spent on the page. Someone who plays a 30-second clip at 2x speed crosses a 15s `listen` threshold but not a 30s one — they only consumed 15 seconds of audio.

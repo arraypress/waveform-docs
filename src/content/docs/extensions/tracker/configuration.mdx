@@ -35,7 +35,7 @@ WaveformTracker.init({
 
 - `play` and `listen` are **seconds of accumulated media-time**.
 - `complete` is a **percent (0–100) of duration**. It fires when `(currentTime / duration) * 100` crosses the threshold during playback, **or** on the player's `ended` event (only when `duration > 0`).
-- Each event fires **at most once per playback**, tracked per player. The set re-arms only on `ended`, so a replay can fire them all again.
+- Each event fires **at most once per track**, tracked per player. The set re-arms on `ended`, so a replay can fire them all again, and when the player switches to a different URL (`loadTrack()` or `load()`), so the new track gets its own events (1.0.2+).
 - The default config — when you pass no `events` — fires only `listen` at 30 seconds.
 
 <Aside type="tip" title="Throttling vs. accumulation">
