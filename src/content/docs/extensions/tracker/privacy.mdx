@@ -11,9 +11,9 @@ import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/
 WaveformTracker is built for content metrics, not user surveillance:
 
 - **No cookies, no `localStorage`, no PII** are collected or stored.
-- The optional `session` id is a fresh random string per `init()`, held in memory only and regenerated on reload — it correlates events within one page session, nothing more. Disable it with `session: false`.
+- The optional `session` id is a fresh random string per page session, held in memory only and regenerated on reload — it correlates events within one page session, nothing more. Disable it with `session: false`.
 - `page` is `window.location.pathname` only — no query string, no host.
-- Seeks are deliberately uncredited, so the numbers reflect content genuinely consumed.
+- Seeks are deliberately uncredited, so the numbers reflect content genuinely consumed. A large forward jump counts only when real time kept pace with it — a background tab whose updates were throttled (1.1.0+).
 
 You decide what (if anything) identifying gets attached, via `metadata` — and what your endpoint or `handler` does with it.
 

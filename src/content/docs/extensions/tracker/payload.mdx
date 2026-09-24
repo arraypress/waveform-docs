@@ -15,7 +15,7 @@ Every fired event sends the same shape. Field order is deterministic: `{ event, 
 | `event` | `string` | `'play'`, `'listen'`, or `'complete'`. |
 | `url` | `string` | The player's `options.url` (typically from `data-url`). **Required** — events without it are dropped with a warning. |
 | `time` | `number` | For `play` / `listen`: `floor(accumulated media-time)`. For `complete`: `floor(currentTime)`. |
-| `duration` | `number` | `floor(duration)` of the track, in seconds. |
+| `duration` | `number` | `floor(duration)` of the track, in seconds. `0` when unknown — a live stream (duration `Infinity`) or before metadata has loaded (1.1.0+; previously `null`). `complete` never fires for a live stream. |
 | `page` | `string` | `window.location.pathname` — path only, no query string or host. |
 | *…metadata* | `any` | Each key from your `metadata` config. |
 | `session` | `string` | Present only when `session` is enabled. |
@@ -39,13 +39,21 @@ Every fired event sends the same shape. Field order is deterministic: `{ event, 
 | Event | Terminal? | Transport |
 | --- | --- | --- |
 | `play` | No | Plain `fetch` POST, `keepalive: false`. |
-| `listen` | Yes | `navigator.sendBeacon` (Blob, `application/json`), falls back to `fetch` + `keepalive`. |
+| `listen` | Yes | `fetch` + `keepalive`. A same-origin endpoint with no custom `headers` uses `navigator.sendBeacon` (Blob, `application/json`) instead, falling back to `fetch` + `keepalive` if the beacon is refused. |
 | `complete` | Yes | Same as `listen`. |
 
-Delivery priority is absolute: if `handler` is set, it wins outright and `endpoint` is never called. Otherwise the payload is POSTed to `endpoint`. Terminal events (`listen`, `complete`) prefer `sendBeacon` so they survive page unload — **but only when no custom `headers` are configured**, since beacon can't send headers. With custom headers, terminal events fall back to `fetch` + `keepalive`, and `fetch` failures are logged via `console.error`.
+Delivery priority is absolute: if `handler` is set, it wins outright and `endpoint` is never called. Otherwise the payload is POSTed to `endpoint` as JSON (`Content-Type: application/json`). Terminal events (`listen`, `complete`) must survive page unload, so they're sent in a way that does:
 
-:::caution[Receiving beacons server-side]
-`sendBeacon` sends the body with `Content-Type: application/json` and **cannot** attach custom headers — including `Authorization`. If your endpoint needs auth headers on terminal events, set `headers` (which forces the `fetch` path), or authenticate another way (cookie, signed URL, IP allowlist). Your handler should also tolerate beacon requests, which arrive without your custom headers.
+- **Same-origin endpoint, no custom `headers`** → `sendBeacon`, which sends the page's cookies.
+- **Cross-origin endpoint, or any custom `headers`** → `fetch` with `keepalive: true` (1.1.0+ for cross-origin; earlier versions used a beacon, which a wildcard-CORS endpoint never received even though `sendBeacon` reported success). `fetch` sends cookies only same-origin, so a cross-origin endpoint answering `Access-Control-Allow-Origin: *` works.
+- `sendBeacon` is also the fallback when `fetch` isn't available.
+
+`fetch` failures — including a CORS rejection — are logged via `console.error`.
+
+:::caution[Receiving events server-side]
+A JSON body isn't CORS-safelisted, so every **cross-origin** POST (`play` included) is preceded by a preflight. Your endpoint must answer `OPTIONS` with a 2xx, `Access-Control-Allow-Origin`, and `Access-Control-Allow-Headers: content-type` (plus any custom `headers` you set, e.g. `authorization`), and send `Access-Control-Allow-Origin` on the POST response too.
+
+Beacons (same-origin only) **cannot** attach custom headers — including `Authorization`. If your endpoint needs auth headers, set `headers` (which forces the `fetch` path), or authenticate another way (same-origin cookie, signed URL, IP allowlist).
 :::
 
 ## Complete wiring example: custom endpoint
@@ -63,7 +71,7 @@ A full setup — players on the page, a tracker POSTing to your API, and a minim
 ```
 
 ```js
-// 2. Initialize the tracker ONCE, after the player script has loaded.
+// 2. Initialize the tracker after the player script has loaded.
 WaveformTracker.init({
   endpoint: 'https://api.example.com/track',
   events: { play: 3, listen: 30, complete: 90 },
@@ -76,7 +84,15 @@ WaveformTracker.init({
 
 ```js
 // 3. Example endpoint (Express). The body is the payload object above.
-app.post('/track', express.json(), (req, res) => {
+// Cross-origin: answer the CORS preflight for the JSON body + custom headers.
+app.use('/track', (req, res, next) => {
+  res.set('Access-Control-Allow-Origin', 'https://www.example.com');
+  res.set('Access-Control-Allow-Headers', 'content-type, authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
+app.post('/track', express.json(), async (req, res) => {
   const { event, url, time, duration, page, session, title, post_id } = req.body;
 
   // event: 'play' | 'listen' | 'complete'
@@ -115,13 +131,13 @@ WaveformTracker.init({
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `init(config = {})` | `undefined` | Configure the singleton, attach `document` ready/destroy listeners, and track existing players. Call once. |
-| `trackPlayer(player)` | `undefined` | Begin tracking one player. Validates `player.container` + `player.options` (warns and bails if invalid); idempotent. |
-| `untrackPlayer(player)` | `undefined` | Stop tracking a player and remove its container listeners. No-op if not tracked. |
+| `init(config = {})` | `undefined` | Configure the singleton, attach `document` ready/destroy listeners (once), and track existing players. Calling it again reconfigures in place — tracked players pick up the new config and the session id is kept (1.1.0+). |
+| `trackPlayer(player)` | `undefined` | Begin tracking one player. Validates `player.container` + `player.options` (warns and bails if invalid); idempotent. Before `init()` or after `reset()` it warns and does nothing (1.1.0+). |
+| `untrackPlayer(player)` | `undefined` | Run the threshold checks one last time at the last known position (1.1.0+), then stop tracking the player and remove its container listeners. No-op if not tracked. |
 | `trackAllPlayers()` | `undefined` | Track every instance from `WaveformPlayer.getAllInstances()`. Called automatically by `init()`. |
 | `getStats()` | `Array` | One entry per tracked player: `{ url, title, elapsedTime, isTracking, sentEvents }`. |
 | `getTrackedCount()` | `number` | How many players are currently tracked. |
-| `reset()` | `undefined` | Untrack all players, clear the trackers Map, and null `config` + `sessionId`. Does **not** remove the document ready/destroy listeners. |
+| `reset()` | `undefined` | Untrack all players, remove the `document` ready/destroy listeners (1.1.0+), clear the trackers Map, and null `config` + `sessionId`. Players created afterwards are ignored until the next `init()`. |
 
 ```js
 WaveformTracker.getTrackedCount();
@@ -143,14 +159,14 @@ WaveformTracker is purely reactive — it listens to player events and never ren
 | Source | Event | Effect |
 | --- | --- | --- |
 | `document` | `waveformplayer:ready` | Captured (capture phase) → `trackPlayer(detail.player)`. |
-| `document` | `waveformplayer:destroy` | Captured → `untrackPlayer(detail.player)`. Prevents SPA leaks (player v1.8.0+). |
+| `document` | `waveformplayer:destroy` | Captured → `untrackPlayer(detail.player)`, which runs a final unthrottled threshold check first (1.1.0+). Prevents SPA leaks (player v1.8.0+). |
 | container | `waveformplayer:play` | If the player's URL changed since the last event, reset `sentEvents` / `elapsedTime` (1.0.2+). Start tracking; reset the media-time baseline (`lastTime = null`). |
-| container | `waveformplayer:pause` | Stop tracking; clear the baseline. Accumulated `elapsedTime` is **kept**. |
+| container | `waveformplayer:pause` | Run every threshold check unthrottled at the last known position (1.1.0+), then stop tracking and clear the baseline. Accumulated `elapsedTime` is **kept**. |
 | container | `waveformplayer:timeupdate` | `{ currentTime, duration }` → reset on a URL change (as for `play`), then accumulate deltas and run threshold checks. |
-| container | `waveformplayer:ended` | `{ currentTime, duration }` → maybe fire `complete`, then reset `sentEvents` / `elapsedTime` for replay. Reads time from the detail, so it works in the player's external audio mode. |
+| container | `waveformplayer:ended` | `{ currentTime, duration }` → credit the stretch since the last `timeupdate` (same background-tab rule as above), run every threshold check unthrottled at that position — `complete` included (1.1.0+) — then reset `sentEvents` / `elapsedTime` for replay. Reads time from the detail, so it works in the player's external audio mode. |
 
 :::tip[Works in external audio mode]
-The `ended` handler reads `currentTime` and `duration` from the event detail rather than `player.audio`, so tracking works even when the player is in [external audio mode](/player/options/) (where `player.audio` is `null`). `complete` via `ended` requires `duration > 0`; with a missing or zero duration, `complete` is skipped.
+The `ended` handler reads `currentTime` and `duration` from the event detail rather than `player.audio`, so tracking works even when the player is in [external audio mode](/player/options/) (where `player.audio` is `null`). `complete` via `ended` requires a finite `duration > 0` (and the [engagement rule](/extensions/tracker/configuration/#the-events-thresholds)); with a missing, zero or infinite duration, `complete` is skipped.
 :::
 
 ## Logging

@@ -66,6 +66,7 @@ const SINGLE = [
 	{ slug: 'bar', pkg: 'waveform-bar', title: 'Bar', order: 2, description: 'Release history for @arraypress/waveform-bar.' },
 	{ slug: 'playlist', pkg: 'waveform-playlist', title: 'Playlist', order: 3, description: 'Release history for @arraypress/waveform-playlist.' },
 	{ slug: 'gen', pkg: 'waveform-gen', title: 'Generator', order: 4, description: 'Release history for @arraypress/waveform-gen.' },
+	{ slug: 'tracker', pkg: 'waveform-tracker', title: 'Tracker', order: 5, description: 'Release history for @arraypress/waveform-tracker.' },
 ];
 
 for (const { slug, pkg, title, order, description } of SINGLE) {
@@ -105,7 +106,7 @@ const sections = WRAPPERS.map((pkg) => {
 
 if (sections.length) {
 	write('frameworks', [
-		frontmatter({ title: 'Framework wrappers', description: 'Release history for the Astro, React, Vue and Svelte wrapper packages.', order: 5 }),
+		frontmatter({ title: 'Framework wrappers', description: 'Release history for the Astro, React, Vue and Svelte wrapper packages.', order: 6 }),
 		GENERATED,
 		'',
 		':::note\nGenerated from each wrapper package\'s CHANGELOG. Run `npm run sync:changelogs` after a release to refresh.\n:::',

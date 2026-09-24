@@ -14,10 +14,10 @@ All options are passed to `init(config)`. Every key is optional, but you must su
 | --- | --- | --- | --- |
 | `endpoint` | `string \| null` | `null` | URL that events are POSTed to as JSON. Required **unless** `handler` is set. |
 | `handler` | `function \| null` | `null` | Custom delivery callback `handler(payload)`. When set it **fully replaces** network delivery — `endpoint` is never called. Thrown errors are caught and logged, not propagated. |
-| `events` | `object` | `{ listen: 30 }` | Which events fire and their thresholds. Keys: `play`, `listen` (seconds of media-time), `complete` (percent 0–100). Any subset; omit a key to disable that event. |
-| `headers` | `object<string,string>` | `{}` | Extra headers merged into the `fetch` POST (e.g. `Authorization`). **Any custom header disables `sendBeacon`** (beacon can't set headers), so terminal events fall back to `fetch` + `keepalive`. |
+| `events` | `object` | `{ listen: 30 }` | Which events fire and their thresholds. Keys: `play`, `listen` (seconds of media-time), `complete` (percent 0–100). Any subset; omit a key (or pass `null` / `false`) to disable that event. `0` is a real threshold (1.1.0+). |
+| `headers` | `object<string,string>` | `{}` | Extra headers merged into the `fetch` POST (e.g. `Authorization`). **Any custom header rules out `sendBeacon`** (beacon can't set headers), so terminal events always go by `fetch` + `keepalive`. For a cross-origin endpoint, list each header in the preflight's `Access-Control-Allow-Headers` — see [Delivery semantics](/extensions/tracker/payload/#delivery-semantics). |
 | `metadata` | `object` | `{}` | Key/value pairs spread into **every** payload (e.g. `user_id`, `post_id`). |
-| `session` | `boolean` | `true` | When `true`, a random anonymous session id is generated per `init()` and added to every payload as `session`. Pass `false` to omit it entirely. |
+| `session` | `boolean` | `true` | When `true`, a random anonymous session id is generated on `init()` and added to every payload as `session` (a later `init()` keeps it, 1.1.0+). Pass `false` to omit it entirely. |
 | `debug` | `boolean` | `false` | When `true`, emits verbose `console.log('[WaveformTracker]', …)` tracing (ready/destroy, play/pause, sent payloads, beacon fallbacks). Does **not** suppress sending. |
 
 ### The `events` thresholds
@@ -34,12 +34,14 @@ WaveformTracker.init({
 ```
 
 - `play` and `listen` are **seconds of accumulated media-time**.
-- `complete` is a **percent (0–100) of duration**. It fires when `(currentTime / duration) * 100` crosses the threshold during playback, **or** on the player's `ended` event (only when `duration > 0`).
+- `complete` is a **percent (0–100) of duration**. It fires when `(currentTime / duration) * 100` crosses the threshold during playback, **or** on the player's `ended` event — only for a finite duration above `0`, so never for a live stream.
+- `complete` also needs **real listening** (1.1.0+): at least half the audio up to the threshold must have been heard, in media-time (`COMPLETE_ENGAGEMENT = 0.5`). With `complete: 90` on a 4-minute track that's 108s, so scrubbing to 95% — or to the end — no longer counts as a completion. Expect fewer `complete` events than 1.0.x reported.
+- A threshold of `0` fires on the first check after playback starts (1.1.0+; it used to disable the event). Omit the key, or pass `null` / `false`, to turn an event off.
 - Each event fires **at most once per track**, tracked per player. The set re-arms on `ended`, so a replay can fire them all again, and when the player switches to a different URL (`loadTrack()` or `load()`), so the new track gets its own events (1.0.2+).
 - The default config — when you pass no `events` — fires only `listen` at 30 seconds.
 
 <Aside type="tip" title="Throttling vs. accumulation">
-  Media-time **accumulation** happens on *every* `timeupdate`, but the threshold **checks** that fire events are throttled to once per second. Fast bursts of updates still credit time accurately; you just won't get more than one firing-check per second.
+  Media-time **accumulation** happens on *every* `timeupdate`, but the threshold **checks** that fire events are throttled to once per second. Fast bursts of updates still credit time accurately; you just won't get more than one firing-check per second. When playback stops — `pause`, `ended`, or the player being untracked/destroyed — every check runs unthrottled at the last known position (1.1.0+), so a threshold crossed in that final second isn't lost.
 </Aside>
 
 ### Metadata, session, and field precedence
@@ -57,4 +59,4 @@ WaveformTracker.init({
 });
 ```
 
-The session id is anonymous and in-memory only — a fresh random string (`Math.random().toString(36).slice(2) + Date.now().toString(36)`) generated each `init()` and regenerated on every reload. It correlates events within a single page session; it is not a persistent identifier.
+The session id is anonymous and in-memory only — a fresh random string (`Math.random().toString(36).slice(2) + Date.now().toString(36)`) generated by the first `init()` (and again after `reset()`) and regenerated on every reload. It correlates events within a single page session; it is not a persistent identifier.

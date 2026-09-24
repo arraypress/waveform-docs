@@ -9,7 +9,7 @@ import TrackerDemo from '~/components/TrackerDemo.astro';
 
 **WaveformTracker** is a headless, ~2KB analytics add-on for [WaveformPlayer](/player/options/). It measures how much of your audio people *actually listen to* — real media-time, not wall-clock — and POSTs a compact JSON event to your endpoint (or hands it to your own callback) when a listener crosses a threshold you define.
 
-It renders no DOM, ships no CSS, sets no cookies, and collects no PII. Drop it on a page, call `init()` once, and it auto-discovers every player.
+It renders no DOM, ships no CSS, sets no cookies, and collects no PII. Drop it on a page, call `init()`, and it auto-discovers every player.
 
 <CardGrid>
 
@@ -17,18 +17,18 @@ It renders no DOM, ships no CSS, sets no cookies, and collects no PII. Drop it o
     Engagement accumulates from `currentTime` deltas. 1.5x/2x playback is fully credited; paused and idle time is not.
   </Card>
   <Card title="Seeks ignored" icon="random">
-    Any forward jump of 5s or more is treated as a seek and dropped — scrubbing never inflates your numbers.
+    A forward jump of 5s or more only counts when real time kept pace with it (a throttled background tab); anything beyond that is a seek and dropped — scrubbing never inflates your numbers.
   </Card>
   <Card title="Privacy-first" icon="approve-check">
     No cookies, no `localStorage`, no PII. The optional session id is a random in-memory string, regenerated every reload.
   </Card>
   <Card title="Survives unload" icon="rocket">
-    Terminal events use `navigator.sendBeacon` (with `fetch` + `keepalive` fallback) so they land even as the page navigates away.
+    Terminal events go out with `fetch` + `keepalive` — or `navigator.sendBeacon` for a same-origin endpoint — so they land even as the page navigates away.
   </Card>
 
 </CardGrid>
 
-Because it's headless, the tracker is easiest to *see* with a live readout. The player below is wired to a tracker whose `handler` renders each captured event straight into the panel (no server) — the `listen` threshold is lowered to 5s so it fires quickly. Press play, let it run, pause, scrub, finish:
+Because it's headless, the tracker is easiest to *see* with a live readout. The player below is wired to a tracker whose `handler` renders each captured event straight into the panel (no server) — the `listen` threshold is lowered to 5s so it fires quickly. Press play, let it run, pause, scrub — a jump ahead isn't credited, so scrubbing won't hurry the `listen` event along:
 
 <TrackerDemo />
 
@@ -42,7 +42,10 @@ WaveformTracker credits **media-time consumed**, derived from the player's `wave
 | --- | --- | --- |
 | `0 < delta < 5s` | Yes | Normal playback, including 1.5x / 2x (faster playback still advances `currentTime`) |
 | `delta <= 0` | No | A loop, rewind, or non-advance — nothing was consumed |
-| `delta >= 5s` | No | Treated as a **seek** (see `SEEK_THRESHOLD` below) and dropped |
+| `delta >= 5s`, within the real time that passed | Yes | A background tab whose updates were throttled, reporting minutes of playback in one jump (1.1.0+) |
+| `delta >= 5s`, beyond it | No | Treated as a **seek** (see `SEEK_THRESHOLD` below) and dropped |
+
+The stretch between the last `timeupdate` and the track's `ended` event is credited by the same rule (1.1.0+), so a track that finishes in a hidden tab isn't short-changed.
 
 The result is an honest "seconds of content heard" number. Pausing stops crediting and clears the delta baseline, but it does **not** reset the accumulated total — resuming continues where you left off. The accumulated total and the fired-event set reset when the track `ended` fires, which re-arms every event for a replay, and when the player moves to a different URL, so a track swapped in mid-play starts from zero instead of inheriting the previous track's time (1.0.2+).
 
@@ -56,7 +59,9 @@ Thresholds for `play` and `listen` are **seconds of accumulated media-time**, no
 WaveformTracker.SEEK_THRESHOLD // static class constant = 5
 ```
 
-`SEEK_THRESHOLD` is the maximum forward `currentTime` jump (in seconds) still credited as playback. It is a **class-level constant, not a config option** — it lives on the class, so `window.WaveformTracker.SEEK_THRESHOLD` (the exported singleton) is `undefined`. There is no runtime knob to change it; 5 seconds is the fixed boundary between "playback" and "seek". The player fires `timeupdate` far more often than once every 5 seconds, so real playback never trips it.
+`SEEK_THRESHOLD` is the forward `currentTime` jump (in seconds) below which a delta is always credited as playback. It is a **class-level constant, not a config option** — it lives on the class, so `window.WaveformTracker.SEEK_THRESHOLD` (the exported singleton) is `undefined`, and there is no runtime knob to change it. The player fires `timeupdate` far more often than once every 5 seconds, so foreground playback never trips it.
+
+A larger jump isn't automatically a seek (1.1.0+). Browsers throttle hidden tabs, so the player's updates can stall while the audio plays on, then report minutes of playback at once. The tracker compares the jump with the wall-clock time since the previous update and credits it when it is no more than `elapsed × playbackRate × 1.5 + 1s` (50% headroom for timer jitter, plus a 1-second `SEEK_SLACK`); only a jump beyond that is a seek. In [external audio mode](/player/external-mode/) there is no `<audio>` element to read the rate from, so 1x is assumed.
 
 ## Install
 
@@ -105,6 +110,8 @@ import WaveformTracker from '@arraypress/waveform-tracker';
 WaveformTracker.init({ endpoint: '/api/track' });
 ```
 
+From CommonJS, the singleton is the `default` export: `require('@arraypress/waveform-tracker').default` (1.1.0+ — earlier versions returned `{}`). The package's `exports` map sends `import` to the ESM build and `require` to the CJS build; `./dist/*`, `./src/*` and `./package.json` stay reachable for direct paths.
+
 <Aside type="note" title="Script tags">
   With the IIFE builds, load `waveform-player.js` before `waveform-tracker.js`. Both expose globals (`window.WaveformPlayer`, `window.WaveformTracker`), so you can call `WaveformTracker.init(...)` directly with no import. No TypeScript declarations are shipped.
 </Aside>
@@ -120,7 +127,7 @@ You don't attach the tracker to a player by hand. Calling `init()` does three th
 3. **Cleans up destroyed players.** It listens for `waveformplayer:destroy` and untracks the player, removing its listeners — this prevents the tracker's internal `Map` from leaking players (and their DOM) in single-page apps. Requires player **v1.8.0+**.
 
 ```js
-// Call this exactly once, as early as players may appear.
+// Call this as early as players may appear.
 WaveformTracker.init({
   endpoint: 'https://api.example.com/track',
   events: { play: 3, listen: 30, complete: 90 },
@@ -128,6 +135,6 @@ WaveformTracker.init({
 });
 ```
 
-:::caution[Call `init()` once]
-Each `init()` re-adds the `document`-level `ready`/`destroy` capturing listeners, and they are **never removed** — `reset()` clears trackers, config, and session id but leaves those document listeners attached. Calling `init()` repeatedly stacks duplicate listeners. Initialize a single time per page.
+:::note[Calling `init()` again]
+A second `init()` **reconfigures** the tracker in place (1.1.0+): the new config applies to players already being tracked, the session id is kept (it's the same page session), and no second set of `document` listeners is added. `reset()` is the full teardown — it untracks every player, removes the `document` `ready`/`destroy` listeners, and clears the config and session id, so players created afterwards are ignored until the next `init()`, which starts a new session id.
 :::
