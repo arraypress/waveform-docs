@@ -70,7 +70,7 @@ player.play()?.catch((err) => console.warn('Autoplay blocked', err));
 
 ### `pause()`
 
-Pauses playback. Self mode calls `audio.pause()`; external mode dispatches a cancelable `waveformplayer:request-pause`. **Returns** `void`.
+Pauses playback. Self mode calls `audio.pause()`; external mode dispatches a cancelable `waveformplayer:request-pause`. If a listener calls `preventDefault()`, the player stays [`currentlyPlaying`](#static-properties) — the same bookkeeping a vetoed `request-play` skips (1.28.0+; earlier versions cleared it before dispatching). **Returns** `void`.
 
 ### `togglePlay()`
 
@@ -92,7 +92,7 @@ Sets the playback position to an absolute time.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `seconds` | `number` | Target time; clamped to `[0, duration]`. |
+| `seconds` | `number` | Target time; clamped to `[0, duration]`. A non-finite value is ignored (1.28.0+). |
 
 Refreshes the progress overlay and time displays. No-op when there is no audio or no known duration. **Returns** `void`.
 
@@ -115,7 +115,9 @@ player.seekToPercent(0.5); // jump to the midpoint
 
 ### `load(url)`
 
-Loads (or reloads) audio into the existing player: sets the title, fetches or generates and draws the peaks, renders markers, initializes Media Session (self mode), and fires the `onLoad` callback. Self mode awaits the audio's `loadedmetadata` event. Any load, decode or audio error funnels through `onError`.
+Loads (or reloads) audio into the existing player: sets the title, fetches or generates and draws the peaks, renders markers, initializes Media Session (self mode), and fires the `onLoad` callback — after a `.json` peaks sidecar has been applied (1.28.0+). Self mode awaits the audio's `loadedmetadata` event. Any load, decode or audio error funnels through `onError`, and a fresh `load()` clears a previous error state, so it doubles as a retry (1.28.0+).
+
+A `load()` superseded by a newer `load()` / `loadTrack()` (or by `destroy()`) stops at its next `await`, so a slow decode can never land on the track that replaced it (1.28.0+).
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -127,14 +129,14 @@ Loads (or reloads) audio into the existing player: sets the title, fetches or ge
 
 ### `loadTrack(url, title?, artist?, options?)`
 
-Swaps the current track at runtime. Pauses, resets the audio / error / progress state, **resets per-track options** (`markers` → `[]` and `waveform` → `null`), merges the supplied `options`, **reconciles the artist and artwork DOM in place** — adding, updating, or removing each to match the new track — then calls `load()`. It auto-plays the new track unless `options.autoplay === false`.
+Swaps the current track at runtime. Pauses, resets the audio / error / progress state and the time readout, **resets per-track options** (`markers` → `[]`, `waveform` → `null`, and — 1.28.0+ — `bpm` and `album`, unless the call supplies them), merges the supplied `options`, **reconciles the artist and artwork DOM in place** — adding, updating, or removing each to match the new track — then calls `load()`. It auto-plays the new track unless `options.autoplay === false`.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `url` | `string` | New audio URL. |
-| `title` | `string \| null` | Optional. Track title; `null` derives it from the URL filename. |
+| `title` | `string \| null` | Optional. Track title; `null` keeps the current title; `''` derives it from the URL filename. |
 | `artist` | `string \| null` | Optional. Any string adds or updates the artist row; `''` removes it; `null` keeps the current one. |
-| `options` | `object` | Optional. Per-track overrides merged over current options (e.g. `markers`, `waveform`, `artwork`, `artworkAlt`, `bpm`, `autoplay`). |
+| `options` | `object` | Optional. Per-track overrides merged over current options (e.g. `markers`, `waveform`, `artwork`, `artworkAlt`, `bpm`, `album`, `preload`, `autoplay`). |
 
 **Returns** `Promise<void>`.
 
@@ -158,7 +160,7 @@ Only the fields you pass are touched — omitted metadata is preserved. Before 1
 </Aside>
 
 <Aside type="caution" title="Why the per-track reset matters">
-`mergeOptions` skips `null` / `undefined`, so a later call can't clear an earlier value by passing `null`. That is exactly why `loadTrack` explicitly resets `options.waveform = null` and `options.markers = []` for every track — otherwise the previous track's peaks and markers would persist and the new track would redraw the *old* waveform (the 1.8.1 fix). If you add your own per-track options, reset them here too.
+`mergeOptions` skips `null` / `undefined`, so a later call can't clear an earlier value by passing `null`. That is exactly why `loadTrack` explicitly resets `options.waveform = null` and `options.markers = []` for every track — otherwise the previous track's peaks and markers would persist and the new track would redraw the *old* waveform (the 1.8.1 fix). Since 1.28.0 `bpm` and `album` get the same treatment, so a tempo badge or lock-screen album no longer carries over to the next track. If you add your own per-track options, reset them here too.
 </Aside>
 
 ## Audio settings (self mode)
@@ -181,7 +183,7 @@ Sets the playback speed.
 | --- | --- | --- |
 | `rate` | `number` | Clamped to `0.25`–`4` — the range browsers keep audible. Non-numeric values are ignored. |
 
-Applies to the audio, persists to `options.playbackRate`, and refreshes the speed menu UI. No-op in external mode. **Returns** `void`.
+Applies to the audio, persists to `options.playbackRate`, and refreshes the speed menu UI. The rate also survives later loads — a `loadTrack()` no longer drops back to 1× (1.28.0+). No-op in external mode. **Returns** `void`.
 
 ```js
 player.setVolume(0.8);
@@ -196,9 +198,9 @@ Replaces the current peaks and redraws.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `data` | `number[] \| string` | Inline array, comma-separated string, JSON-array string, or a `.json` URL (fetched asynchronously; embedded `{ peaks, markers }` honoured). |
+| `data` | `number[] \| string` | Inline array, comma-separated string, JSON-array string, or a `.json` URL — a `?query` / `#hash` after `.json` is fine — fetched asynchronously; embedded `{ peaks, markers, bpm }` honoured. |
 
-Malformed input normalizes to `[]`. **Returns** `void`.
+Malformed input normalizes to `[]`. **Returns** `Promise<boolean>` for a `.json` URL — whether the sidecar was applied; `false` on a network error, a non-2xx response or a file with no peaks, leaving the canvas as it was — and `void` for inline peaks (1.28.0+; earlier versions returned nothing either way).
 
 ```js
 player.setWaveformData([0.1, 0.4, 0.8, 0.5, 0.2]);
@@ -260,7 +262,7 @@ Updates the progress overlay and time displays from an external clock.
 | `currentTime` | `number` | Current position in seconds. |
 | `duration` | `number` | Total duration in seconds. No-op if `<= 0`. |
 
-Stores the external duration, emits `waveformplayer:timeupdate`, and synthesizes a one-shot `waveformplayer:ended` once `currentTime / duration >= 1`. **Returns** `void`.
+Stores the external duration, emits `waveformplayer:timeupdate`, and synthesizes a one-shot `waveformplayer:ended` once `currentTime / duration >= 1`. Since 1.28.0 it also places the markers whenever the duration changes (no manual re-render needed), and it leaves the playhead alone while the user is dragging the scrubber. **Returns** `void`.
 
 ```js
 // External mode: pump from a shared audio element
@@ -291,7 +293,9 @@ You rarely need to call this by hand: a single shared `MutationObserver` plus a 
 
 ### `destroy()`
 
-Tears the player down completely. It flags itself as destroying, emits `waveformplayer:destroy` (first, so listeners can release references), pauses playback, stops the animation frame loop, aborts all DOM/document listeners via its `AbortController`, disconnects the `ResizeObserver`, removes the resize handler, drops itself from `instances` and `currentlyPlaying`, resets and nulls the audio element, and empties the container. **Returns** `void`.
+Tears the player down completely. It flags itself as destroying, emits `waveformplayer:destroy` (first, so listeners can release references), cancels any in-flight load, stops the animation frame loop, aborts all DOM/document listeners via its `AbortController`, disconnects the `ResizeObserver`, removes the resize handler, drops itself from `instances` and `currentlyPlaying`, pauses, resets and nulls the audio element, and empties the container. **Returns** `void`.
+
+Since 1.28.0 `destroy()` doesn't go through `pause()`, so in external mode it no longer emits `waveformplayer:request-pause` — a wrapper remounting an inline player won't pause the controller's (e.g. `waveform-bar`'s) playback.
 
 ```js
 player.container.addEventListener('waveformplayer:destroy', () => cleanup());
@@ -366,7 +370,7 @@ Derives the sibling peaks URL for an audio file by swapping its extension to `.j
 | --- | --- | --- |
 | `audioUrl` | `string \| null \| undefined` | An audio URL ending in `mp3`, `wav`, `ogg`, `flac`, `m4a` or `aac`. Any `?query` / `#hash` is preserved. |
 
-**Returns** `string | undefined` — the `.json` URL, or `undefined` if the extension isn't recognised. Pass the result as the `waveform` option to skip the Web Audio decode entirely.
+**Returns** `string | undefined` — the `.json` URL, or `undefined` for `null` / `undefined` / empty input or an unrecognised extension. Pass the result as the `waveform` option to skip the Web Audio decode entirely.
 
 ```js
 WaveformPlayer.getPeaksUrl('/audio/track.mp3');     // '/audio/track.json'
@@ -386,7 +390,7 @@ Decodes an audio URL to a peaks array **without** creating a player — handy fo
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `url` | `string` | Audio file URL to decode. |
-| `samples` | `number` | Optional, default `200`. Peak resolution. |
+| `samples` | `number` | Optional, default `1800`. Peak resolution. |
 
 **Returns** `Promise<number[]>`.
 
@@ -394,10 +398,6 @@ Decodes an audio URL to a peaks array **without** creating a player — handy fo
 const peaks = await WaveformPlayer.generateWaveformData('/audio/track.mp3', 256);
 new WaveformPlayer('#player', { url: '/audio/track.mp3', waveform: peaks });
 ```
-
-<Aside type="caution" title="Type drift">
-The runtime resolves to a plain `number[]` (the peaks). The hand-written `index.d.ts` currently declares `Promise<{ peaks, bpm }>` — treat the runtime shape as authoritative.
-</Aside>
 
 ## Static properties
 
@@ -442,7 +442,7 @@ const label = WaveformPlayer.utils.formatTime(95); // '1:35'
 | `loadTrack(url, title?, artist?, options?)` | both | `Promise<void>` |
 | `setVolume(volume)` | self | `void` |
 | `setPlaybackRate(rate)` | self | `void` |
-| `setWaveformData(data)` | both | `void` |
+| `setWaveformData(data)` | both | `Promise<boolean> \| void` |
 | `setActiveMarker(index)` | both | `void` |
 | `resizeCanvas()` | both | `void` |
 | `setPlayingState(playing)` | external | `void` |

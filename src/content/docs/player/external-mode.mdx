@@ -79,7 +79,7 @@ When the user interacts with an external-mode player, it doesn't act — it **as
 | `waveformplayer:request-pause` | `pause()` / `togglePlay()` while playing | track detail | (nothing local — you pause your audio) |
 | `waveformplayer:request-seek` | canvas click + keyboard slider | track detail + `percent` (0..1) | local overlay advances **optimistically** |
 
-Call `event.preventDefault()` to **veto** the action (e.g. the track isn't loaded yet, or you want to route it differently).
+Call `event.preventDefault()` to **veto** the action (e.g. the track isn't loaded yet, or you want to route it differently). For `request-play` / `request-pause` a veto only affects the `singlePlay` bookkeeping — a vetoed play doesn't claim `WaveformPlayer.currentlyPlaying`, a vetoed pause keeps it (1.28.0+). Neither event changes the play/pause visual either way; only your `setPlayingState()` call does. `destroy()` never emits `request-pause` (1.28.0+).
 
 ### Track-detail shape
 
@@ -202,7 +202,7 @@ await bar.loadTrack('/audio/next.mp3', 'Next Track', 'Some Artist', {
 ```
 
 <Aside type="caution">
-`loadTrack` resets per-track options — `markers`, `waveformData`, and (since 1.8.1) `options.waveform` — so a new track loaded **without** peaks won't redraw the previous track's waveform. Always pass fresh `waveform` peaks (or `markers`) for the new track. See [Loading tracks at runtime](/player/methods/).
+`loadTrack` resets per-track options — `markers`, `waveformData`, (since 1.8.1) `options.waveform`, and (since 1.28.0) `bpm`, `album` and the previous track's duration and time readout — so a new track loaded **without** peaks won't redraw the previous track's waveform. Always pass fresh `waveform` peaks (or `markers`) for the new track. See [Loading tracks at runtime](/player/methods/).
 </Aside>
 
 ## Accessibility in external mode

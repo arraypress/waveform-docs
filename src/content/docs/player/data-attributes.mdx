@@ -178,7 +178,7 @@ new WaveformPlayer('#player', { waveformStyle: 'mirror' }); // → mirror
 | **Number (float)** | `parseFloat(value)` — `data-playback-rate`, and `data-button-size` when given a bare number. |
 | **Boolean** | Compared against the literal string `'true'`. Any other value (including `"false"`, `""`, `"1"`) resolves to `false`. |
 | **JSON** | `data-markers` takes a JSON **array**. Malformed JSON — and valid JSON that isn't an array, such as `2` or `{"a":1}` — is **warned about and skipped** (the attribute is ignored, never thrown). `data-playback-rates` additionally accepts a bare comma-separated list (`0.5, 1, 2`). |
-| **Color** | `data-waveform-color` / `data-progress-color` accept a CSS color string **or** a JSON array of gradient stops. A value starting with `[` is parsed as JSON; on parse failure it falls back to the raw string. |
+| **Color** | `data-waveform-color` / `data-progress-color` (and, 1.28.0+, the legacy `data-color`) accept a CSS color string **or** a JSON array of gradient stops. A value starting with `[` is parsed as JSON; on parse failure it falls back to the raw string. |
 
 Since **1.25.0**, every option is normalized after parsing, whichever path it
 arrived by — attribute, constructor, or framework wrapper. A value the player
@@ -262,7 +262,7 @@ If you do **not** set `barWidth`/`barSpacing` (via option or attribute), each st
 | `data-color-preset` | `colorPreset` | `dark` \| `light` | `null` (auto-detect) |
 | `data-waveform-color` | `waveformColor` | CSS color **or** JSON gradient array | `null` (preset) |
 | `data-progress-color` | `progressColor` | CSS color **or** JSON gradient array | `null` (preset) |
-| `data-color` | `waveformColor` *(legacy alias)* | CSS color | — |
+| `data-color` | `waveformColor` *(legacy alias)* | CSS color **or** JSON gradient array (1.28.0+) | — |
 | `data-theme` | `colorPreset` *(legacy alias)* | `dark` \| `light` | — |
 
 Leaving a color `null` lets it follow the resolved preset, and any color you leave `null` participates in **auto-theme** re-detection. Setting an explicit `colorPreset` (or hand-setting a color) opts that aspect out of re-detection. See [Theming](/player/styling/).
@@ -379,8 +379,12 @@ Several attributes are shorthand or legacy forms of a canonical option. When bot
 | --- | --- | --- |
 | `data-src` | `data-url` | Shorthand for the audio URL. |
 | `data-style` | `data-waveform-style` | Shorthand for the visual style. |
-| `data-color` | `data-waveform-color` | Legacy. |
+| `data-color` | `data-waveform-color` | Legacy. Accepts a JSON gradient array too (1.28.0+). |
 | `data-theme` | `data-color-preset` | Legacy. |
+
+<Aside type="note" title="Legacy colour aliases (1.28.0+)">
+Before 1.28.0, `data-color` and `data-theme` were applied *after* their canonical attributes, so on an element carrying both the legacy name won. From 1.28.0 they follow the same rule as `data-src` / `data-style`: the canonical attribute wins.
+</Aside>
 
 ```html
 <!-- data-url wins over data-src -->

@@ -44,7 +44,8 @@ container, or on any ancestor (including `document`) and read
 | Pause requested (external) | — | `waveformplayer:request-pause` |
 | Seek requested (external) | — | `waveformplayer:request-seek` |
 
-Note the asymmetry: `onLoad` / `onError` have **no** DOM-event twin, and
+Note the asymmetry: `onLoad` / `onError` (and the Media Session
+`onNextTrack` / `onPreviousTrack`) have **no** DOM-event twin, and
 `ready` / `destroy` / `request-*` have **no** callback twin.
 
 ## Constructor callbacks
@@ -57,10 +58,12 @@ with positional arguments — there is no `event` object and nothing to
 | --- | --- | --- |
 | `onLoad` | `(player) => void` | A track's waveform has finished drawing (after peaks are fetched/generated and rendered). |
 | `onPlay` | `(player) => void` | Playback starts — both `self` and `external` modes. |
-| `onPause` | `(player) => void` | Playback pauses — both modes. Also runs once as part of `onEnd`. |
+| `onPause` | `(player) => void` | Playback pauses — both modes. Runs once when a track ends, before `onEnd` (1.28.0+; self mode used to run it twice there). |
 | `onEnd` | `(player) => void` | The track reaches its end. In `external` mode this is synthesized when progress reaches `>= 1`. |
 | `onError` | `(error, player) => void` | A load, decode, or audio error occurs. This is the single funnel for surfaced errors. |
 | `onTimeUpdate` | `(currentTime, duration, player) => void` | On every progress tick. `currentTime` and `duration` are in seconds. Same argument order in both modes. |
+| `onNextTrack` | `(player) => void` | The Media Session "next track" control is used (lock screen, headset). Setting it lights up that button. |
+| `onPreviousTrack` | `(player) => void` | The Media Session "previous track" control is used. Setting it lights up that button. |
 
 ```js
 import WaveformPlayer from '@arraypress/waveform-player';
@@ -116,6 +119,13 @@ In the `timeupdate` detail, `progress` is a `0..1` fraction of the track
 (`currentTime / duration`), handy for driving a progress bar without dividing
 yourself. The `ended` detail reports `currentTime` equal to `duration`.
 
+In self mode `timeupdate` (and `onTimeUpdate`) is emitted once per animation
+frame. Browsers stop the frame loop in background tabs while the audio plays on,
+so since 1.28.0 the native `<audio>` `timeupdate` takes over whenever the loop
+has been quiet for 500ms — progress keeps flowing (at the browser's slower rate)
+in a hidden tab. A self-mode track's end also emits exactly one
+`waveformplayer:pause`.
+
 ### Listening
 
 ```js
@@ -160,7 +170,8 @@ document.addEventListener('waveformplayer:play', (e) => {
 `destroy()` emits `waveformplayer:destroy` **first**, before tearing anything
 down, so listeners get a chance to release references (the player, the element,
 cached `detail` objects) before the container is emptied and listeners are
-aborted.
+aborted. It does **not** emit `request-pause` (1.28.0+), so tearing down an
+external-mode player never pauses its controller.
 
 ```js
 player.container.addEventListener('waveformplayer:destroy', (e) => {
@@ -205,9 +216,12 @@ can forward the detail straight through.
 
 Call `event.preventDefault()` to **veto** the player's default reaction:
 
-- `request-play` / `request-pause`: `preventDefault()` cancels the visual state
-  flip — the player stays as it was until your controller drives it with
-  `setPlayingState()`.
+- `request-play` / `request-pause`: `preventDefault()` tells the player the
+  request was refused, so it leaves the `singlePlay` bookkeeping alone — a vetoed
+  `request-play` doesn't claim `WaveformPlayer.currentlyPlaying`, and a vetoed
+  `request-pause` keeps it (1.28.0+; before that, `request-pause` cleared it
+  regardless). Neither event flips the play/pause visual, vetoed or not — that
+  only changes when your controller calls `setPlayingState()`.
 - `request-seek`: **without** `preventDefault()` the local progress overlay
   advances **optimistically** to `percent` so the canvas repaints immediately.
   Call `preventDefault()` if you'd rather wait and drive the position yourself
