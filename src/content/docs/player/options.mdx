@@ -80,7 +80,7 @@ A handful of options accept a shorthand. The **canonical name always wins** if b
 The drawer also accepts singular `waveformStyle` values — `bar`, `block`, `dot` are aliases for `bars`, `blocks`, `dots`.
 
 :::caution[`style` is overloaded in framework wrappers]
-In plain JS and `data-*`, `style`/`data-style` is the waveform-style alias. In every framework wrapper — Astro, React, Vue and Svelte — `style` stays the framework's CSS-style attribute on the host element and is never forwarded as an option, so there you must use `waveformStyle` for the visual style. (The Vue and Svelte prop types still inherit the core's `style?: WaveformStyle` alias, but at runtime the value lands on the host element.) See [the wrapper docs](/getting-started/installation/).
+In plain JS and `data-*`, `style`/`data-style` is the waveform-style alias. In every framework wrapper — Astro, React, Vue and Svelte — `style` stays the framework's CSS-style attribute on the host element and is never forwarded as an option, so there you must use `waveformStyle` for the visual style. See [the wrapper docs](/getting-started/installation/).
 :::
 
 ---
