@@ -13,6 +13,58 @@ Generated from [`@arraypress/waveform-gen`'s CHANGELOG](https://github.com/array
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-09-24
+
+### Changed
+
+- **`--output` mirrors the input's folder structure.** With `--recursive`,
+  every file used to land flat in the output directory, so `a/intro.wav` and
+  `b/intro.wav` both wrote `intro.json` — the second silently replacing the
+  first. Each file's path relative to the directory it was found in is now
+  kept under `--output` (`out/a/intro.json`, `out/b/intro.json`), with folders
+  created as needed. File arguments still write straight into `--output`.
+- **The CLI exits 1 when any file fails.** It used to exit 0 regardless, so a
+  corrupt file in a `prebuild` step shipped as a missing JSON without stopping
+  the build. A missing input path now also counts as a failure.
+- **`--quiet` no longer hides errors.** It suppresses progress and the summary
+  only; per-file errors and skipped input paths always go to stderr.
+- **Unknown flags and missing flag values are rejected (exit 2).** Anything
+  starting with `-` that isn't a known flag used to be ignored or, for
+  single-dash forms like `-q`, taken as an input path; a trailing `--output`
+  with no value was dropped. Use `--` before paths that start with `-`.
+- **`generatePeaks()` validates `samples`.** It must be a positive integer
+  (numeric strings are accepted, as on the CLI); anything else throws. A
+  negative count used to return `[]` and `100.5` returned 101 peaks. `0` used
+  to fall back to the default and now throws too.
+- **`--format inline` with several files prints one JSON object.** Each file
+  used to print its own unlabelled array back to back, with no way to tell
+  which was which. Several files, or any directory input, now print
+  `{"<path>": [peaks], ...}` keyed by path relative to the working directory
+  (failed files are left out). A single file argument still prints a bare
+  array.
+
+### Added
+
+- **`--flag=value` syntax** for `--samples`, `--precision`, `--output` and
+  `--format`. It was previously ignored, so `--samples=10 --format=inline`
+  silently ran with the defaults and overwrote the JSON.
+
+### Fixed
+
+- **Two inputs that map to the same JSON no longer overwrite each other.**
+  `song.mp3` and `song.wav` in one folder (or two same-named file arguments
+  with `--output`) both target `song.json`; the later one now fails with a
+  message naming the first instead of replacing it and being reported as
+  generated.
+- **Corrupt mp3/wav/flac/ogg files get an accurate error.** They were told
+  "Supported formats are mp3, wav, flac, and ogg … m4a/aac are not supported —
+  convert first", contradicting themselves. The convert hint is now shown only
+  for m4a/aac; a supported format that won't decode is reported as corrupt or
+  unreadable.
+- **A file that decodes to no audio is an error, not empty peaks.** Some junk
+  (an ID3 tag followed by garbage) decoded to zero channels and was written
+  out as `{"peaks": []}`.
+
 ## [1.6.0] — 2026-08-11
 
 ### Fixed

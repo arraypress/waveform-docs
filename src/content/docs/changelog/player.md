@@ -13,6 +13,133 @@ Generated from [`@arraypress/waveform-player`'s CHANGELOG](https://github.com/ar
 
 ## [Unreleased]
 
+## [1.28.0] — 2026-09-24
+
+### Fixed
+
+- **A superseded load no longer lands on the track that replaced it.** Calling
+  `loadTrack(a)` then `loadTrack(b)` while `a` was still decoding let `a`'s
+  slower decode finish last: `options.url` said `b`, but the canvas and BPM
+  badge showed `a`. `a`'s `loadTrack()` also went on to call `play()` — a
+  duplicate `request-play` in external mode — and its `finally` cleared the
+  loading state while `b` was still loading. Each `load()` now takes a ticket
+  and stops at its next `await` once a newer load (or `destroy()`) has
+  started; that covers the metadata wait, the decode, a `.json` peaks sidecar
+  fetch, the error path and `loadTrack()`'s autoplay.
+- **`loadTrack()` straight after construction decodes once.** The
+  constructor's first-frame `load()` ran *after* a same-tick `loadTrack()` had
+  set the url, so the file was fetched and decoded twice. The first-frame load
+  now only runs when nothing has started a load yet.
+- **Peaks sidecar URLs with a query string or fragment are fetched.** Only a
+  string *ending* in `.json` was treated as a URL, so
+  `getPeaksUrl('/t.wav?v=2')` → `'/t.json?v=2'` was parsed as inline peaks,
+  became `[]`, and left a blank canvas. `.json` is now matched before `?`/`#`.
+- **A missing or broken peaks sidecar falls back to decoding the audio.** The
+  fetch ignored `response.ok` and swallowed every failure, so a 404 left the
+  canvas blank for good. A non-2xx response, a network error or a file with no
+  peaks now falls through to the same decode → placeholder path as a track
+  with no peaks at all.
+- **A sidecar's `bpm` reaches the badge.** `@arraypress/waveform-gen --bpm`
+  writes `bpm` into the JSON and the docs said the player used it; it didn't.
+  It now shows with `showBPM` whenever no `bpm` option is set (the option
+  still wins).
+- **External-mode markers render without a manual `renderMarkers()`.**
+  `load()` runs before the controller has pushed a duration, and
+  `setProgress()` never re-rendered, so markers never appeared. `setProgress()`
+  now places them whenever the duration changes.
+- **`loadTrack()` forgets the previous track's duration and time readout.**
+  The total time kept showing the old track's `1:30` until the controller
+  pushed a new duration, and external-mode markers were placed against the old
+  one. A new track (via `loadTrack()`, or `load()` with a different URL) now
+  starts from `0:00` with no duration.
+- **`load(url)` after a failed load re-enables the player.** `hasError` was
+  reset but the play button stayed disabled and the error overlay stayed up —
+  only `loadTrack()` cleared them. `load()` now clears the whole error state.
+- **One self-mode audio failure fires `onError` once.** The media element's
+  `error` event reached `onError` through the `bindEvents()` listener and again
+  through `load()`'s rejection path.
+- **`destroy()` during the metadata wait no longer throws.** `destroy()` nulls
+  `this.audio`, then the pending wait's error handler called
+  `this.audio.removeEventListener` → `TypeError`, and `load()` never settled.
+- **A player destroyed within its first frame stays dead.** The constructor's
+  `waveformplayer:ready` timer and first-frame `load()` still ran for it, so
+  listeners saw `destroy` followed by `ready`, and the audio was fetched and
+  decoded for a player that no longer existed.
+
+- **Self-mode progress events keep flowing in a background tab.**
+  `waveformplayer:timeupdate` and `onTimeUpdate` were emitted only from the
+  `requestAnimationFrame` loop, which browsers stop in hidden tabs while the
+  audio plays on — so progress events stopped entirely, and
+  `waveform-tracker` under-counted background listening. The native
+  `<audio>` `timeupdate` now drives them whenever the frame loop has been
+  quiet for 500ms; a foreground tab still gets exactly one emit per frame.
+- **`destroy()` no longer emits `request-pause`.** It called `pause()`, which in
+  external mode asks the controller to pause — so a wrapper remounting an
+  inline player paused the `waveform-bar`'s playback. `destroy()` already
+  stops and releases its own `<audio>`.
+- **One `waveformplayer:pause` at the end of a self-mode track.** Browsers fire
+  `pause` then `ended`, and `onEnded()` ran `onPause()` again, so listeners saw
+  two pause events and `onPause` ran twice.
+- **External-mode `setProgress()` no longer fights a drag.** The controller's
+  clock moved the playhead back under the cursor mid-scrub; it now waits for
+  the release, as self mode already did.
+
+- **The chosen playback speed survives a track change.** Every `src` change
+  runs the media load algorithm, which resets `playbackRate` to
+  `defaultPlaybackRate` — so the `playbackRate` option was undone by the first
+  load, and a speed picked from the menu reverted to 1× on `loadTrack()`.
+  The rate is now written to `defaultPlaybackRate` as well.
+- **`seekTo()` / `seekToPercent()` ignore a non-finite target.**
+  `audio.currentTime = NaN` throws, so a bad value from a controller or a
+  stale store crashed the caller. They're now guarded like `setVolume()`.
+- **The lock-screen scrubber follows seeks and speed changes.** Media Session
+  `setPositionState()` was only updated on play/pause, so it drifted after
+  every seek or rate change until the next one. It now also updates on the
+  element's `seeked` and `ratechange`, and only for the player that owns the
+  session, so a paused player's seek can't move another player's scrubber.
+
+- **`barWidth: 0` with `barSpacing: 0` no longer hangs the tab.** The drawers
+  computed `canvas.width / 0` = `Infinity` bars and `resampleData()` looped
+  until the page ran out of memory. `barWidth` now normalizes to a minimum of
+  `0.1` (a zero-width bar was invisible anyway), and the bar drawers treat an
+  unusable pitch as zero bars, since options stay mutable after construction.
+
+- **Type declarations match the runtime.** `generateWaveformData()` is typed
+  `Promise<number[]>` (it resolves the peaks array, not `{peaks, bpm}`);
+  `getPeaksUrl()` accepts `null`/`undefined` and returns `string | undefined`,
+  as documented; `setWaveformData()` returns `Promise<boolean> | void`; the
+  public `refreshTheme()` and `resizeCanvas()` are declared; `bpm` accepts
+  `null`. `npm run test:pack` now pins these signatures.
+
+### Changed
+
+- **`loadTrack()` resets `bpm` and `album` unless the call supplies them.** Both
+  describe one track, but `mergeOptions` carried them over, so every later
+  track showed the first track's tempo badge and lock-screen album. A detected
+  BPM is also dropped when a new track loads, and the badge now hides when the
+  current track has no BPM (it could previously only ever be shown).
+- **With a `.json` peaks sidecar, `onLoad` fires once the sidecar has been
+  applied** (previously it could fire before the peaks arrived), and
+  `setWaveformData()` returns a `Promise<boolean>` for a sidecar URL (whether
+  it was applied); it still returns nothing for inline peaks.
+- **`request-pause` can be vetoed, like `request-play`.** `pause()` cleared
+  `WaveformPlayer.currentlyPlaying` *before* dispatching the cancelable event
+  and ignored the result. It now dispatches first and, if the controller calls
+  `preventDefault()`, keeps the player as `currentlyPlaying` — the same thing
+  a vetoed `request-play` means for claiming it. Neither event changes the
+  play/pause visual; that remains `setPlayingState()`'s job.
+- **BPM detection reports nothing rather than a made-up tempo.** On silence,
+  a pad or speech (fewer than two onsets) `detectBPM` returned a hard-coded
+  120, and when no interval fell in the 60–200 range it returned 119 — both
+  shown by `showBPM` as if measured. It now returns `null`, and the badge stays
+  hidden.
+- **Canonical attributes beat their legacy aliases.** `data-color` and
+  `data-theme` were applied *after* `data-waveform-color` / `data-color-preset`,
+  so on an element carrying both the legacy name won — the opposite of the
+  documented rule (and of `data-style` / `data-src`). The canonical attribute
+  now wins, and `data-color` accepts a JSON gradient stop array like
+  `data-waveform-color` does.
+
 ## [1.27.1] — 2026-09-24
 
 ### Fixed

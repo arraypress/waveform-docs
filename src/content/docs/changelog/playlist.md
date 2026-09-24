@@ -13,6 +13,121 @@ Generated from [`@arraypress/waveform-playlist`'s CHANGELOG](https://github.com/
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-09-24
+
+### Fixed
+
+- **Playlist options passed to the constructor are honoured.** `expandChapters`,
+  `showDuration` and `showPlayState` were read from `data-*` alone,
+  `showChapterMarkers` was reset to the smart default, and `chapterMarkerColor`
+  was always the attribute or the built-in grey — so `new WaveformPlaylist(el,
+  { showDuration: false })` did nothing. The React/Vue/Svelte wrappers pass
+  exactly these as constructor options, so every one of those props was a
+  no-op. Each now resolves as `data-*` > constructor option > default, like the
+  rest of the surface.
+- **A forwarded `audioMode` no longer produces a playlist that never plays.**
+  `audioMode` was stripped from the container's `data-*` but not from the
+  constructor options, and the wrappers forward it: `audioMode: 'external'`
+  handed the playlist a player that dispatches request-play events nobody
+  answers. The playlist always owns its audio, so the option is now ignored
+  from either source.
+- **Your player callbacks run instead of being replaced.** `onPlay`, `onPause`,
+  `onEnd`, `onTimeUpdate`, `onNextTrack` and `onPreviousTrack` are documented
+  pass-through options (the Svelte wrapper's `on:play`/`on:pause`/`on:end`/
+  `on:timeupdate` ride on them), but the playlist overwrote all six with its
+  own handlers. Yours now run after the playlist's own handling, with the
+  core's arguments.
+- **Per-track `data-waveform` peaks are used.** They were never read, so every
+  track decoded its audio even with peaks in the markup. A JSON array is
+  parsed (a malformed one warns and falls back to decoding); a `.json` peaks
+  URL is passed through for the core to fetch.
+- **The previous track's album no longer sticks on the lock screen.** An
+  absent album was sent as `undefined`, which the core's option merge skips,
+  so Media Session kept the last album that had one.
+- **Hero cover art follows the track.** A track without artwork kept showing
+  the previous cover, and a hero playlist whose first track had no artwork
+  never showed any cover at all. The art is now created on demand and hidden
+  for artless tracks.
+- **`destroy()` leaves the container as it found it.** It emptied the
+  container *before* restoring the original `[data-track]` elements, so they
+  were gone — and the React/Vue/Svelte wrappers, which render the tracks as
+  children and destroy + rebuild on a prop change, rebuilt an empty playlist.
+  It now removes only what the playlist generated, un-hides the tracks in
+  place (restoring any inline `display` they had), removes every layout class
+  it added (`wp-hero-layout`, `wp-grid-layout`, `wp-density-compact`,
+  `wp-cover-top`, `wp-no-artist`, …) while keeping the author's own, and
+  clears `data-waveform-playlist-initialized` so `WaveformPlaylist.init()` can
+  rebuild it.
+- **A chapter seek into another track waits for that track to load.** It
+  treated any `waveformplayer:ready` as "loaded", but the core emits that once,
+  ~100ms after construction, never after a load — so a deep link such as
+  `seekToChapter(1, 60)` right after construction seeked before track 1 had a
+  duration and silently stayed at 0:00. It now waits for the player's `onLoad`
+  for that track.
+- **A pending chapter seek no longer lands on the wrong track.** When the
+  target track failed to load, the waiting seek (and a document-level listener)
+  stayed armed forever and fired on the next track that did load — jumping it
+  to the failed track's chapter time — and survived `destroy()`. There is now
+  a single pending seek, cancelled by a load error, by selecting another track,
+  and by `destroy()`. Your `onError` still runs.
+- **Chapter seeks work with `data-preload="none"`.** The duration is unknown
+  until playback starts and the core's `seekTo()` is a no-op without one, so
+  clicking a chapter just played from 0:00. Playback now starts and the seek
+  lands when the metadata arrives.
+- **The right chapter list opens for the selected track.** Sublists were
+  matched to tracks by position, so when not every track had chapters the
+  wrong one (or none) was shown — and in the hero layout this overrode the
+  correct, index-matched reveal. The list layout also never revealed the first
+  track's chapters until you changed track.
+- **The play/pause overlay sits on the active row.** Overlays were matched by
+  position, but only tracks with artwork have one, so with an artless track
+  earlier in the list the overlay appeared on the wrong row (or not at all).
+- **No stale chapter highlight when returning to a track.** If its first
+  chapter starts after 0:00, the previously active chapter kept its highlight
+  and `aria-current` until playback crossed a chapter boundary.
+- **Chapters sharing a start time highlight the first, not the last.** Most
+  visibly, several chapters without `data-time` all sit at 0:00 and the last
+  of them was marked as playing.
+- **`H:MM:SS` chapter times parse.** `data-time="1:05:30"` read as 1 second —
+  only the first field of a three-part time was used. `SS` and `M:SS` are
+  unchanged, and a malformed time still reads as 0.
+- **Keyboard shortcuts no longer hijack browser shortcuts.** With focus in the
+  playlist, Cmd/Ctrl+P (print) went to the previous track, Ctrl+N to the next,
+  and Ctrl/Alt+1–9 selected tracks instead of switching tabs. Keys with Ctrl,
+  Cmd or Alt held now pass through untouched.
+- **The legacy `data-*` parser (cores without `WaveformPlayer.utils`) is back
+  in step with the core.** It was missing `waveformGradient`, `buttonStyle`,
+  `buttonSize`/`buttonRadius`, `seekHandle`, `bpm`, `artworkPosition`,
+  `seekValueText`, `playPauseLabel`, `speedLabel`, `artworkAlt` and
+  `unknownTrackText`, the `data-style`/`data-color`/`data-theme` aliases, and
+  JSON gradient stops in `data-waveform-color`/`data-progress-color`; it also
+  forwarded empty strings and ignored a present-but-empty boolean attribute
+  where the core does the opposite. A test now compares it key-for-key with the
+  real core's `parseDataAttributes`.
+- **Types cover the whole playlist option surface.** `layout` was typed
+  `'list' | 'minimal'` although `'hero'` and `'grid'` ship, and `showArtist`,
+  `coverSize`, `thumbnailSize`, `density`, `coverPosition` and `barPosition`
+  were untyped, so the framework wrappers couldn't pass them without a cast.
+  Parsed tracks also gain `waveform`. A test keeps `index.d.ts` in step with the
+  runtime's own option list.
+
+### Changed
+
+- **Boolean playlist attributes follow one rule: present means true unless it
+  is `"false"`.** `data-continuous` and `data-show-chapter-markers` previously
+  required the literal `"true"`; a bare `data-continuous` now enables it, as
+  `data-expand-chapters` and friends always did.
+- **Chapters are sorted by time.** Out-of-order markup rendered out of order
+  and confused the active-chapter scan. The playlist now also warns
+  (`[WaveformPlaylist] …`) about a chapter with no `data-time` (placed at
+  0:00) and, once the duration is known, one that starts after the track ends.
+- **Peer dependency raised to `@arraypress/waveform-player@^1.24.5`** (was
+  `^1.7.2`, which it had long since outgrown). The playlist relies on
+  `onNextTrack`/`onPreviousTrack` (1.19.0), `loadTrack()` adding and removing
+  artist/artwork in place (1.21.0), `crossOrigin` (1.23.0), and — new with the
+  chapter-seek fix above — `load()` reporting `onLoad` under `preload: 'none'`
+  instead of hanging (1.24.5).
+
 ## [1.7.4] — 2026-08-11
 
 ### Fixed

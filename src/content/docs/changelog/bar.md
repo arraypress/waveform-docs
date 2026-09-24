@@ -13,6 +13,113 @@ Generated from [`@arraypress/waveform-bar`'s CHANGELOG](https://github.com/array
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-09-24
+
+### Added
+
+- **`barRadius` config option** — rounded bar caps in px for the bar's
+  waveform (`0` = square), forwarded to the embedded player. `null` (default)
+  keeps the player's own default. It was neither in the defaults nor forwarded,
+  so the bar was stuck on the player's default caps.
+
+### Fixed
+
+- **Inline players without an `id` were never synced.** Discovery looked
+  external-mode players up with `WaveformPlayer.instances.get(el.id)`, but a
+  player whose element has no `id` registers under a generated `wp_…` key that
+  is never written back to the element — so the documented trigger + inline
+  markup (which has no `id`) was never mapped, and never showed play state or
+  progress. Instances are now matched by container.
+- **Clicking an inline player that is also a trigger toggled playback straight
+  back off.** On the documented `data-waveform-player` + `data-wb-play`
+  element, a click on the inline play button dispatched `request-play` *and*
+  bubbled to the bar's delegated trigger listener, which called `play()` on the
+  now-current URL and toggled it off again; a seek-click on the canvas paused.
+  Clicks inside a registered external player are now left to that player's own
+  `request-*` events, and `request-play` folds in the enclosing trigger's
+  `data-wb-*` metadata (id, title, link…) so nothing is lost by ignoring the click.
+- **`request-play` no longer clobbers queued track data.** The event detail was
+  spread straight into the queue entry — including the player's container or
+  generated `id` (which then keyed favourites), the whole `player` instance
+  (serialised to sessionStorage every couple of seconds) and `null`
+  title/artist/artwork, empty markers and a `null` waveform over good queued
+  values. Every path that queues a track (`play()`, `addToQueue()`,
+  `request-play`, session restore, share links) now goes through one
+  `normalizeTrack()`, and merges into an existing entry skip empty values.
+- **`init({ persist: true })` no longer crashes when storage is blocked.**
+  `restoreQueueState`'s catch block cleared the poisoned key with an unguarded
+  `sessionStorage.removeItem()`, which throws the same `SecurityError` as the
+  read did (sandboxed iframes, blocked site data) — straight out of `init()`.
+- **A persisted queue with corrupt `markers` no longer breaks every page of the
+  tab.** Restore only validated `url`, so `markers: "x"` or `[null]` threw in
+  `init()` on each load until the session ended. Restored tracks now go through
+  `normalizeTrack()`, which keeps only marker objects with a finite `time`.
+- **Stale resume position after a track switch or a backwards seek.** The saved
+  position and the periodic-save throttle were never reset when a new track
+  loaded, so the previous track's position was persisted against the new one,
+  and saving stayed quiet until playback climbed past the old last-save time
+  (also after seeking backwards). Both reset on load and the throttle compares
+  the absolute distance. The exact position is now also saved on `pagehide` and
+  when the page becomes hidden — iOS Safari doesn't reliably fire `beforeunload`.
+- **`repeat` was ignored with `showRepeat: false`.** It was only seeded inside
+  the repeat-button branch; it's now seeded (and validated — unknown values fall
+  back to `'off'`) before the button check, as `shuffle` already was.
+- **`destroy()` left inline players stuck "playing".** The external-player map
+  was dropped without pumping `setPlayingState(false)`, so inline players kept
+  their playing state and animation loop running with nothing left to stop them.
+- **`destroy()` leaked session state into a re-init.** Mute state, the
+  pre-mute volume, favourites, cart items, the resume position, active markers
+  and the collapsed flag now reset, so `init()` with different config starts
+  clean.
+- **`addToQueue()` didn't emit `waveformbar:queuechange`**, although
+  `removeFromQueue()`/`clearQueue()` did and the API docs list it.
+- **A refused `play()` no longer strands the bar.** `togglePlay()` and
+  `seekToMarker()` (and repeat-one) called `player.play()` without handling its
+  promise, so blocked autoplay was an unhandled rejection and the bar could keep
+  showing "playing". The rejection is caught and the paused state restored. A
+  rejected `loadTrack()` is no longer surfaced as an unhandled rejection either
+  (load failures still arrive through `onError`).
+- **Queue entries are keyboard-operable.** "Skip to" was a click-only `<div>`;
+  each row's number + title/artist is now a real `<button>`, the remove button
+  is revealed on keyboard focus (`:focus-within`), the current row carries
+  `aria-current`, and focus stays in the queue after a keyboard skip.
+- **Repeat and favourite buttons expose their state.** Both now set
+  `aria-pressed`; the repeat button's `aria-label` names the mode
+  (`Repeat: Off/All/One`) since three modes don't fit a pressed/unpressed pair.
+- **`showTime: false` now hides the time display.** The option has been in the
+  defaults (and every wrapper's types) all along, but nothing read it. The time
+  elements are now omitted in both layouts when it's `false`.
+- **The DOM observer no longer rescans on the bar's own updates.** It rebuilt
+  the external-player map and re-synced every trigger on *any* body mutation —
+  including the bar's time text and each inline player's time display, i.e.
+  every timeupdate tick. Mutations inside the bar, the queue panel and
+  registered inline players are now ignored, and the rest are debounced (50ms)
+  so a burst of page changes rescans once.
+
+### Changed
+
+- **`persist: false` now writes nothing to `localStorage`.** `setVolume()`,
+  `toggleMute()`, `toggleFavorite()` and the `data-wb-favorited` seeding saved
+  volume/mute/favourites regardless of `persist`, contrary to the docs. In-memory
+  state and events are unchanged; only the storage writes are gated.
+- **Queue row markup.** A row's number and text now sit inside
+  `<button class="wb-queue-skip">`, and `.wb-queue-info`,
+  `.wb-queue-item-title` and `.wb-queue-item-artist` are `<span>`s (block-level
+  via CSS) instead of `<div>`s. Class names are unchanged; custom CSS that
+  selected by element type (`div.wb-queue-item-title`) needs updating.
+- **Shuffle picks only tracks not yet played, and stops at the end.** Shuffle
+  drew from the whole queue — including tracks already played — and never
+  stopped with repeat off; the docs promise "a random upcoming track". The bar
+  now tracks a shuffle pass: `next()` and auto-advance pick among tracks not yet
+  played in it, stop once every track has played (repeat `'off'`), or start a
+  new pass under repeat `'all'`. Turning shuffle on starts a fresh pass from the
+  current track, and the Next button's disabled state follows the same rule.
+- **Peer dependency raised to `@arraypress/waveform-player@^1.8.0`** (from
+  `^1.7.2`). External mode crashed before 1.8.0, and the bar already relied on
+  APIs that arrived there — `setProgress()`/`setPlayingState()`,
+  `loadTrack(…, { autoplay: false })`, the `waveformplayer:destroy` event — as
+  does the new `barRadius` option.
+
 ## [1.11.3] — 2026-08-11
 
 ### Fixed

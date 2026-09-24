@@ -13,12 +13,8 @@ package's own `CHANGELOG.md`.
 - **[Bar](/changelog/bar/)** — `@arraypress/waveform-bar`, the persistent bottom-bar singleton.
 - **[Playlist](/changelog/playlist/)** — `@arraypress/waveform-playlist`, playlist and chapter navigation.
 - **[Generator](/changelog/gen/)** — `@arraypress/waveform-gen`, offline peak generation.
+- **[Tracker](/changelog/tracker/)** — `@arraypress/waveform-tracker`, listen analytics.
 - **[Framework wrappers](/changelog/frameworks/)** — the Astro, React, Vue and Svelte wrappers.
-
-:::note
-**Tracker** doesn't keep a `CHANGELOG.md` yet — its releases are tracked on
-GitHub. It'll appear here once it does.
-:::
 
 All packages follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
