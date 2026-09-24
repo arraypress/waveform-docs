@@ -13,6 +13,20 @@ Generated from [`@arraypress/waveform-bar`'s CHANGELOG](https://github.com/array
 
 ## [Unreleased]
 
+## [1.12.1] — 2026-09-24
+
+### Fixed
+
+- **The play/pause glyph is centred in its circle again.** The icon spans are
+  toggled to `display: block` and the svg inside them rode the text baseline,
+  sitting ~3px above centre. The svgs are now blocks.
+
+### Changed
+
+- **A slimmer bar.** Desktop padding is `0.625rem` (was `1rem`), and with
+  waveform-player 1.28.1 the waveform finally renders at its intended 32px
+  instead of 60px — together the bar drops from ~93px to ~69px tall.
+
 ## [1.12.0] — 2026-09-24
 
 ### Added

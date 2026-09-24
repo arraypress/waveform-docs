@@ -13,6 +13,16 @@ Generated from [`@arraypress/waveform-player`'s CHANGELOG](https://github.com/ar
 
 ## [Unreleased]
 
+## [1.28.1] — 2026-09-24
+
+### Fixed
+
+- **`height` below 60px now works.** `.waveform-container` carried a
+  `min-height: 60px` that beat the inline height `resizeCanvas()` writes, so
+  `height: 32` rendered 60px tall with the canvas stretched to fit (blurry
+  bars). The floor is gone; the container is sized from the option during
+  init. This is what made waveform-bar's slim waveform look tall.
+
 ## [1.28.0] — 2026-09-24
 
 ### Fixed
