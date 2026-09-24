@@ -23,14 +23,14 @@ The constructor resolves the container, verifies `window.WaveformPlayer`, parses
 
 | Method | Description |
 | --- | --- |
-| `selectTrack(index: number): void` | Load track `index` into the player via `loadTrack(...)`; updates the active-row UI, resets `currentChapterIndex` to `-1`, and toggles which nested `.wp-chapters` block is visible. No-op if out of range. |
-| `seekToChapter(trackIndex: number, time: number): void` | Same track: `seekTo(time)` (and `play()` if paused). Cross-track: registers a ready callback, then `selectTrack(trackIndex)`, seeking once the new track signals ready. No-op if `trackIndex` is out of range. |
+| `selectTrack(index: number): void` | Load track `index` into the player via `loadTrack(...)`; updates the active-row UI, resets `currentChapterIndex` to `-1` (clearing any chapter highlight), and reveals that track's nested `.wp-chapters` block. No-op if out of range. |
+| `seekToChapter(trackIndex: number, time: number): void` | Same track: `seekTo(time)` (and `play()` if paused). Cross-track: selects `trackIndex` and seeks once that track's `onLoad` fires. No-op if `trackIndex` is out of range. |
 | `nextTrack(): void` | `selectTrack(currentTrackIndex + 1)` when not already on the last track. |
 | `previousTrack(): void` | `selectTrack(currentTrackIndex - 1)` when not already on the first track. |
 | `getPlayer(): WaveformPlayer \| null` | The underlying player instance (`null` before init / after `destroy()`). |
 | `getCurrentTrackIndex(): number` | Zero-based index of the selected track. |
-| `getTracks(): WaveformPlaylistTrack[]` | The parsed track objects (`element`, `index`, `url`, `title`, `artist`, `artwork`, `album`, `duration`, `chapters[]`, `markers[]`). |
-| `destroy(): void` | Removes the keydown listener, destroys the player, clears `container.innerHTML`, removes the `waveform-playlist` / `wp-minimal` classes, restores the hidden `[data-track]` elements, and nulls `player` / `listElement` / `tracks`. |
+| `getTracks(): WaveformPlaylistTrack[]` | The parsed track objects (`element`, `index`, `url`, `title`, `artist`, `artwork`, `album`, `duration`, `waveform`, `chapters[]`, `markers[]`). Chapters are sorted by time. |
+| `destroy(): void` | Removes the keydown listener, cancels any pending chapter seek, destroys the player, removes only the nodes and layout classes the playlist added (your own classes stay), un-hides the `[data-track]` elements in place, clears `data-waveform-playlist-initialized`, and nulls `player` / `listElement` / `tracks`. The container can then be initialised again. |
 | `WaveformPlaylist.init()` _(static)_ | Auto-initialise every `[data-waveform-playlist]` not already marked initialised. Per-element errors are caught and `console.error`'d. |
 
 ```js
@@ -40,7 +40,7 @@ const current = playlist.getCurrentTrackIndex();
 ```
 
 <Aside type="note" title="Cross-track seeks are async">
-`seekToChapter` to a different track loads that track first and seeks only once the player reports ready. It registers the listener **before** calling `selectTrack()` so the load signal is never missed, and resolves on the first of the player's `waveformplayer:ready` event or its `onLoad` callback — whichever fires first wins, the other is torn down, so the seek fires exactly once. Same-track seeks are synchronous.
+`seekToChapter` to a different track loads that track first and seeks only once the player's `onLoad` fires **for that track** — so a deep link like `seekToChapter(1, 60)` straight after construction lands correctly. There is only ever one pending seek: a load error, selecting another track, or `destroy()` cancels it, so it can never land on a different track. With `preload="none"` the duration isn't known until playback starts, so the playlist starts playback and seeks when the metadata arrives. (All 1.8.0+; earlier versions keyed off `waveformplayer:ready`, which the core emits once after construction, and could seek before the track had a duration.)
 </Aside>
 
 ### Observable state
@@ -57,6 +57,8 @@ A single, focus-scoped `document` keydown listener handles navigation. It only a
 | `P` | Previous track | More than one track, and the playlist or its player has focus. |
 | `1`–`9` | Select track by number | More than one track, and a **playlist row** (not the player) has focus. |
 
+Keys pressed with **Ctrl, Cmd or Alt** held pass through untouched (1.8.0+), so browser shortcuts like Cmd/Ctrl+P (print) and Ctrl/Alt+digit (switch tab) keep working. Shift is allowed.
+
 <Aside type="note" title="Why 1–9 needs playlist focus">
 The core player binds `0`–`9` to "seek to 0%–90%" whenever it holds focus. To avoid a single keypress both seeking and switching tracks, the playlist only treats `1`–`9` as track-select when focus is on its own UI (a focusable row or button) and **not** on the player. When the player is focused, bare digits fall through to the player's documented seek behaviour.
 </Aside>
@@ -65,16 +67,17 @@ Track rows (`.wp-item`), chapter rows (`.wp-chapter`, `.wp-chapter-item`) and mi
 
 ## Events
 
-The playlist dispatches **no custom DOM events of its own** — it has no emit path. Instead it consumes the core player's callbacks/events:
+The playlist dispatches **no custom DOM events of its own** — it has no emit path. Instead it drives itself off the core player's callbacks. Any of these you pass as options still run, **after** the playlist's handling (1.8.0+):
 
 | Source | Effect |
 | --- | --- |
 | player `onEnd` | Resets chapter highlight to the start; auto-advances to the next track if `continuous` and not on the last track. |
-| player `onTimeUpdate(current, total)` | Re-highlights the active chapter row (`.wp-active` + `aria-current`). |
+| player `onTimeUpdate(current, total)` | Re-highlights the active chapter row (`.wp-active` + `aria-current`; chapters sharing a start time highlight the first), updates the hero/grid time readout, and — once the duration is known — warns about chapters that start after the track ends. |
 | player `onPlay` | Sets `isPlaying = true`, marks the active track, updates the artwork overlay icon to `ti-player-pause`. |
 | player `onPause` | Sets `isPlaying = false`, updates the overlay icon to `ti-player-play`; if paused at the end (`current >= duration - 0.1`) resets `currentChapterIndex = -1` and re-highlights chapter 0. |
-| player `onLoad(player)` | Temporarily wrapped by the cross-track ready sequencing; the original `onLoad` is preserved and restored, and the callback fires exactly once. |
-| `waveformplayer:ready` (capture) | Primary cross-track "ready" signal; ready events whose `detail.player` is a different player are ignored. |
+| player `onLoad(player)` | Runs a pending cross-track chapter seek if this is the track it was waiting for. |
+| player `onError` | Cancels a pending chapter seek. |
+| player `onNextTrack` / `onPreviousTrack` | The lock-screen / Media Session skip buttons call `nextTrack()` / `previousTrack()`. |
 
 To listen for player-level events (play, pause, seek, ended, etc.), attach to the player instance returned by `getPlayer()` — see the [player events reference](/player/options/).
 
@@ -84,7 +87,7 @@ The playlist generates a structured DOM you can target for theming. Key hooks:
 
 | Class | Element |
 | --- | --- |
-| `.waveform-playlist` | The container (base styles), added on init. Layout modifiers: `.wp-minimal`, `.wp-hero-layout`, `.wp-grid-layout`, plus `.wp-density-compact` (`density: 'compact'`) and `.wp-cover-top` (`coverPosition: 'top'`). |
+| `.waveform-playlist` | The container (base styles), added on init. Layout modifiers: `.wp-minimal`, `.wp-hero-layout`, `.wp-grid-layout`, plus `.wp-density-compact` (`density: 'compact'`), `.wp-cover-top` (`coverPosition: 'top'`) and `.wp-no-artist` (`showArtist: false`). |
 | `.wp-player` | The generated player wrapper (list / minimal layouts). In the **hero** and **grid** layouts the embedded player renders into `.wp-hero-stage` instead. |
 | `.wp-list-container` / `.wp-list` | The list wrapper and the `<ul>` track list. `.wp-chapters-only` is the single-track-with-chapters variant. |
 | `.wp-item` | Track row (`role="button"`). `.wp-active` marks the active row. |
@@ -106,7 +109,7 @@ The default CSS assumes a dark surface and uses modern features — `color-mix(i
 
 ## Cleanup
 
-Call `destroy()` when removing a playlist (e.g. in a SPA route change). It removes the keydown listener, destroys the inner player, wipes the generated UI, and restores your original `[data-track]` markup.
+Call `destroy()` when removing a playlist (e.g. in a SPA route change). It removes the keydown listener, destroys the inner player, removes the generated UI, and leaves your original `[data-track]` markup in place — so the same container can be initialised again with `new WaveformPlaylist(el, …)` or `WaveformPlaylist.init()`. (Before 1.8.0 it wiped the container first, so the tracks were lost and the React/Vue/Svelte wrappers rebuilt an empty playlist on a prop change.)
 
 ```js
 playlist.destroy();

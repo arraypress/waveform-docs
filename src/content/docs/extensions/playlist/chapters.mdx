@@ -17,4 +17,10 @@ Chapters serve two purposes: as **navigable list rows** and, optionally, as **ma
 
 Chapters are converted to markers **only when the track has no explicit `data-markers`** (`markers.length === 0`). Explicit `data-markers` always win, and each chapter-derived marker uses `data-color` if present, otherwise `chapterMarkerColor`.
 
-While a track plays, the active chapter row is re-highlighted on every `onTimeUpdate` — the row gets the `.wp-active` class and `aria-current="true"`.
+While a track plays, the active chapter row is re-highlighted on every `onTimeUpdate` — the row gets the `.wp-active` class and `aria-current="true"` Several chapters sharing a start time highlight the first of them. In multi-track lists, the selected track's own chapter sub-list is the one revealed, even when not every track has chapters.
+
+### Ordering and validation (1.8.0+)
+
+Chapters are **sorted by time**, so out-of-order markup still renders (and highlights) in order; chapters sharing a time keep their markup order. `data-time` accepts `SS`, `M:SS` or `H:MM:SS`. The playlist warns in the console (`[WaveformPlaylist] …`) about a chapter with no `data-time` — it is placed at `0:00` — and, once the track's duration is known, about a chapter that starts after the track ends.
+
+Clicking a chapter also works with `data-preload="none"`: the duration isn't known until playback starts, so the playlist starts playback and seeks as soon as the metadata arrives.

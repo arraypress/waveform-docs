@@ -7,7 +7,7 @@ sidebar:
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 import PlaylistDemo from '~/components/PlaylistDemo.astro';
 
-`WaveformPlaylist` turns a list of tracks into a navigable playlist, album or chaptered episode — driving a single embedded [WaveformPlayer](/player/options/) underneath. It parses declarative `[data-track]` / `[data-chapter]` markup (or a JS config), renders the list UI, wires up keyboard navigation, and loads each track into the player on demand.
+`WaveformPlaylist` turns a list of tracks into a navigable playlist, album or chaptered episode — driving a single embedded [WaveformPlayer](/player/options/) underneath. It parses declarative `[data-track]` / `[data-chapter]` markup, renders the list UI, wires up keyboard navigation, and loads each track into the player on demand.
 
 It is a thin orchestration layer: it owns the **list/chapter UI and track switching**, and forwards everything else — height, waveform style, colours, controls — straight to the inner player.
 
@@ -23,7 +23,7 @@ That's nothing but a `[data-waveform-playlist]` container wrapping one `[data-tr
 
 ## Install
 
-Install the playlist alongside the core player (the player is a peer dependency, `^1.7.2`).
+Install the playlist alongside the core player (the player is a peer dependency, `^1.24.5` from 1.8.0 — previously `^1.7.2`, which the playlist had long outgrown).
 
 <Tabs syncKey="pkg">
 
@@ -106,7 +106,7 @@ A playlist is built from three nested markers:
 | `[data-track]` | A track. Each `[data-track]` descendant becomes one track; document order is the track index. |
 | `[data-chapter]` | A chapter within a track. Each `[data-chapter]` inside a track becomes a chapter row; the chapter label is the element's trimmed `textContent`. |
 
-The original `[data-track]` markup is hidden (`display: none`) during init and restored on [`destroy()`](#public-methods).
+The original `[data-track]` markup is hidden (`display: none`) during init and restored in place on [`destroy()`](/extensions/playlist/api/#public-methods), with any inline `display` it had put back.
 
 ### Track attributes
 
@@ -121,9 +121,10 @@ Set on each `[data-track]` element.
 | `data-album` | No | Album name, passed to the player for the Media Session metadata. |
 | `data-duration` | No | **Display-only** duration string, e.g. `3:45`. It is never parsed — only shown when `showDuration` is on. |
 | `data-markers` | No | JSON array of explicit waveform markers, e.g. `[{"time":30,"label":"Drop","color":"#f00"}]`. Explicit markers always take precedence over chapter-derived ones. |
+| `data-waveform` | No | Pre-computed peaks for this track (1.8.0+): a JSON array of peaks, or a `.json` peaks URL (e.g. from [`waveform-gen`](/extensions/gen/)) passed through for the player to fetch. Skips decoding the audio just to draw it. A malformed JSON array logs a warning and the track falls back to decoding. |
 
 <Aside type="caution" title="data-markers must be valid JSON">
-`data-markers` is parsed with `JSON.parse` and **no** `try/catch` in the primary track parser — malformed JSON throws and aborts that track's parse. Validate it server-side before emitting it.
+`data-markers` must be a JSON array. Malformed JSON (or anything that isn't an array) logs a `[WaveformPlaylist] Invalid markers …` warning and that track simply gets no explicit markers; entries without a numeric `time` are dropped. The rest of the playlist still renders, but validate it server-side so the markers you meant actually show.
 </Aside>
 
 ### Chapter attributes
@@ -133,5 +134,5 @@ Set on each `[data-chapter]` element.
 | Attribute | Required | Description |
 | --- | --- | --- |
 | _label_ (text content) | Yes | The chapter label is the element's trimmed `textContent`, not an attribute. |
-| `data-time` | No | Timestamp as `M:SS`, `MM:SS`, or bare seconds (e.g. `90`). Default `0:00`. |
+| `data-time` | No | Timestamp as `M:SS`, `MM:SS`, `H:MM:SS` (1.8.0+ — earlier versions read `1:05:30` as 1 second), or bare seconds (e.g. `90`). A malformed value reads as `0:00`. Omitted, the chapter is placed at `0:00` with a console warning. |
 | `data-color` | No | Optional per-chapter marker colour. Falls back to `chapterMarkerColor`. |

@@ -20,6 +20,8 @@ The playlist picks one of five UIs based on content and the `layout` option:
 
 5. **Grid** — `layout: 'grid'` (added in 1.4.0) — a responsive grid of cover-art cards with a slim "now playing" transport bar (waveform + title/time) docked above or below the grid (via `barPosition`). The active card is ringed.
 
+In both hero and grid, the cover follows the selected track; a track without `data-artwork` hides it (1.8.0+ — earlier versions kept showing the previous cover).
+
 ```html
 <!-- Minimal pill-button switcher -->
 <div data-waveform-playlist data-layout="minimal">
@@ -38,28 +40,34 @@ The playlist picks one of five UIs based on content and the `layout` option:
 
 ## Playlist options
 
-These options control the playlist itself. Set them as constructor options **or** as `data-*` on the container.
+These options control the playlist itself. Set them as constructor options **or** as `data-*` on the container. Each resolves as **container `data-*` > constructor option > default**.
+
+Boolean attributes follow one rule: present means `true` unless the value is `"false"` — so a bare `data-continuous` (or `data-continuous=""`) turns it on.
+
+<Aside type="note" title="Constructor options fixed in 1.8.0">
+Before 1.8.0, `expandChapters`, `showDuration` and `showPlayState` were read from `data-*` only, `showChapterMarkers` from the constructor was reset to the smart default, and `chapterMarkerColor` ignored the constructor — so passing them in JS (which is what the React/Vue/Svelte wrappers do) had no effect. `data-continuous` and `data-show-chapter-markers` also required the literal `"true"`.
+</Aside>
 
 | Option | `data-*` | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `layout` | `data-layout` | `'list' \| 'minimal' \| 'hero' \| 'grid'` | `'list'` | UI layout. `'minimal'` renders pill buttons instead of full rows; `'hero'` renders a "now-playing" unit over a track queue; `'grid'` renders a cover-art grid with a slim now-playing bar. The last two were added in 1.4.0. |
-| `continuous` | `data-continuous` | `boolean` | `false` | Auto-advance to the next track when one ends. Container value reads the string `'true'`. |
+| `continuous` | `data-continuous` | `boolean` | `false` | Auto-advance to the next track when one ends. |
 | `expandChapters` | `data-expand-chapters` | `boolean` | `true` | In multi-track lists, render each track's chapters as a nested expandable sub-list under the active track. `data-expand-chapters="false"` disables. |
 | `showDuration` | `data-show-duration` | `boolean` | `true` | Render the per-track `data-duration` string in the row. `data-show-duration="false"` disables. |
-| `showChapterMarkers` | `data-show-chapter-markers` | `boolean \| null` | `null` | Render a track's chapters as markers on the waveform. `null` = smart default (see below). The attribute accepts `'true'` / `'false'`; absent leaves it `null`. |
+| `showChapterMarkers` | `data-show-chapter-markers` | `boolean \| null` | `null` | Render a track's chapters as markers on the waveform. `null` = smart default (see below). As an attribute, `data-show-chapter-markers="false"` forces it off, any other value on; absent leaves it `null`. |
 | `chapterMarkerColor` | `data-chapter-marker-color` | `string` | `'rgba(161, 161, 170, 0.85)'` | Fallback colour for chapter-derived markers when a chapter has no `data-color`. |
 | `showPlayState` | `data-show-play-state` | `boolean` | `true` | Show a play/pause icon overlay on the active track's artwork (artwork tracks only). `data-show-play-state="false"` disables. |
 
-The following five sizing/position options were added in 1.4.0 and apply to the **hero** and **grid** layouts (plus `thumbnailSize` for the `list` layout's row artwork):
+The following sizing/position options were added in 1.4.0. Most apply to the **hero** and **grid** layouts; `thumbnailSize`, `density` and `showArtist` also affect the `list` layout:
 
 | Option | `data-*` | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `coverSize` | `data-cover-size` | `number \| null` | `null` | Hero cover size in px. `null` derives a size from the waveform height (`(height ?? 56) + 36`). |
 | `thumbnailSize` | `data-thumbnail-size` | `number \| null` | `null` | Queue/grid/list artwork size in px. Sets the `--wp-thumb-size` CSS var (list & hero queue) and `--wp-grid-cover` (grid). `null` falls back to the CSS default. |
-| `density` | `data-density` | `'comfortable' \| 'compact'` | `'comfortable'` | Row spacing for the hero queue and grid. `'compact'` adds `.wp-density-compact` for tighter rows. |
+| `density` | `data-density` | `'comfortable' \| 'compact'` | `'comfortable'` | Row spacing for list rows, the hero queue, grid cards and chapters. `'compact'` adds `.wp-density-compact` for tighter rows. |
 | `coverPosition` | `data-cover-position` | `'left' \| 'top'` | `'left'` | Hero only — place the cover beside (`'left'`) or above (`'top'`) the waveform. `'top'` adds `.wp-cover-top`. |
 | `barPosition` | `data-bar-position` | `'top' \| 'bottom'` | `'bottom'` | Grid only — dock the now-playing transport bar above (`'top'`, adds `.wp-now-bar-top`) or below the cards. |
-| `showArtist` | `data-show-artist` | `boolean` | `true` | Show the now-playing artist in the hero/grid bar. `data-show-artist="false"` hides it. |
+| `showArtist` | `data-show-artist` | `boolean` | `true` | Show the artist. Hero/grid omit the now-playing artist; the list layout hides the now-playing and per-row artists via `.wp-no-artist`. `data-show-artist="false"` hides it. |
 
 <Aside type="note" title="Default colour: source vs README">
 The runtime default for `chapterMarkerColor` is grey `rgba(161, 161, 170, 0.85)` (authoritative — the source value). Older README copy lists a purple `rgba(168, 85, 247, 0.8)`; the source value wins at runtime.
@@ -69,7 +77,16 @@ The runtime default for `chapterMarkerColor` is grey `rgba(161, 161, 170, 0.85)`
 
 Every core **WaveformPlayer** option is forwarded to the inner player — `height`, `waveformStyle`, `colorPreset`, `barWidth`, `barSpacing`, `barRadius`, `buttonAlign`, `autoplay`, `showControls`, `showInfo`, `showTime`, `showHoverTime`, `showBPM`, `singlePlay`, `playOnSeek`, `showPlaybackSpeed`, `enableMediaSession`, `showMarkers`, `accessibleSeek`, `playbackRate`, `playbackRates`, `preload`, `crossOrigin`, `samples`, all `*Color` options, `seekLabel`, `errorText`, `playIcon`, `pauseIcon`, and so on. See the full [player options reference](/player/options/).
 
-Set them either as a constructor option or as a container `data-*`. The playlist inherits the player's complete `data-*` contract through `WaveformPlayer.utils.parseDataAttributes`, so it never drifts as the player gains options.
+Set them either as a constructor option or as a container `data-*`. The playlist inherits the player's complete `data-*` contract through `WaveformPlayer.utils.parseDataAttributes`, so it never drifts as the player gains options. (For cores without that bridge, a built-in fallback parser covers the same attributes; since 1.8.0 a test keeps it key-for-key in step with the core's.)
+
+The player's **callbacks** pass through too — `onPlay`, `onPause`, `onEnd`, `onTimeUpdate`, `onLoad`, `onError`, `onNextTrack`, `onPreviousTrack`. The playlist drives itself off the same callbacks, so yours run **after** its own handling, with the core's arguments (1.8.0+; earlier versions silently replaced them).
+
+```js
+new WaveformPlaylist('#album', {
+  onPlay: (player) => console.log('playing', player.options.title),
+  onEnd: () => analytics.track('track_end'),
+});
+```
 
 ```html
 <div data-waveform-playlist
@@ -94,7 +111,7 @@ These keys are deleted from the container's inherited `data-*` surface and **can
 audioMode  url  title  artist  album  artwork  markers  waveform
 ```
 
-`data-audio-mode`, `data-url`, `data-title`, `data-artist`, `data-album`, `data-artwork`, `data-markers`, and `data-waveform` on the container are ignored. The playlist always drives a **self-mode** player and populates the content fields from each track. (`data-markers` is still read on individual `[data-track]` elements — only the container-level key is stripped.)
+`data-audio-mode`, `data-url`, `data-title`, `data-artist`, `data-album`, `data-artwork`, `data-markers`, and `data-waveform` on the container are ignored. The playlist always drives a **self-mode** player that owns its audio, so an `audioMode` passed as a constructor option is ignored as well (1.8.0+ — before that, `audioMode: 'external'`, which the framework wrappers can forward, produced a playlist that never played). The content fields are populated from each track. (`data-markers` and `data-waveform` are still read on individual `[data-track]` elements — only the container-level keys are stripped.)
 
 ## Continuous playback
 
