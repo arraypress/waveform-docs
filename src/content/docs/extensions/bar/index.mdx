@@ -87,7 +87,7 @@ WaveformBar.init({ continuous: true });
 The default export is the singleton instance. If you need the class itself: `import { WaveformBar } from '@arraypress/waveform-bar'`.
 
 <Aside type="caution" title="Versions">
-`@arraypress/waveform-bar` v1.6.2 declares a peer dependency of `@arraypress/waveform-player@^1.7.2`. Keep the player at or above that range. The bar ships **no `.d.ts`** — typed wrappers (e.g. `waveform-bar-react` / `-astro`) hand-declare the config type.
+`@arraypress/waveform-bar` 1.12.0+ declares a peer dependency of `@arraypress/waveform-player@^1.8.0` (earlier versions: `^1.7.2`) — external mode, `setProgress()`/`setPlayingState()` and `barRadius` all need 1.8.0. Keep the player at or above that range. The bar ships **no `.d.ts`** — typed wrappers (e.g. `waveform-bar-react` / `-astro`) hand-declare the config type.
 </Aside>
 
 ## Quick start

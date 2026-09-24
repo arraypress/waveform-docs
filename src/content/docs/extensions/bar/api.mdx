@@ -22,12 +22,12 @@ WaveformBar.previous();    // > 3s into the track → restart; else go back
 WaveformBar.skipTo(2);     // jump to queue index (toggles play if already current)
 ```
 
-`play()` dedupes by URL: if the track is already queued it merges new data into that entry, otherwise it inserts right after the current index. `play()` does **not** fire `onQueueChange`.
+`play()` dedupes by URL: if the track is already queued it merges new data into that entry (empty values never overwrite queued ones), otherwise it inserts right after the current index. `play()` does **not** fire `onQueueChange`. When the browser refuses playback (autoplay policy), `togglePlay()` and `seekToMarker()` catch the rejection and restore the paused state (1.12.0+).
 
 ### Queue
 
 ```js
-WaveformBar.addToQueue({ url: 'next.mp3', title: 'Next Up' }); // append; starts if queue was empty
+WaveformBar.addToQueue({ url: 'next.mp3', title: 'Next Up' }); // append; starts if queue was empty; emits queuechange (1.12.0+)
 WaveformBar.removeFromQueue(3);  // cannot remove the current track
 WaveformBar.clearQueue();        // clears all except the current track
 WaveformBar.getQueue();          // shallow copy
@@ -37,13 +37,15 @@ WaveformBar.isCurrentTrack(url); // current (playing or paused)?
 WaveformBar.isCurrentlyPlaying(url);
 ```
 
-### Repeat & volume
+### Repeat, shuffle & volume
 
 ```js
 WaveformBar.cycleRepeat();    // off → all → one → off
 WaveformBar.setRepeat('all'); // 'off' | 'all' | 'one' (invalid ignored)
+WaveformBar.toggleShuffle();  // emits shufflechange + onShuffleChange
+WaveformBar.setShuffle(true); // turning it on starts a fresh shuffle pass
 
-WaveformBar.setVolume(0.5);   // 0..1, persists, emits volumechange + onVolumeChange
+WaveformBar.setVolume(0.5);   // 0..1, persists (if persist), emits volumechange + onVolumeChange
 WaveformBar.getVolume();
 WaveformBar.toggleMute();     // remembers prior volume
 ```
@@ -77,6 +79,8 @@ WaveformBar.getPlayer();  // the underlying WaveformPlayer instance
 WaveformBar.destroy();    // tear everything down, strip .wb-current/.wb-playing from the page
 ```
 
+`destroy()` also sets every synced inline player to paused and (1.12.0+) resets in-memory session state — mute, favorites, cart, resume position, active markers, the collapsed flag — so a following `init()` with different config starts clean. Persisted storage is left alone.
+
 ## Events
 
 DOM events bubble from the bar element (`#waveform-bar`), prefixed `waveformbar:`. **Listen on `document`.**
@@ -91,6 +95,7 @@ DOM events bubble from the bar element (`#waveform-bar`), prefixed `waveformbar:
 | `waveformbar:favorite` | `{ track, favorited }` | Has `onFavorite` callback. |
 | `waveformbar:cart` | `{ track }` | Has `onCart` callback. |
 | `waveformbar:repeatchange` | `{ mode }` | `mode` is `'off'`/`'all'`/`'one'`. DOM-only. |
+| `waveformbar:shufflechange` | `{ shuffle }` | Has `onShuffleChange` callback. |
 | `waveformbar:markerchange` | `{ marker, index, track }` | DJ-mode boundary crossed. DOM-only. |
 | `waveformbar:error` | `{ track }` | Track failed to load/decode; auto-skips when `continuous`. DOM-only. |
 | `waveformbar:share` | `{ url, time, track }` | Share button copied a link. DOM-only. |

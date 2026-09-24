@@ -19,13 +19,19 @@ Both modes share the same queue, transport, persistence and event surface — on
 
 When `showQueue` is `true`, the bar renders a queue button and a `.wb-queue-panel` (appended to `document.body`). The panel groups entries into **Now Playing / Up Next / Previously Played**, with per-row remove buttons and a clear-all action. Build it from data attributes (`data-wb-queue`) or the API (`addToQueue`, `removeFromQueue`, `clearQueue`, `skipTo`). The current track can never be removed; `clearQueue()` keeps it.
 
+Each row's number and title/artist sit inside a `<button class="wb-queue-skip">`, so the queue is keyboard-operable: Tab to a row and press Enter to skip to it (focus stays in the panel), the remove button appears on keyboard focus, and the current row carries `aria-current` (1.12.0+).
+
+<Aside type="caution" title="Queue row markup changed in 1.12.0">
+`.wb-queue-info`, `.wb-queue-item-title` and `.wb-queue-item-artist` are now `<span>`s (block-level via CSS) inside the `.wb-queue-skip` button, instead of `<div>`s. Class names are unchanged — only CSS that selects by element type (`div.wb-queue-item-title`) needs updating.
+</Aside>
+
 ## Volume
 
-The volume wrapper renders when `showMute` or `showVolume` is true. The mute button toggles, and the popup exposes a vertical slider. Volume and mute persist to `localStorage` (`<storageKey>-vol`) when `persist` is on, so they survive navigation. `setVolume()` clamps to `0..1`, updates the mute flag, persists, and emits `volumechange` + `onVolumeChange`.
+The volume wrapper renders when `showMute` or `showVolume` is true. The mute button toggles, and the popup exposes a vertical slider. Volume and mute persist to `localStorage` (`<storageKey>-vol`) when `persist` is on, so they survive navigation; with `persist: false` nothing is written (1.12.0+). `setVolume()` clamps to `0..1`, updates the mute flag, persists (when `persist` is on), and emits `volumechange` + `onVolumeChange`.
 
 ## Repeat
 
-`repeat: 'off' | 'all' | 'one'`. `'all'` loops the queue (`next()` wraps to index 0, `previous()` wraps to the last track); `'one'` loops the current track. Cycle with the repeat button or `cycleRepeat()`, or set directly with `setRepeat()`. Every change emits `repeatchange`.
+`repeat: 'off' | 'all' | 'one'`. `'all'` loops the queue (`next()` wraps to index 0, `previous()` wraps to the last track); `'one'` loops the current track. Cycle with the repeat button or `cycleRepeat()`, or set directly with `setRepeat()`. Every change emits `repeatchange`. The `repeat` config applies even with `showRepeat: false` (1.12.0+). The button sets `aria-pressed` (on for `'all'`/`'one'`) and an `aria-label` naming the mode (`Repeat: Off/All/One`); the favorite and shuffle buttons also expose `aria-pressed`.
 
 :::note
 Error auto-skip never wraps via `repeat: 'all'` — this guards against an infinite loop on a dead first track.
@@ -33,13 +39,13 @@ Error auto-skip never wraps via `repeat: 'all'` — this guards against an infin
 
 ## Shuffle
 
-Set `showShuffle: true` to add a shuffle toggle beside the repeat control. With shuffle on, `next()` and continuous auto-advance pick a random upcoming track instead of the next in order; `shuffle: true` starts it enabled. Toggle at runtime with `toggleShuffle()` / `setShuffle()` — the button reflects state and tucks away with the collapsed pill.
+Set `showShuffle: true` to add a shuffle toggle beside the repeat control. With shuffle on, `next()` and continuous auto-advance pick a random track **not yet played in the current shuffle pass** instead of the next in order; `shuffle: true` starts it enabled. Once every track has played, shuffle stops with repeat `'off'`, or starts a new pass under repeat `'all'` — and the Next button's disabled state follows the same rule (1.12.0+; earlier versions drew from the whole queue, played tracks included, and never stopped). Turning shuffle on starts a fresh pass from the current track. Toggle at runtime with `toggleShuffle()` / `setShuffle()` — each change emits `shufflechange` + `onShuffleChange`, and the button reflects state and tucks away with the collapsed pill.
 
 ## Favorites & cart
 
 Favorites and cart power the heart and cart buttons (which render only when `actions.favorite` / `actions.cart` are configured), plus the `.wb-favorited` / `.wb-in-cart` page classes.
 
-- **Favorites** persist to `localStorage` (`<storageKey>-favs`, an id array). Seed server state with `data-wb-favorited="true"` — it is authoritative over `localStorage` on init.
+- **Favorites** persist to `localStorage` (`<storageKey>-favs`, an id array) when `persist` is on. Seed server state with `data-wb-favorited="true"` — it is authoritative over `localStorage` on init.
 - **Cart** is an in-memory `Set`, **never persisted**. Seed it from `data-wb-in-cart="true"`; your server remains the source of truth. There is no removal API.
 
 Both call `actions.*` (if configured) and sync page attributes/classes across all matching trigger elements. The methods work even with the buttons hidden.
@@ -91,6 +97,8 @@ When `persist` is `true` (the default), state is split across two stores under `
 | `sessionStorage` | `<key>-collapsed` | Collapsed pill state. |
 | `localStorage` | `<key>-vol` | `{ v, m, b }` — volume, mute, base volume. |
 | `localStorage` | `<key>-favs` | Favorited id array. |
+
+The exact position is saved on `beforeunload`, `pagehide` and whenever the page becomes hidden (1.12.0+) — iOS Safari doesn't reliably fire `beforeunload`. With `persist: false`, nothing is written to either store (1.12.0+; earlier versions still saved volume, mute and favorites).
 
 On restore, `autoResume` resumes playback if the saved state was playing (falling back to paused if autoplay is blocked). Use distinct `storageKey` values to run independent bars across different site sections.
 

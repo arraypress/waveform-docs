@@ -86,7 +86,7 @@ The optional `waveform-bar-icons.css` adds an icon font: `.wbi` base plus `.wbi-
 
 ## Inline player integration
 
-The bar discovers `@arraypress/waveform-player` instances mounted with `audioMode: 'external'` and treats them as synchronized visual surfaces — no bar config required. The bar listens at the document level for `waveformplayer:request-play` / `:request-pause` / `:request-seek` / `:destroy`, and pushes `setPlayingState()` / `setProgress()` into the inline player whose `options.url` matches the current track. One audio source (the bar), many progress-aware visualizations.
+The bar discovers `@arraypress/waveform-player` instances mounted with `audioMode: 'external'` and treats them as synchronized visual surfaces — no bar config required. The bar listens at the document level for `waveformplayer:request-play` / `:request-pause` / `:request-seek` / `:destroy`, and pushes `setPlayingState()` / `setProgress()` into the inline player whose `options.url` matches the current track. One audio source (the bar), many progress-aware visualizations. Players are matched by their container element, so an inline player needs no `id` (1.12.0+; before that, id-less players — like the markup below — were never synced).
 
 ```html
 <!-- This element is BOTH a bar trigger and an inline visual surface -->
@@ -98,5 +98,7 @@ The bar discovers `@arraypress/waveform-player` instances mounted with `audioMod
      data-wb-url="song.mp3"
      data-wb-title="My Song"></div>
 ```
+
+When the element is both, clicks inside the registered inline player belong to the player: its own play button and canvas send `request-play` / `request-pause` / `request-seek`, and the enclosing `[data-wb-play]` click handler stands aside (1.12.0+; previously a play click toggled straight back off and a seek-click paused). `request-play` folds in the trigger's `data-wb-*` metadata (id, title, link, meta…), with the player's own non-empty fields winning, so nothing is lost. `destroy()` sets every synced inline player to paused.
 
 See [WaveformPlayer options](/player/options/) for the inline player's full attribute surface and the [installation guide](/getting-started/installation/) for the shared setup.

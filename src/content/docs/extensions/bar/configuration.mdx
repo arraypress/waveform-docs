@@ -16,9 +16,9 @@ import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/
 | --- | --- | --- | --- |
 | `continuous` | `boolean` | `true` | Auto-advance to the next queue track when a track ends (and on track error). |
 | `autoResume` | `boolean` | `true` | On restore, resume playback if the saved state was playing. Falls back to paused if the browser blocks autoplay. |
-| `repeat` | `'off' \| 'all' \| 'one'` | `'off'` | Initial repeat mode. `'all'` loops the queue; `'one'` loops the current track. |
+| `repeat` | `'off' \| 'all' \| 'one'` | `'off'` | Initial repeat mode. `'all'` loops the queue; `'one'` loops the current track. Applies with `showRepeat: false` too (1.12.0+); an unknown value falls back to `'off'`. |
 | `volume` | `number` | `1` | Initial volume `0..1` (clamped; `NaN`/out-of-range coerced to `1`). Overridden by persisted volume when `persist` is on. |
-| `persist` | `boolean` | `true` | Save queue/index/position/playing to `sessionStorage`, and volume/mute/favorites to `localStorage`. Also gates the collapsed-state save. |
+| `persist` | `boolean` | `true` | Save queue/index/position/playing to `sessionStorage`, and volume/mute/favorites to `localStorage`. Also gates the collapsed-state save. `false` writes nothing to either store — volume, mute and favorites included (1.12.0+; earlier versions saved those three regardless). |
 | `storageKey` | `string` | `'waveform-bar'` | Storage key prefix. See [Persistence](#cross-page-persistence). |
 
 ### Controls visibility
@@ -33,14 +33,11 @@ Buttons render only when their flag (or the relevant config) is set. The methods
 | `showVolume` | `boolean` | `true` | Render the volume popup slider. |
 | `showMute` | `boolean` | `true` | Render the mute/volume button. The volume wrapper renders if `showMute` **or** `showVolume` is true. |
 | `showMeta` | `boolean` | `true` | Render the metadata tag strip (BPM/key/duration/custom). |
+| `showTime` | `boolean` | `true` | Render the current / total time display. `false` omits it in both layouts (1.12.0+; earlier versions ignored the option and always showed the time). |
 | `showTrackLink` | `boolean` | `true` | Make the track-info area clickable, navigating to the track's `data-link` (scheme-guarded). |
 | `maxMeta` | `number` | `3` | Maximum number of metadata tags shown in the bar. |
 | `collapsible` | `boolean` | `false` | Render a collapse button that shrinks the bar to a floating transport pill. |
 | `share` | `boolean` | `false` | Render a "copy share link" button (emits a URL with the timestamp + track identity). |
-
-<Aside type="caution" title="showTime is a no-op">
-`showTime` exists in the defaults (`true`) and older docs, but the value is **never read** — the `.wb-time` display always renders. Do not rely on it to hide the time.
-</Aside>
 
 ### Layout & theme
 
@@ -65,8 +62,10 @@ These pass through to the bar's single embedded WaveformPlayer instance.
 | `waveformHeight` | `number` | `32` | Waveform height in px (passed to the player as `height`). |
 | `barWidth` | `number` | `2` | Waveform bar width in px. |
 | `barSpacing` | `number` | `2` | Gap between waveform bars in px. |
+| `barRadius` | `number \| null` | `null` | **1.12.0+** Rounded bar caps in px; `0` = square (forwarded even though it's falsy). `null` keeps the player's own default. |
 | `waveformColor` | `string \| null` | `null` | Waveform color. Only passed to the player when truthy (else the player auto-detects from the theme). |
 | `progressColor` | `string \| null` | `null` | Progress color. Only passed when truthy. |
+| `waveformGradient` | `'vertical' \| 'horizontal' \| 'diagonal'` | `'vertical'` | Axis for gradient stop arrays in `waveformColor`/`progressColor`. Forwarded to the player's [`waveformGradient`](/player/options/). |
 | `markerColor` | `string` | `'rgba(255, 255, 255, 0.25)'` | Default marker line color for markers lacking their own `color`. |
 | `errorText` | `string \| null` | `null` | Custom "audio failed to load" message passed to the player. `null` = the player's own default. |
 | `crossOrigin` | `'anonymous' \| 'use-credentials' \| null` | `null` | CORS mode forwarded to the embedded `<audio>`. Only passed when truthy. `null` leaves it unset (native `<audio>` behavior — avoids breaking CDN media without CORS headers). |
@@ -121,8 +120,9 @@ Config callbacks fire alongside the [DOM events](#events) but are scoped to your
 | `onPlay` | `(track) => void` | Playback starts. |
 | `onPause` | `(track) => void` | Playback pauses. |
 | `onTrackChange` | `(track, index) => void` | The current track changes. |
-| `onQueueChange` | `(queue, currentIndex) => void` | A track is added/removed/cleared. **Not** fired by `play()`-driven insertions. |
+| `onQueueChange` | `(queue, currentIndex) => void` | A track is added (`addToQueue`, 1.12.0+), removed or cleared. **Not** fired by `play()`-driven insertions. |
 | `onVolumeChange` | `(volume) => void` | `setVolume` runs (and the unmute path). Not fired by the mute-only branch. |
+| `onShuffleChange` | `(shuffle) => void` | Shuffle is turned on or off. |
 | `onFavorite` | `(track, favorited) => void` | `toggleFavorite` runs. |
 | `onCart` | `(track) => void` | `addToCart` runs. |
 
