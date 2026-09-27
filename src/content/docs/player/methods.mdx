@@ -202,6 +202,8 @@ Replaces the current peaks and redraws.
 
 Malformed input normalizes to `[]`. **Returns** `Promise<boolean>` for a `.json` URL — whether the sidecar was applied; `false` on a network error, a non-2xx response or a file with no peaks, leaving the canvas as it was — and `void` for inline peaks (1.28.0+; earlier versions returned nothing either way).
 
+Since 1.29.0 the data also becomes the current track's `waveform` option, so it sticks: it's safe to call straight after construction (the player's own first load no longer paints over it), a decode still running for this track won't replace it, and peaks supplied before the first load skip the decode entirely. `loadTrack()` replaces them for the next track.
+
 ```js
 player.setWaveformData([0.1, 0.4, 0.8, 0.5, 0.2]);
 player.setWaveformData('/peaks/track.json');
@@ -424,6 +426,8 @@ A bag of shared, pure helpers bridged onto the class so sibling packages and CDN
 | `escapeHtml` | `(str: string) => string` | HTML-escapes a string. |
 | `isSafeHref` | `(url: string) => boolean` | Validates a URL is safe to use as an `href`. |
 | `parseDataAttributes` | `(element: HTMLElement) => object` | Parses the `data-*` contract into an options object. |
+| `detectColorScheme` | `(element?: Element) => 'dark' \| 'light'` | The auto-theme check: explicit theme hints first, then the backdrop behind `element` (through shadow roots since 1.29.0). |
+| `extractPeaks` | `(buffer: AudioBuffer, samples?: number) => number[]` | The player's own peak extraction, for code that decodes audio itself and wants identical drawings (1.29.0+). |
 
 ```js
 const label = WaveformPlayer.utils.formatTime(95); // '1:35'
