@@ -261,6 +261,20 @@ This still performs a Web Audio decode — it is the runtime counterpart to the 
   Pair pre-computed peaks with `preload="metadata"` (the default) so the audio file isn't downloaded until the user hits play. The waveform comes from the small JSON; the audio bytes load on demand. See the [`preload` option](/player/options/).
 </Aside>
 
+## Hosting the audio: byte ranges
+
+Browsers seek audio with HTTP `Range` requests. Some hosts ignore them and answer with the whole file (`200` instead of `206`, no `Accept-Ranges` header): **Cloudflare Pages and Workers static assets** do, and so do plenty of plain servers. Chrome can't seek such a file at all, even once it has fully downloaded, which shows up as long tracks "snapping back to 0". Safari and Firefox are unaffected.
+
+Since 1.29.1 the player handles it: when the browser reports the target as unseekable, it waits for the download to finish, reloads the file from the browser cache (which *can* seek), and continues from the new position — playback, events and the play button carry on as if it were a normal seek. It logs one console warning per file so you know why.
+
+For instant seeking on long files, serve audio from a host that supports ranges, such as **Cloudflare R2**, S3, or any standard web server. You can check a host with:
+
+```bash
+curl -sI -H "Range: bytes=0-99" https://example.com/track.mp3 | head -1
+# HTTP/2 206  → ranges supported
+# HTTP/2 200  → ranges ignored
+```
+
 ## See also
 
 - [Options](/player/options/) — the full option surface, including `samples` and `preload`.
