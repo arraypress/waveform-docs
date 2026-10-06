@@ -16,7 +16,7 @@ import { dirname, join, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(__dirname, '..');
-// All waveform repos are flat siblings of this one under ~/Developer/waveform-player.
+// All waveform repos are flat siblings of this one under ~/Developer/Javascript/waveform-player.
 const PKG_ROOT = resolve(DOCS_ROOT, '..');
 const OUT_DIR = join(DOCS_ROOT, 'src/content/docs/changelog');
 
@@ -65,17 +65,22 @@ const SINGLE = [
 	{ slug: 'player', pkg: 'waveform-player', title: 'Core Player', order: 1, description: 'Release history for @arraypress/waveform-player.' },
 	{ slug: 'bar', pkg: 'waveform-bar', title: 'Bar', order: 2, description: 'Release history for @arraypress/waveform-bar.' },
 	{ slug: 'playlist', pkg: 'waveform-playlist', title: 'Playlist', order: 3, description: 'Release history for @arraypress/waveform-playlist.' },
-	{ slug: 'gen', pkg: 'waveform-gen', title: 'Generator', order: 4, description: 'Release history for @arraypress/waveform-gen.' },
-	{ slug: 'tracker', pkg: 'waveform-tracker', title: 'Tracker', order: 5, description: 'Release history for @arraypress/waveform-tracker.' },
+	{
+		slug: 'sounds', pkg: 'waveform-sounds', title: 'Sounds', order: 4, description: 'Release history for @arraypress/waveform-sounds.',
+		// Its four wrappers live on the combined frameworks page, like every other wrapper.
+		see: 'The Astro, React, Svelte and Vue wrappers (`@arraypress/waveform-sounds-astro`, `-react`, `-svelte`, `-vue`) version separately — see [Framework wrappers](/changelog/frameworks/#arraypresswaveform-sounds-astro).',
+	},
+	{ slug: 'gen', pkg: 'waveform-gen', title: 'Generator', order: 5, description: 'Release history for @arraypress/waveform-gen.' },
+	{ slug: 'tracker', pkg: 'waveform-tracker', title: 'Tracker', order: 6, description: 'Release history for @arraypress/waveform-tracker.' },
 ];
 
-for (const { slug, pkg, title, order, description } of SINGLE) {
+for (const { slug, pkg, title, order, description, see } of SINGLE) {
 	const md = read(pkg);
 	if (!md) {
 		console.warn(`  ⚠ ${pkg}/CHANGELOG.md not found — leaving changelog/${slug}.md as-is.`);
 		continue;
 	}
-	write(slug, [frontmatter({ title, description, order }), GENERATED, '', sourceNote(pkg), '', entries(md)].join('\n'));
+	write(slug, [frontmatter({ title, description, order }), GENERATED, '', sourceNote(pkg), '', ...(see ? [see, ''] : []), entries(md)].join('\n'));
 }
 
 // ── Combined "Frameworks & wrappers" page ───────────────────────────────────
@@ -92,6 +97,10 @@ const WRAPPERS = [
 	'waveform-playlist-react',
 	'waveform-playlist-vue',
 	'waveform-playlist-svelte',
+	'waveform-sounds-astro',
+	'waveform-sounds-react',
+	'waveform-sounds-vue',
+	'waveform-sounds-svelte',
 ];
 
 const sections = WRAPPERS.map((pkg) => {
@@ -106,7 +115,7 @@ const sections = WRAPPERS.map((pkg) => {
 
 if (sections.length) {
 	write('frameworks', [
-		frontmatter({ title: 'Framework wrappers', description: 'Release history for the Astro, React, Vue and Svelte wrapper packages.', order: 6 }),
+		frontmatter({ title: 'Framework wrappers', description: 'Release history for the Astro, React, Vue and Svelte wrapper packages.', order: 7 }),
 		GENERATED,
 		'',
 		':::note\nGenerated from each wrapper package\'s CHANGELOG. Run `npm run sync:changelogs` after a release to refresh.\n:::',

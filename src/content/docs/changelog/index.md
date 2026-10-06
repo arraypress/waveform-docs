@@ -12,6 +12,7 @@ package's own `CHANGELOG.md`.
 - **[Core Player](/changelog/player/)** — `@arraypress/waveform-player`, the canvas player everything else builds on.
 - **[Bar](/changelog/bar/)** — `@arraypress/waveform-bar`, the persistent bottom-bar singleton.
 - **[Playlist](/changelog/playlist/)** — `@arraypress/waveform-playlist`, playlist and chapter navigation.
+- **[Sounds](/changelog/sounds/)** — `@arraypress/waveform-sounds`, the searchable, filterable sound list.
 - **[Generator](/changelog/gen/)** — `@arraypress/waveform-gen`, offline peak generation.
 - **[Tracker](/changelog/tracker/)** — `@arraypress/waveform-tracker`, listen analytics.
 - **[Framework wrappers](/changelog/frameworks/)** — the Astro, React, Vue and Svelte wrappers.
