@@ -7,15 +7,16 @@ sidebar:
 
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
-The `@arraypress` waveform family ships first-class Astro wrappers for all three runtimes. Each one turns the core library's `data-*` attribute contract into a typed `.astro` component: you pass camelCase props, the wrapper stringifies them into the exact attributes the framework-agnostic core scans for, and the core's auto-initialiser mounts the UI on the client.
+The `@arraypress` waveform family ships first-class Astro wrappers for all four runtimes. Each one turns the core library's `data-*` attribute contract into a typed `.astro` component: you pass camelCase props, the wrapper stringifies them into the exact attributes the framework-agnostic core scans for, and the core's auto-initialiser mounts the UI on the client.
 
 | Package | Component(s) | Wraps |
 | --- | --- | --- |
 | `@arraypress/waveform-player-astro` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
 | `@arraypress/waveform-bar-astro` | `<WaveformBar>`, `<WaveformBarTrigger>` | `@arraypress/waveform-bar` |
 | `@arraypress/waveform-playlist-astro` | `<WaveformPlaylist>` | `@arraypress/waveform-playlist` |
+| `@arraypress/waveform-sounds-astro` | `<WaveformSounds>` | [`@arraypress/waveform-sounds`](/extensions/sounds/) |
 
-All three share the same design:
+The player, bar and playlist wrappers share the same design (the sound list differs in two ways — it [server-renders the list and loads its own runtime](#the-sound-list)):
 
 - **Props mirror core options 1:1** (camelCase). The component handles the kebab-case `data-*` conversion under the hood.
 - **Omission preserves defaults.** An omitted prop emits no attribute, so the core applies its own internal default. Never pass `null` to "reset" a value — just leave the prop out.
@@ -71,6 +72,7 @@ Peer dependency ranges per wrapper:
 | `waveform-player-astro` | `@arraypress/waveform-player@^1.8.0` | `^6.0.0 \|\| ^7.0.0` |
 | `waveform-bar-astro` | `@arraypress/waveform-bar@^1.3.1`, `@arraypress/waveform-player@^1.7.2` | `^6.0.0 \|\| ^7.0.0` |
 | `waveform-playlist-astro` | `@arraypress/waveform-playlist@^1.3.0`, `@arraypress/waveform-player@^1.8.0` | `^6.0.0 \|\| ^7.0.0` |
+| `waveform-sounds-astro` | `@arraypress/waveform-sounds@^0.1.0`, `@arraypress/waveform-player@^1.24.5` | `^6.0.0 \|\| ^7.0.0` |
 
 ## Load the runtime once (in a layout)
 
@@ -427,6 +429,107 @@ Per-track content (`url`, `title`, `artist`, `artwork`, `album`, `markers`, `wav
 
 Both lazy mounting (`lazy` → `data-waveform-playlist-lazy`, deduped via `window.__wfplLazyMountBound`) and View-Transitions re-init (deduped via `window.__wfplInitBound`) work identically to the player component.
 
+## The sound list
+
+`@arraypress/waveform-sounds-astro` wraps [WaveformSounds](/extensions/sounds/), the searchable, filterable list of sound previews. It breaks from the other three wrappers in two ways:
+
+- **It renders the whole list on the server.** Given `sounds`, the component writes the toolbar, the chips and every row with the core's DOM-free renderer (`@arraypress/waveform-sounds/render`); the browser runtime adopts that markup instead of rebuilding it, so the list is readable and crawlable before any script runs.
+- **It loads its own JavaScript.** The component ships one processed (bundled) `<script>` that loads the sounds runtime, and the player too unless the page already has one. You only add the stylesheets.
+
+### Setup
+
+```sh
+npm install @arraypress/waveform-sounds-astro @arraypress/waveform-sounds @arraypress/waveform-player
+```
+
+Import the two stylesheets once, in your layout — the component doesn't inject CSS:
+
+```astro title="src/layouts/Layout.astro"
+---
+import '@arraypress/waveform-player/styles.css';
+import '@arraypress/waveform-sounds/styles.css';
+---
+```
+
+### Example — from an array, server-rendered
+
+```astro
+---
+import WaveformSounds from '@arraypress/waveform-sounds-astro';
+---
+<WaveformSounds
+  sounds={[
+    { url: '/previews/kick-01.mp3', title: 'Kick 01', type: 'Drums', bpm: 128, key: 'F minor', duration: 2.4 },
+    { url: '/previews/bass-04.mp3', title: 'Bass Loop 04', type: 'Bass', bpm: 128, key: 'Fmin', peaks: 'a1b2c3…' },
+  ]}
+  pageSize={100}
+  columns={['type', 'bpm', 'key']}
+/>
+```
+
+### Example — from a manifest
+
+```astro
+<WaveformSounds manifest="/previews/sounds.json" player="strip" />
+```
+
+With only `manifest` (and no `sounds`), the component renders an empty container carrying `data-manifest`, and the runtime fetches and renders the list in the browser. To server-render a manifest instead, read it at build time and pass its `sounds` array:
+
+```astro
+---
+import WaveformSounds from '@arraypress/waveform-sounds-astro';
+import pack from '../../public/previews/sounds.json';
+---
+<WaveformSounds sounds={pack.sounds} />
+```
+
+Write the manifest with [`waveform-gen --manifest`](/extensions/gen/manifest/) — and set its `--base-url` to where the audio is served (`/previews/` above), or the URLs point at the site root.
+
+### Props
+
+Every core option is a prop, typed from the core's `WaveformSoundsOptions`, and emitted as the `data-*` attribute the core reads — an omitted prop emits nothing, so the core's default applies. See [Options](/extensions/sounds/options/) for each one.
+
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `sounds` | `SoundInput[]` | Rendered on the server. An empty array renders an empty list (the manifest isn't fetched). |
+| `manifest` | `string` | Fetched in the browser when there are no `sounds`. |
+| `player` | `'inline' \| 'strip'` | Always emitted (resolved the way the core resolves it). |
+| `search`, `showCount`, `loopToggle`, `loop`, `autoAdvance`, `arrowAudition` | `boolean` | Emitted as `"true"` / `"false"`. |
+| `filters`, `sorts`, `columns` | `string[]` | Comma-separated; an empty array is emitted as `""` = none. |
+| `menuSearch`, `pageSize`, `maxTypeChips`, `barWidth`, `barGap` | `number` | |
+| `waveformStyle`, `waveformColor`, `progressColor` | `string` | |
+| `idPrefix` | `string` | Defaults to `id`, matching the core's own client render. |
+| `urlState` | `boolean \| string` | `"true"` / `"false"`, or the prefix. |
+| `strings`, `playerOptions` | `object` | Emitted as JSON (functions inside `playerOptions` don't survive). |
+| `id` | `string` | Container id — for `WaveformSounds.getInstance('#id')`. |
+| `class` | `string` | Added to `waveform-sounds waveform-sounds--<player>`. |
+
+Not available: the `on*` callbacks (a function can't cross into server-rendered HTML — listen for the bubbling [`waveformsounds:*` events](/extensions/sounds/api/#events) instead) and `playerClass` (the page's `window.WaveformPlayer` is used, see below).
+
+```astro
+<WaveformSounds id="pack" manifest="/previews/sounds.json" />
+
+<script>
+  document.addEventListener('waveformsounds:play', (e) => {
+    console.log('playing', e.detail.sound.title);
+  });
+</script>
+```
+
+For the imperative API, `window.WaveformSounds.getInstance('#pack')` returns the instance. The client script creates it, so call it from an event handler or after `waveformsounds:ready`.
+
+Set `--ws-surface` to your page background — the runtime detects it, but a server-rendered list paints before any script runs:
+
+```css
+.waveform-sounds { --ws-surface: var(--color-bg); }
+```
+
+### The client script
+
+- **CSP-friendly.** It's a processed Astro `<script>` — one bundled module emitted as an external file, identical on every page, with no `is:inline` and no `define:vars`. Everything per-instance travels in `data-*`, so a strict hash-based Content-Security-Policy needs no extra hashes for it.
+- **View Transitions.** It initialises on load and on every `astro:page-load`, and on `astro:after-swap` destroys the instances whose element left the page (stopping their audio). A list inside a `transition:persist` element is carried over and keeps playing. It works with and without `<ClientRouter />`.
+- **It never replaces the page's player.** `singlePlay` only works between players of the same class, so the script waits for the page's own scripts (`DOMContentLoaded`) and uses an existing `window.WaveformPlayer` — a persistent [WaveformBar](#the-bar)'s, or one from a `<script>` tag. Only when there is none does it load the bundled `@arraypress/waveform-player` (a separate chunk, by dynamic import). A player your code loads *later* than that, from its own dynamic import, can't be detected — load it from a static `<script>` or import instead.
+
 ## TypeScript
 
 Each wrapper re-exports the shared core types so you can import them from one place, and derives its prop interface from the core options via `Omit<>` / `Pick<>` — so when the core adds an option, the typed props track it automatically with no manual edit.
@@ -452,11 +555,18 @@ import type {
   WaveformPlaylistProps,
   WaveformPlaylistTrackInput,
 } from '@arraypress/waveform-playlist-astro';
+
+import type {
+  WaveformSoundsProps,
+  SoundInput,
+  SoundsManifest,
+  WaveformSoundsEventMap,
+} from '@arraypress/waveform-sounds-astro';
 ```
 
 ## Gotchas
 
-- **Load the runtime yourself.** The wrappers emit markup + a boot script but never inject the core JS/CSS. Forget the script tag and you get a one-time `[WaveformPlayerAstro]` / `[WaveformBarAstro]` / `[WaveformPlaylistAstro]` console warning.
+- **Load the runtime yourself** (player, bar, playlist). Those wrappers emit markup + a boot script but never inject the core JS/CSS. (`<WaveformSounds>` loads its own JS; every wrapper leaves the CSS to you.) Forget the script tag and you get a one-time `[WaveformPlayerAstro]` / `[WaveformBarAstro]` / `[WaveformPlaylistAstro]` console warning.
 - **Script order matters** for the bar and playlist: load `@arraypress/waveform-player` **before** the bar/playlist script, since both depend on the core player's global.
 - **`style` ≠ waveform style.** In `.astro`, `style` is inline CSS — pick the visual style with `waveformStyle`.
 - **No callback props.** Wire `onLoad`/`onPlay`/etc. via the DOM `waveformplayer:*` / `waveformbar:*` events from a client script.

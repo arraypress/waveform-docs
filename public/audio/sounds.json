@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "sounds": [
+    {
+      "url": "/audio/drum-loop.mp3",
+      "title": "Drum Loop",
+      "type": "Drums",
+      "duration": 3.75,
+      "peaks": "a585883a912a1508ff8c883f8a4c200aa8848940882b1408eb8988428d4e1f09a2848741942d1507e59b8a418d4d1f09a5858840912b1607bf948b4193291e08"
+    },
+    {
+      "url": "/audio/keys-house-piano.mp3",
+      "title": "House Piano",
+      "type": "Keys",
+      "duration": 7.63,
+      "peaks": "9285748e926ba6a4a1cbd8b8e0d2c0d3dfbde9e3bef2e8c2f6e8c8fee9cbffdbfecab0d5dc88cfe3a9ede5b9e9d4c6bcd1a6c7dfbbc3d5b7c0cd94b1c2b0aaab"
+    },
+    {
+      "url": "/audio/pad-reach.mp3",
+      "title": "Pad Reach",
+      "type": "Pads",
+      "duration": 7.94,
+      "peaks": "020a13394c9dafa8bec0d8d1a9d9ffbae19dcdc2acaec4a0a49892baa6a1a7aea7b0a499ad9aa0bca2a0bfb1adb5cadcbfc5c1c8b8c1bfcbb0b9bad6b2c0b8b5"
+    },
+    {
+      "url": "/audio/pluck-luminous.mp3",
+      "title": "Pluck Luminous",
+      "type": "Plucks",
+      "duration": 12.46,
+      "peaks": "5a13454e735495a17c96946a8e55e9a1a2b7a8c281e0e1979ad8cb98f3cdbefff3d6c0d2b6f3e5d1bba552f6c7d2cbb0a6c1daf4c8d0aca94f220f0a05030101"
+    }
+  ]
+}

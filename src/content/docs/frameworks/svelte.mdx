@@ -6,23 +6,24 @@ sidebar:
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
-The `@arraypress` waveform family ships three Svelte 5 wrappers, each a thin, typed component over its vanilla core — built with runes (`$props`, `$effect`, `$derived`):
+The `@arraypress` waveform family ships four Svelte 5 wrappers, each a thin, typed component over its vanilla core — built with runes (`$props`, `$effect`, `$derived`):
 
 | Package | Component(s) | Wraps |
 | --- | --- | --- |
 | `@arraypress/waveform-player-svelte` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
 | `@arraypress/waveform-bar-svelte` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/extensions/bar/) |
 | `@arraypress/waveform-playlist-svelte` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/extensions/playlist/) |
+| `@arraypress/waveform-sounds-svelte` | `<WaveformSounds>` | [`@arraypress/waveform-sounds`](/extensions/sounds/) |
 
 Every wrapper follows the same design:
 
-- **Prop types are derived from the core's `WaveformPlayerOptions`**, not re-declared — so they never drift as the core evolves. (The bar is the exception: its core ships no `.d.ts`, so `waveform-bar-svelte` hand-declares `WaveformBarConfig`.)
+- **Prop types are derived from the core's own typings** (`WaveformPlayerOptions`; `WaveformSoundsOptions` for the sound list), not re-declared — so they never drift as the core evolves. (The bar is the exception: its core ships no `.d.ts`, so `waveform-bar-svelte` hand-declares `WaveformBarConfig`.)
 - **The core JS is dynamically `import()`ed inside `$effect`**, which only runs in the browser — so the audio + canvas + `fetch` surface never runs during SSR / SvelteKit prerendering.
 - **The imperative API is exposed as Svelte 5 `export function`s**, reached through `bind:this` — `loadTrack`, `seekTo`, playlist navigation, and the rest.
 - **CSS is never auto-loaded** — you import each core's stylesheet once at your app entry (e.g. the SvelteKit root `+layout.svelte`).
 
 :::caution[Use `waveformStyle`, not `style`]
-On all three components, `style` is the standard element attribute applied to the host `<div>` (a CSS string — e.g. for reserving layout height). The core's `style` alias for the *visual* waveform style is not used by the wrappers. To pick a visual style use **`waveformStyle`** (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`). Likewise `class`, `id`, and any other element attribute fall through to the host — the base class is always applied.
+On all four components, `style` is the standard element attribute applied to the host `<div>` (a CSS string — e.g. for reserving layout height). The core's `style` alias for the *visual* waveform style is not used by the wrappers. To pick a visual style use **`waveformStyle`** (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`). Likewise `class`, `id`, and any other element attribute fall through to the host — the base class is always applied.
 :::
 
 ---
@@ -528,9 +529,125 @@ Changing `tracks` (compared by serialized value) or any construction-time option
 
 ---
 
+## Sounds — `<WaveformSounds>`
+
+A searchable, filterable list of sound previews — a sample pack, a preset bank — with a mini waveform per row and one shared audio engine. With `sounds`, the list is **rendered on the server** by the core's own DOM-free renderer, hydration keeps those nodes, and the runtime adopts them instead of rebuilding. See [WaveformSounds](/extensions/sounds/) for what the list does.
+
+### Install
+
+Peer deps: `@arraypress/waveform-sounds` (`^0.1.0`), `@arraypress/waveform-player` (`^1.24.5`), `svelte` (**`^5.20.0`** — the component uses `$props.id()`, which 5.20 introduced).
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-sounds-svelte @arraypress/waveform-sounds @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-sounds-svelte @arraypress/waveform-sounds @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-sounds-svelte @arraypress/waveform-sounds @arraypress/waveform-player svelte
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-sounds-svelte @arraypress/waveform-sounds @arraypress/waveform-player svelte
+```
+
+</TabItem>
+
+</Tabs>
+
+Import both stylesheets, and import the player for its global — the list plays through `window.WaveformPlayer`, and the wrapper doesn't import it for you (or pass the class as `playerClass`):
+
+```svelte title="src/routes/+layout.svelte"
+<script>
+  import '@arraypress/waveform-player'; // registers window.WaveformPlayer, the engine
+  import '@arraypress/waveform-player/styles.css';
+  import '@arraypress/waveform-sounds/styles.css';
+</script>
+
+<slot />
+```
+
+### Quick start
+
+```svelte
+<script lang="ts">
+  import { WaveformSounds } from '@arraypress/waveform-sounds-svelte';
+  import pack from '$lib/sounds.json'; // written by waveform-gen --manifest
+</script>
+
+<WaveformSounds sounds={pack.sounds} onplay={(sound) => console.log(sound.title)} />
+
+<!-- or, fetched and built in the browser: -->
+<WaveformSounds manifest="/sounds.json" />
+```
+
+Write the JSON with [`waveform-gen --manifest`](/extensions/gen/manifest/) — mind its `--base-url`, which has to match where the audio is served.
+
+### Props
+
+Every `WaveformSoundsOptions` key except the callbacks is a prop, typed from the core's `index.d.ts` (`WaveformSoundsProps`) — `sounds` / `manifest`, `player`, `search`, `filters`, `sorts`, `showCount`, `menuSearch`, `idPrefix`, `urlState`, `loopToggle`, `maxTypeChips`, `pageSize`, `columns`, `waveformStyle`, `waveformColor`, `progressColor`, `barWidth`, `barGap`, `loop`, `autoAdvance`, `arrowAudition`, `playerOptions`, `playerClass`, `strings`. See [Options](/extensions/sounds/options/) for each one. `class`, `id`, `style` and any other attribute land on the host `<div>`.
+
+The callbacks are **lowercase props** — `onready`, `onplay`, `onpause`, `onend`, `onfilter`, `onerror` — with the core callbacks' arguments. They reach the live instance through closures, so a new handler never rebuilds the list. The core's bubbling [`waveformsounds:*` events](/extensions/sounds/api/#events) fire from the host too.
+
+- **Dropdown ids**: `idPrefix`, else the host's `id`, else a per-component id from `$props.id()` — unique, and identical on the server and during hydration.
+- **`urlState`** is runtime-only: the server renders the unfiltered list and the runtime applies the address after hydration.
+- **Any change to `sounds` or an option rebuilds the list** over a fresh render, so the new instance never adopts rows the old one re-sorted or hid. A `class`-only change doesn't rebuild.
+
+Theme it through `style` — set `--ws-surface` (your page background) so the server-rendered first paint is right:
+
+```svelte
+<WaveformSounds {sounds} style="--ws-surface: #0b0b0c" />
+```
+
+### Imperative API via `bind:this`
+
+```svelte
+<script lang="ts">
+  import { WaveformSounds } from '@arraypress/waveform-sounds-svelte';
+  let list: WaveformSounds;
+  let { sounds } = $props();
+</script>
+
+<WaveformSounds bind:this={list} {sounds} />
+<button onclick={() => list.setFilter({ type: 'Drum loops' })}>Drum loops</button>
+<button onclick={() => list.setSort('bpm')}>By BPM</button>
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `play` | `(target?, opts?: { at?: number }) => void` | By index, `id` or `Sound`; no target resumes. |
+| `pause` | `() => void` | |
+| `toggle` | `(target?) => void` | |
+| `next` / `previous` | `() => void` | The next / previous visible sound. |
+| `setLoop` | `(on: boolean) => void` | |
+| `setFilter` | `(patch: Partial<SoundsFilter>) => void` | Merged into the current filter. |
+| `clearFilters` | `() => void` | The sort stays. |
+| `setSort` | `(by: SoundsSort) => void` | |
+| `showMore` | `() => void` | |
+| `getInstance` | `() => WaveformSounds \| null` | The core instance. |
+
+Calls before the instance mounts are safe no-ops. The handle's type is exported as `WaveformSoundsExpose`. `bind:instance` gives you the core instance itself, reactively (`null` until mounted).
+
+---
+
 ## Server-side rendering
 
-All three components are SSR / SvelteKit-prerender safe by construction: the host markup (and, for the playlist, the `[data-track]` children) renders on the server, and the browser-only core is dynamically `import()`ed inside `$effect`. Because effects never run during SSR, the audio + canvas surface only evaluates after hydration on the client — no `import.meta.env.SSR` guard or `{#if browser}` wrapper is needed.
+All four components are SSR / SvelteKit-prerender safe by construction: the host markup (for the playlist, the `[data-track]` children; for the sound list, the whole list when given `sounds`) renders on the server, and the browser-only core is dynamically `import()`ed inside `$effect`. Because effects never run during SSR, the audio + canvas surface only evaluates after hydration on the client — no `import.meta.env.SSR` guard or `{#if browser}` wrapper is needed.
 
 Reserve layout space with the `style` attribute (e.g. `style="min-height: 96px"`) to avoid a content shift before the waveform draws, and import each core's CSS once in your root `+layout.svelte` (for the bar, remember the player-before-bar load order above).
 

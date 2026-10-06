@@ -6,23 +6,24 @@ sidebar:
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
-The `@arraypress` waveform family ships three React wrappers, each a thin, typed component over its vanilla core:
+The `@arraypress` waveform family ships four React wrappers, each a thin, typed component over its vanilla core:
 
 | Package | Component(s) | Wraps |
 | --- | --- | --- |
 | `@arraypress/waveform-player-react` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
 | `@arraypress/waveform-bar-react` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/extensions/bar/) |
 | `@arraypress/waveform-playlist-react` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/extensions/playlist/) |
+| `@arraypress/waveform-sounds-react` | `<WaveformSounds>` | [`@arraypress/waveform-sounds`](/extensions/sounds/) |
 
 Every wrapper follows the same design:
 
-- **Prop types are derived from the core's `WaveformPlayerOptions`**, not re-declared — so they never drift as the core evolves.
+- **Prop types are derived from the core's own typings** (`WaveformPlayerOptions`; `WaveformSoundsOptions` for the sound list), not re-declared — so they never drift as the core evolves.
 - **The core JS is dynamically `import()`ed inside `useEffect`**, so the audio + canvas + `fetch` surface never runs during SSR / RSC.
 - **The instance is exposed through `forwardRef`** as a typed imperative handle for `loadTrack`, `seekTo`, playlist navigation, and the rest.
 - **CSS is never auto-loaded** — you import each core's stylesheet once at your app entry.
 
 :::caution[Use `waveformStyle`, not `style`]
-On all three components, the `style` prop is the standard React `CSSProperties` applied to the host `<div>` (for reserving layout height, etc.). The core's `style` alias for the *visual* waveform style is intentionally omitted from the prop type. To pick a visual style use **`waveformStyle`** (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`).
+On the player, bar and playlist components, the `style` prop is the standard React `CSSProperties` applied to the host `<div>` (for reserving layout height, etc.). The core's `style` alias for the *visual* waveform style is intentionally omitted from the prop type. To pick a visual style use **`waveformStyle`** (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`).
 :::
 
 ---
@@ -504,9 +505,129 @@ Changing `tracks` (compared by serialized value) or any construction-time option
 
 ---
 
+## Sounds — `<WaveformSounds>`
+
+A searchable, filterable list of sound previews — a sample pack, a preset bank — with a mini waveform per row and one shared audio engine. Unlike the components above it **renders its markup in React**: with `sounds`, the whole list is in the first render (server HTML included) and the runtime adopts it on the client instead of rebuilding it. See [WaveformSounds](/extensions/sounds/) for what the list does.
+
+### Install
+
+Peer deps: `@arraypress/waveform-sounds` (`^0.1.0`), `@arraypress/waveform-player` (`^1.24.5`), React `^18 || ^19`.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-sounds-react @arraypress/waveform-sounds @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-sounds-react @arraypress/waveform-sounds @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-sounds-react @arraypress/waveform-sounds @arraypress/waveform-player
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-sounds-react @arraypress/waveform-sounds @arraypress/waveform-player
+```
+
+</TabItem>
+
+</Tabs>
+
+Import both stylesheets, and import the player for its global — the list plays through `window.WaveformPlayer`, and the wrapper doesn't import it for you (or pass the class as `playerClass`). With the player in place, the list builds its engine as soon as it's ready; no audio loads until something plays.
+
+```ts
+import '@arraypress/waveform-player'; // registers window.WaveformPlayer, the engine
+import '@arraypress/waveform-player/styles.css';
+import '@arraypress/waveform-sounds/styles.css';
+```
+
+### Quick start
+
+```tsx
+import { WaveformSounds } from '@arraypress/waveform-sounds-react';
+
+export default function Pack() {
+  return (
+    <WaveformSounds
+      sounds={[
+        { url: '/s/bass-01.mp3', title: 'Bass Loop 01', type: 'Bass', bpm: 128, key: 'Fm' },
+        { url: '/s/drum-01.mp3', title: 'Drum Loop 01', type: 'Drums', bpm: 140 },
+      ]}
+      onPlay={(sound) => console.log(sound.title)}
+    />
+  );
+}
+```
+
+Or from a [`waveform-gen --manifest`](/extensions/gen/manifest/) file, fetched and built in the browser: `<WaveformSounds manifest="/sounds.json" />`. To server-render a manifest, read it at build or request time and pass its `sounds` array.
+
+### Props
+
+Every `WaveformSoundsOptions` key is a prop, typed from the core's own `index.d.ts` — `sounds` / `manifest`, `player`, `search`, `filters`, `sorts`, `showCount`, `menuSearch`, `idPrefix`, `urlState`, `loopToggle`, `maxTypeChips`, `pageSize`, `columns`, `waveformStyle`, `waveformColor`, `progressColor`, `barWidth`, `barGap`, `loop`, `autoAdvance`, `arrowAudition`, `playerOptions`, `playerClass`, `strings` — plus the callbacks `onReady` / `onPlay` / `onPause` / `onEnd` / `onFilter` / `onError`, and `id` / `className` / `style` for the host. See [Options](/extensions/sounds/options/) for each one.
+
+- **Server markup.** With `sounds`, the host's inner HTML is the core's own [`renderSounds()`](/extensions/sounds/api/#server-rendering-render) output. With only `manifest`, the host is empty and the list is fetched and built client-side. The host carries `wfp-host waveform-sounds waveform-sounds--<player>` from the first render, so it's styled before hydration, and never `data-waveform-sounds` (the global auto-init must not mount it twice).
+- **Dropdown ids** are unique per list and stable across hydration: the `idPrefix` prop, else the `id` prop, else one from React's `useId()`.
+- **`urlState`** is runtime-only: the server renders the unfiltered list and the runtime applies the address on load.
+- **A changed option re-creates the list**, over freshly rendered markup. Arrays and objects (`sounds`, `filters`, `sorts`, `columns`, `strings`, `playerOptions`) compare by value, so inline literals are fine. A changed callback never re-creates it — the latest one is always called, and the ref is live by the time `onReady` and the first `onFilter` fire.
+
+Theme it through `style` — set `--ws-surface` (your page background) so the server-rendered first paint is right:
+
+```tsx
+<WaveformSounds sounds={sounds} style={{ '--ws-surface': '#0a0a0a' } as React.CSSProperties} />
+```
+
+### Imperative handle
+
+```tsx
+import { useRef } from 'react';
+import { WaveformSounds, type WaveformSoundsHandle } from '@arraypress/waveform-sounds-react';
+
+function Pack({ sounds }) {
+  const ref = useRef<WaveformSoundsHandle>(null);
+
+  return (
+    <>
+      <WaveformSounds ref={ref} sounds={sounds} />
+      <button onClick={() => ref.current?.setFilter({ type: 'Bass' })}>Bass</button>
+      <button onClick={() => ref.current?.setSort('bpm')}>By BPM</button>
+    </>
+  );
+}
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `play` | `(target?, opts?: { at?: number }) => void` | By index, `id` or `Sound`; no target resumes. |
+| `pause` | `() => void` | |
+| `toggle` | `(target?) => void` | |
+| `next` / `previous` | `() => void` | The next / previous visible sound. |
+| `setFilter` | `(patch: Partial<SoundsFilter>) => void` | Merged into the current filter. |
+| `clearFilters` | `() => void` | The sort stays. |
+| `setSort` | `(by: SoundsSort) => void` | |
+| `setLoop` | `(on: boolean) => void` | Live — changing the `loop` *prop* re-creates the list instead. |
+| `showMore` | `() => void` | |
+| `instance` | `readonly WaveformSounds \| null` | The core instance (`visible`, `current`, `sounds`, `engine`, `ready`, …). |
+
+Calls before the instance mounts are no-ops. The core's bubbling [`waveformsounds:*` events](/extensions/sounds/api/#events) fire from the host as well.
+
+---
+
 ## Server-side rendering
 
-All three components are SSR / RSC safe by construction: the host markup renders on the server, and the browser-only core is dynamically `import()`ed inside `useEffect` so it only evaluates client-side. The interactive UI hydrates in once the library loads. Reserve layout space with the `style` prop (e.g. `style={{ minHeight: 96 }}`) to avoid a content shift before the waveform draws.
+All four components are SSR / RSC safe by construction: the host markup renders on the server, and the browser-only core is dynamically `import()`ed inside `useEffect` so it only evaluates client-side. `<WaveformSounds>` goes further and renders the whole list on the server (from the core's DOM-free `/render` entry) when given `sounds`. The interactive UI hydrates in once the library loads. Reserve layout space with the `style` prop (e.g. `style={{ minHeight: 96 }}`) to avoid a content shift before the waveform draws.
 
 ## Related
 

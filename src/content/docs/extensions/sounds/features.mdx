@@ -1,0 +1,157 @@
+---
+title: Features
+description: Layouts, search and filters, hundreds of sounds, keyboard, filters in the address, downloads, analytics, server rendering and mobile.
+sidebar:
+  order: 2
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import SoundsDemo from '~/components/SoundsDemo.astro';
+
+## Layouts
+
+`player` picks one of two layouts:
+
+- **`inline`** (default) — every row has a mini waveform. The playing row fills with progress, and pressing its waveform seeks. The engine player is hidden.
+- **`strip`** — plain rows with no waveform; the engine is shown as a full player docked under the list for the current sound. A sound's `waveform` (full-resolution peaks) is drawn there when it has one; otherwise its row `peaks` are.
+
+<SoundsDemo player="strip" />
+
+```html
+<div data-waveform-sounds data-manifest="/previews/sounds.json" data-player="strip"></div>
+```
+
+## Search and filters
+
+Above the rows, in order: the search box, a row of controls (type menu, key menu, BPM range, sort menu, Loop toggle), then the type chips and the count.
+
+- **Search** matches every word, in any order, against the title, type, key and tags — forgiving one typo in a word of four letters or more, so `drun` finds drum loops. A number in the query also matches the BPM exactly: `bass 128` finds 128 BPM bass loops.
+- **Type** — one chip per type, with its count, plus **All**. Past `maxTypeChips` types (default 10) the chips become a **Type** menu instead: a pack has a handful of types, a whole library can have fifty.
+- **Key** — a menu of every key in the data, in musical order (C, C#, D … B, each major before its minor).
+- **BPM** — a min / max range, with the data's range as the placeholders. Sounds without a BPM drop out while a range is set.
+- **Sort** — the orders in `sorts`, the first being the starting order: `default` (as given), `title` (natural order, so `Loop 2` sorts before `Loop 10`), `bpm`, `key` and `duration`. Sounds missing the value sort last.
+- **Loop** — loops the current sound (auditioning a loop is the common case). `loop` starts with it on.
+- **The count** — `300 sounds`, or `12 of 300 sounds` while a filter is on. It's an `aria-live` region.
+
+**Every control appears only when the data gives it something to do**: no type filter for a single type, no key menu for a single key, no BPM range without a spread of tempos, no sort order the data can't use (no BPM sort without BPMs), and no Sort menu with only one usable order. And every control can go: `search`, `filters`, `sorts`, `loopToggle`, `showCount` and `columns` remove them one by one. To take BPM out everywhere, leave it out of all three lists:
+
+```js
+new WaveformSounds('#pack', {
+  manifest: '/previews/sounds.json',
+  filters: ['type', 'key'],
+  columns: ['type', 'key', 'duration'],
+  sorts: ['default', 'title', 'key'],
+});
+```
+
+```html
+<div data-waveform-sounds data-manifest="/previews/sounds.json"
+     data-filters="type,key" data-columns="type,key,duration" data-sorts="default,title,key"></div>
+```
+
+An empty list attribute means *none*: `data-filters=""` shows no filter controls and `data-sorts=""` no Sort menu — which is different from leaving the attribute out (the default set).
+
+The type, key and sort menus are a button and a popup listbox (the WAI-ARIA combobox / listbox pattern). One with more than `menuSearch` options (default 8) gets a search field; type to narrow, ↑ / ↓ to move, Enter to pick, Esc to close.
+
+When nothing matches, the list says so (`No sounds match.`) with a **Clear filters** button. Clearing keeps the sort.
+
+## Hundreds of sounds
+
+A pack can have 300 previews, so nothing in the list is per-sound heavy:
+
+- **One engine.** A single `WaveformPlayer` plays every sound; selecting a row calls its `loadTrack()`. No row ever holds an `<audio>` element.
+- **Rows are pictures.** A row's waveform is a canvas drawn from its low-resolution `peaks` (64 bars from `waveform-gen`), and only once the row is within 200px of the viewport. Rows are redrawn when the list is resized and when the page's theme flips.
+- **Small data.** Peaks travel as an 8-bit hex string, two characters per bar — about 128 characters a sound at 64 bars, a few KB for a pack where a JSON number array would be several times that.
+- **No decoding.** A sound with `peaks` never makes the engine download and decode its whole file just to draw it.
+- **Paging.** `pageSize` (default 50) rows show first, then a **Show 50 more** button; `pageSize: 0` shows them all. Filtering and sorting work across every sound, not only the page shown, and `next()` / auto-advance reveal the next page when they reach it.
+- **One manifest request**, written at build time by [`waveform-gen --manifest`](/extensions/gen/manifest/), instead of a JSON per sound.
+
+## Keyboard
+
+| Key | Where | Does |
+| --- | --- | --- |
+| ↑ / ↓ | A row | Move to the previous / next row; **while a sound plays, play that row too** (the sample-browser audition — turn it off with `arrowAudition: false`). ↑ on the first row goes back to the search box. |
+| Home / End | A row | First / last visible row (auditioning the same way). |
+| ← / → | The playing row | Seek back / forward 10% (stopping just short of the end, so a held → can't end the sound). |
+| Space / Enter | A row | Play / pause it. |
+| `/` | Anywhere in the list, outside a text field | Focus the search box. |
+| ↓ | The search box | Into the list (the first visible row). |
+| Esc | The search box | Clear the search. |
+| ↑ / ↓, Home / End, Enter, Esc | An open menu | Move, pick, close. Typing in its search field narrows it. |
+
+Keys with Alt, Ctrl or Cmd held pass through. After a mouse or touch play, focus moves (quietly, with no scroll jump and no focus ring) to that row's play button, so the arrow keys drive the list instead of scrolling the page.
+
+Each row is a list item with a play button (`aria-pressed`, labelled `Play <title>` / `Pause <title>`); the waveform is a `role="slider"` (0–100, focusable on the current row only); the download link is labelled `Download <title>`; and a polite live region announces `Playing <title>`. Every one of those words is a [string](/extensions/sounds/strings/) you can translate.
+
+## Filters in the address
+
+`urlState: true` keeps the filters and the sort in the URL, so a filtered list can be shared and survives a refresh:
+
+```text
+?q=bass&type=Bass+loops&key=Fm&bpm=120-130&sort=bpm
+```
+
+| Parameter | Holds |
+| --- | --- |
+| `q` | The search text. |
+| `type` | The selected type. |
+| `key` | The selected key (any spelling is normalised: `key=F+minor` works). |
+| `bpm` | The range: `120-130`, `120-` (at least) or `-130` (at most). |
+| `sort` | The sort order — left out while it's the starting one. |
+
+A string prefixes the names, for a page with more than one list: `urlState: 'pack'` reads and writes `pack-q`, `pack-type`, `pack-key`, `pack-bpm` and `pack-sort`. As an attribute, `data-url-state="true"` (or a bare `data-url-state`) is `true`, `"false"` is off, and anything else is the prefix.
+
+The address is rewritten with `history.replaceState` a quarter of a second after a change, so filtering adds no back-button entries; every other parameter and the hash are kept. Values the list can't use — a type it doesn't have, a key no sound is in, a sort it doesn't offer — are ignored, never applied, so a stale link shows the whole list rather than an empty one.
+
+## Downloads
+
+Optional, per sound — a free sample, the `.mid` of a MIDI preview:
+
+```js
+{ url: '/previews/kick-01.mp3', title: 'Kick 01', download: '/free/kick-01.wav' }
+```
+
+Rows with a `download` get a download button at the end; rows without carry nothing. It is a plain `<a download>` — gating it (an email, a login) is the site's job.
+
+## Which sounds get played (analytics)
+
+The list plays through a regular `WaveformPlayer`, so [`@arraypress/waveform-tracker`](/extensions/tracker/) tracks it with no extra code — each event carries that sound's `url` and `title`:
+
+```js
+import WaveformTracker from '@arraypress/waveform-tracker';
+
+WaveformTracker.init({ endpoint: '/api/listens', events: { play: 3, listen: 15 } });
+```
+
+The engine is built as soon as the list is ready — before any play, with no audio loaded — so the tracker (and anything else that hooks players on `waveformplayer:ready`) is attached before the first sound plays. For list-level events (searches, filters, which sounds were shown) listen for [`waveformsounds:filter`](/extensions/sounds/api/#events).
+
+## Playing alongside other players
+
+The engine has `singlePlay` on, so starting a sound pauses any other `WaveformPlayer` on the page, and the list also pauses itself whenever any other player starts — including a [WaveformBar](/extensions/bar/)'s, which doesn't use `singlePlay`. The hand-off works between players of the same class, so load the player **once**: if a page ends up with two copies (an IIFE `<script>` and a bundled import), the second replaces the global and the two halves can no longer pause each other. The [Astro wrapper](/frameworks/astro/#the-sound-list) takes care of this for you; with the others, import `@arraypress/waveform-player` once, or pass the class you already have as `playerClass`.
+
+The engine also brings the player's own machinery: seeking on hosts that ignore byte ranges (see [Hosting the audio](/player/waveform-data/#hosting-the-audio-byte-ranges)), error handling, and the Media Session card on the lock screen. A sound that fails to load is struck through (`.is-error`) and reported through `onError` / `waveformsounds:error`.
+
+## Server rendering
+
+`@arraypress/waveform-sounds/render` writes the list's markup as an HTML string — toolbar, chips, every row — without touching `window` or `document`. Put it inside a `[data-waveform-sounds]` element and the runtime **adopts** it instead of rebuilding it, so the list is there, readable and crawlable, before any script runs:
+
+```js
+import { renderSounds } from '@arraypress/waveform-sounds/render';
+
+const html = `<div data-waveform-sounds class="waveform-sounds waveform-sounds--inline" data-player="inline">${renderSounds(sounds, options)}</div>`;
+```
+
+`renderSoundsElement(sounds, options, className)` writes that wrapper too. Two things to keep in step:
+
+- **The runtime reads its options from the element, not from the markup.** Pass the same options to the renderer and to the runtime — as `data-*` attributes on the container (`renderSoundsElement` writes `data-player` only) or as constructor options. A `pageSize` the runtime doesn't know about, say, re-pages the rows to the default 50.
+- **`idPrefix`.** The dropdowns' element ids default to the container's `id`, else a hash of the sounds — the same on the server and in the browser. Two lists of the *same* sounds on one page need an `id` or `idPrefix` each.
+
+The framework wrappers — [Astro](/frameworks/astro/#the-sound-list), [React](/frameworks/react/#sounds--waveformsounds), [Svelte](/frameworks/svelte/#sounds--waveformsounds), [Vue](/frameworks/vue/#sounds--waveformsounds) — do all of this for you whenever you give them `sounds`.
+
+`urlState` is runtime-only: the server renders the unfiltered list and the runtime applies the address once it loads. Set [`--ws-surface`](/extensions/sounds/theming/#the-page-surface) for a server-rendered list, so its first paint is right before the runtime measures the page.
+
+## Mobile
+
+- **Narrow lists** (560px wide or less — a container query, so a list in a sidebar counts too) lay each row out as three lines beside the play button: the full title, then `Bass · 128 · Fm · 0:08`, then the waveform. A title is never squeezed by the columns.
+- **Touch targets** are 44px on coarse pointers, and the text inputs are 16px so iOS doesn't zoom into them.
+- **Scrolling isn't seeking.** A finger that lands on a waveform still scrolls the page; touch seeks on the *tap*, while mouse and pen seek on press, like every scrubber.
+- With `prefers-reduced-motion`, the row and button transitions are off.

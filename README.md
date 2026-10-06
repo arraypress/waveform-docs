@@ -24,7 +24,7 @@ npm run preview  # preview the build
 ## Notable bits
 
 - **Live demos.** The docs embed real, playable players (`PlayerDemo`,
-  `BarDemo`, `PlaylistDemo`, `TrackerDemo`) that load each package's runtime from
+  `BarDemo`, `PlaylistDemo`, `SoundsDemo`, `TrackerDemo`) that load each package's runtime from
   CDN — so what you read is what you get.
 - **Changelog.** `npm run sync:changelogs` regenerates the per-library changelog
   pages under `src/content/docs/changelog/` from each package's own

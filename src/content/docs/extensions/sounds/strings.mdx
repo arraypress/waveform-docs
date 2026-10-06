@@ -1,0 +1,75 @@
+---
+title: Strings & i18n
+description: Every word the list shows or announces, and how to translate it.
+sidebar:
+  order: 5
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Every word the list shows — and every label it gives a screen reader — comes from one table, so a site can translate it. Pass the ones you want to change; the rest stay English.
+
+```js
+new WaveformSounds('#pack', {
+  manifest: '/previews/sounds.json',
+  strings: {
+    searchPlaceholder: 'Geluiden zoeken…',
+    count: '{count} geluiden',
+    countOne: '1 geluid',
+    countFiltered: '{count} van {total} geluiden',
+  },
+});
+```
+
+As markup, `data-strings` takes the same object as JSON:
+
+```html
+<div data-waveform-sounds data-manifest="/previews/sounds.json"
+     data-strings='{"count":"{count} geluiden","countOne":"1 geluid"}'></div>
+```
+
+Placeholders in braces are filled in: `{title}` (the sound's title), `{count}` and `{total}`. An unknown placeholder is left as written. The server renderer takes the same `strings` option, so server-rendered markup is translated too — pass the same object to the runtime.
+
+## Every string
+
+The defaults are `WaveformSounds.DEFAULT_STRINGS` (also a named export of the main and `/render` entries).
+
+| Key | Default | Where |
+| --- | --- | --- |
+| `search` | `Search sounds` | The search box's accessible label. |
+| `searchPlaceholder` | `Search sounds…` | The search box's placeholder. |
+| `all` | `All` | The first type chip. |
+| `types` | `Type` | The type chips' group label, and the Type menu's label. |
+| `key` | `Key` | The key menu's label. |
+| `anyKey` | `Any key` | The key menu's "no filter" option. |
+| `allTypes` | `All types` | The Type menu's "no filter" option. |
+| `findType` | `Find a type…` | The Type menu's search field. |
+| `findKey` | `Find a key…` | The key menu's search field. |
+| `noMatches` | `No matches` | A menu whose search matches nothing. |
+| `bpm` | `BPM` | The BPM range's group label and unit. |
+| `bpmMin` | `Min BPM` | The lower BPM field's label. |
+| `bpmMax` | `Max BPM` | The upper BPM field's label. |
+| `sort` | `Sort` | The sort menu's accessible label. |
+| `sortBy` | `Sort by` | The sort menu's visible lead-in. |
+| `sortDefault` | `Default` | Sort order `default`. |
+| `sortTitle` | `Name` | Sort order `title`. |
+| `sortBpm` | `BPM` | Sort order `bpm`. |
+| `sortKey` | `Key` | Sort order `key`. |
+| `sortDuration` | `Length` | Sort order `duration`. |
+| `loop` | `Loop` | The Loop toggle. |
+| `play` | `Play {title}` | A row's play button label. |
+| `pause` | `Pause {title}` | A playing row's button label. |
+| `seek` | `Seek {title}` | A row waveform's label. |
+| `download` | `Download {title}` | A row's download link label. |
+| `count` | `{count} sounds` | The count. |
+| `countOne` | `1 sound` | The count, for a single sound. |
+| `countFiltered` | `{count} of {total} sounds` | The count while a filter is on. |
+| `showMore` | `Show {count} more` | The paging button. |
+| `empty` | `No sounds match.` | Nothing passes the filter. |
+| `clear` | `Clear filters` | The button beside it. |
+| `nowPlaying` | `Playing {title}` | Announced (in a polite live region) when a sound starts. |
+
+<Aside type="note" title="Plurals">
+The count has exactly three forms — `countOne` when the list holds one sound, `count` for any other total, and `countFiltered` whenever a filter hides some (`1 of 300 sounds` included). Languages with more plural forms than that can't be expressed fully; pick the wording that reads best for the common case.
+</Aside>
+
+The types, titles and tags come from your data, so they're already in whatever language you wrote them in. Keys are shown in their short form (`Fm`, `C#`).

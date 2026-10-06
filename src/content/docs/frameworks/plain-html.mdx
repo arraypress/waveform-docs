@@ -218,7 +218,30 @@ So the rule is simple: **load the core player first, then any extension.**
 Ordinary `<script>` tags execute in document order, so listing the core first is enough. If you load scripts with `async`, that ordering guarantee is lost — use `defer` (which preserves order) or plain scripts when combining packages.
 </Aside>
 
-Stylesheet order doesn't matter for correctness, but keep the core stylesheet present whenever any extension is on the page — the extensions render core players and rely on its classes. Continue with [Bottom bar](/extensions/bar/) or [Playlist](/extensions/playlist/) for each extension's markup and triggers.
+Stylesheet order doesn't matter for correctness, but keep the core stylesheet present whenever any extension is on the page — the extensions render core players and rely on its classes. Continue with [Bottom bar](/extensions/bar/), [Playlist](/extensions/playlist/) or [Sounds](/extensions/sounds/) for each extension's markup and triggers.
+
+### The sound list
+
+[WaveformSounds](/extensions/sounds/) is the same pattern — one stylesheet, one script, one element. It doesn't abort without the player (the list renders), but nothing plays until `window.WaveformPlayer` exists, so load the player first here too:
+
+```html title="A searchable list of sound previews"
+<head>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.css" />
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@arraypress/waveform-sounds@latest/dist/waveform-sounds.css" />
+</head>
+<body>
+  <div data-waveform-sounds data-manifest="/previews/sounds.json" data-page-size="100"></div>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-player@latest/dist/waveform-player.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/@arraypress/waveform-sounds@latest/dist/waveform-sounds.min.js"></script>
+</body>
+```
+
+The script exposes `window.WaveformSounds` and initialises every `[data-waveform-sounds]` element when the DOM is ready; every option has a `data-*` form (see [Options](/extensions/sounds/options/)). The manifest is one JSON for the whole pack, written by [`waveform-gen --manifest`](/extensions/gen/manifest/). After inserting a list dynamically, call `WaveformSounds.init()`.
 
 ## Self-hosting the dist files
 

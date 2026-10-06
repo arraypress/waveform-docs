@@ -1,0 +1,208 @@
+---
+title: API & events
+description: Methods, properties, static methods, events, the /render and /no-autoinit entries, utils and types.
+sidebar:
+  order: 4
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+## Constructor
+
+```js
+import WaveformSounds from '@arraypress/waveform-sounds';
+
+const list = new WaveformSounds('#pack', { manifest: '/previews/sounds.json' });
+await list.ready;
+```
+
+`new WaveformSounds(container, options?)` takes an element or a selector. It throws `[WaveformSounds] Container not found: …` for a selector that matches nothing.
+
+The list is **built after the constructor returns**, on a later microtask (after the manifest fetch, if there is one) — so listeners attached straight after `new WaveformSounds()` see `ready` and the first `filter`. `ready` is a promise that resolves once it's built. It **never rejects**: a failed build (the manifest 404s, say) resolves it too and is reported through `onError` and `waveformsounds:error`.
+
+Calls made before it's built are honoured: `setFilter()` and `setSort()` show in the controls once built, and `play()` waits for the list.
+
+## Public methods
+
+| Method | Description |
+| --- | --- |
+| `play(target?, opts?): void` | Play a sound — by index (in the original order), by `id` string, or by `Sound` object — or, with no target, resume the current one (else play the first visible). `opts.at` (`0..1`) starts it at that position; on the current sound it seeks there. |
+| `pause(): void` | Pause the current sound. |
+| `toggle(target?): void` | The current sound plays / pauses; any other sound starts. |
+| `next(): void` | Play the next **visible** sound (in the current filter and sort), revealing it if it's past the current page. No wrap at the end. |
+| `previous(): void` | Play the previous visible sound. |
+| `setLoop(on: boolean): void` | Loop the current sound (and every sound after it) on or off, and update the Loop toggle. |
+| `setFilter(patch): void` | Merge `patch` into the current filter and re-apply it; back to the first page. Keys: `query`, `type`, `key`, `bpmMin`, `bpmMax`. The controls are updated to match. |
+| `clearFilters(): void` | Reset every filter. The sort stays. |
+| `setSort(by): void` | Change the order: `'default' \| 'title' \| 'bpm' \| 'key' \| 'duration'` (anything else is `'default'`). |
+| `showMore(): void` | Reveal the next page of rows. |
+| `destroy(): void` | Tear down listeners, observers, timers and the engine. Markup the instance **rendered** is restored to what the container held before (its own classes and the measured `--ws-surface` too); **adopted** server markup is left as it is now — rows may be re-sorted, hidden or marked current — so re-render it before building a new instance over it. |
+
+```js
+list.setFilter({ type: 'Bass', bpmMin: 120, bpmMax: 130 });
+list.setSort('bpm');
+list.play('sound-3', { at: 0.5 });
+```
+
+<Aside type="note" title="Indexes are positions in the original list">
+A numeric `play(3)` means the fourth sound as given (the manifest or `sounds` order), whatever the current sort. To play by what's on screen, use `list.visible[i]` — `play()` accepts the `Sound` object.
+</Aside>
+
+### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `container` | `HTMLElement` | The element. |
+| `options` | `WaveformSoundsOptions` | The resolved options (defaults, constructor and `data-*` merged). |
+| `ready` | `Promise<void>` | Resolves once the list is built. Never rejects. |
+| `sounds` | `Sound[]` | Every sound, normalised, in the original order. |
+| `visible` | `Sound[]` | The sounds passing the filter, in sort order (all of them, not only the page shown). A getter. |
+| `current` | `Sound \| null` | The playing or paused sound. A getter. |
+| `filter` | `SoundsFilter` | The current filter: `{ query, type, key, bpmMin, bpmMax }`. |
+| `sortBy` | `SoundsSort` | The current order. |
+| `playing` | `boolean` | Whether a sound is playing. |
+| `engine` | `WaveformPlayer \| null` | The engine player — the full [player API](/player/methods/). Built when the list is ready (when a player class is available), else on the first play. |
+
+## Static methods
+
+| Method / property | Description |
+| --- | --- |
+| `WaveformSounds.init(root = document): WaveformSounds[]` | Initialise every `[data-waveform-sounds]` under `root` (and `root` itself) that isn't initialised yet; returns the new instances. Per-element errors are caught and logged. Run it after inserting markup. |
+| `WaveformSounds.getInstance(el): WaveformSounds \| null` | The instance on an element or selector. |
+| `WaveformSounds.prune(): void` | Destroy the instances whose element has left the document — after a client-side navigation. Stops their audio. |
+| `WaveformSounds.instances` | `Map<Element, WaveformSounds>` of every live instance. |
+| `WaveformSounds.DEFAULT_OPTIONS` | Every option's default — see [Options](/extensions/sounds/options/#defaults-at-a-glance). |
+| `WaveformSounds.DEFAULT_STRINGS` | The English strings — see [Strings & i18n](/extensions/sounds/strings/). |
+| `WaveformSounds.utils` | The pure data helpers — see [`utils`](#utils). |
+
+```js
+document.addEventListener('waveformsounds:ready', () => {
+  WaveformSounds.getInstance('#pack')?.setFilter({ type: 'Drums' });
+});
+```
+
+## Events
+
+Every event is a bubbling `CustomEvent` dispatched from the container, so you can listen on the element or on `document`. Each `detail` carries the `instance`.
+
+| Event | `detail` | Fires |
+| --- | --- | --- |
+| `waveformsounds:ready` | `{ sounds: number, instance }` | The list is built. `sounds` is the count. |
+| `waveformsounds:play` | `{ sound, index, instance }` | A sound starts playing. |
+| `waveformsounds:pause` | `{ sound, index, instance }` | The playing sound pauses. |
+| `waveformsounds:end` | `{ sound, index, instance }` | A sound plays to its end. |
+| `waveformsounds:filter` | `{ visible: number, total: number, filter, sort, instance }` | After every filter, sort or page change, and once when the list is built. `visible` is the number of matching sounds. |
+| `waveformsounds:error` | `{ error, sound?, index?, instance }` | The list failed to build (no `sound`), or a sound failed to load or play. |
+
+`index` is the sound's position in `sounds`. The events are typed on `HTMLElementEventMap`, so `addEventListener('waveformsounds:play', (e) => e.detail.sound.title)` type-checks.
+
+```js
+document.addEventListener('waveformsounds:filter', (e) => {
+  const { visible, total, filter } = e.detail;
+  if (filter.query) analytics.track('sound_search', { query: filter.query, visible, total });
+});
+```
+
+The engine is a regular player, so its own [`waveformplayer:*` events](/player/events/) fire too — that's what [WaveformTracker](/extensions/tracker/) listens to.
+
+## Entry points
+
+| Import | What it is |
+| --- | --- |
+| `@arraypress/waveform-sounds` | The runtime. Registers `window.WaveformSounds` and initialises every `[data-waveform-sounds]` element when the DOM is ready. |
+| `@arraypress/waveform-sounds/no-autoinit` | The same exports without the import-time scan. |
+| `@arraypress/waveform-sounds/render` | The DOM-free server renderer. |
+| `@arraypress/waveform-sounds/styles.css` | The stylesheet. |
+
+The main entry's named exports: `WaveformSounds` (also the default), `DEFAULT_OPTIONS`, `DEFAULT_STRINGS`, `encodePeaks`, `decodePeaks`, `normalizeKey`, `normalizeSounds`, `parseManifest`, `facets`, `matches`, `sortSounds`, `formatDuration`, `renderSounds` and `renderSoundsElement`.
+
+### `/no-autoinit`
+
+For frameworks and anything else that decides *when* lists are built. Importing it registers `window.WaveformSounds` but scans nothing; construct instances yourself, or call `WaveformSounds.init()` when you're ready. The [framework wrappers](/frameworks/react/#sounds--waveformsounds) import it. (`<html data-waveform-autoinit="false">` does the same for the main entry.)
+
+```js
+import WaveformSounds from '@arraypress/waveform-sounds/no-autoinit';
+```
+
+### Server rendering: `/render`
+
+The half that writes markup, and never touches `window` or `document` — safe in Node, an edge runtime or a static build.
+
+```js
+import { renderSounds, renderSoundsElement } from '@arraypress/waveform-sounds/render';
+
+// The inside of a [data-waveform-sounds] element:
+const inner = renderSounds(sounds, { pageSize: 100, columns: ['type', 'bpm', 'key'] });
+
+// Or the whole element, wrapper included:
+const html = renderSoundsElement(sounds, { player: 'strip' }, 'my-extra-class');
+```
+
+| Function | Returns |
+| --- | --- |
+| `renderSounds(sounds, options?)` | The component's inner markup: toolbar, rows (with every field written back as `data-*`, so the runtime can rebuild the sounds from them) and footer. `sounds` may be raw or normalised. |
+| `renderSoundsElement(sounds, options?, className?)` | The whole element: `<div class="waveform-sounds waveform-sounds--<player> …" data-waveform-sounds data-player="…">` around `renderSounds()`. |
+
+The renderer reads the options that shape the markup: `player`, `search`, `filters`, `sorts`, `showCount`, `menuSearch`, `maxTypeChips`, `loopToggle`, `pageSize`, `columns`, `idPrefix` and `strings`. When the runtime finds that markup in the container it **adopts** it rather than rebuilding — so give the runtime the same options (as `data-*` on the container, or constructor options). See [Server rendering](/extensions/sounds/features/#server-rendering).
+
+`/render` also exports `DEFAULT_STRINGS`, `escapeHtml`, `normalizeSounds`, `parseManifest`, `encodePeaks`, `decodePeaks`, `normalizeKey`, `facets` and `formatDuration`.
+
+## `utils`
+
+`WaveformSounds.utils` (and the same-named exports) are the pure data helpers the list runs on — the same functions on the server and in the browser.
+
+| Function | Description |
+| --- | --- |
+| `encodePeaks(peaks: number[]): string` | Peaks `0..1` → the 8-bit hex string (two characters per bar). `waveform-gen --manifest` encodes byte-for-byte the same way. |
+| `decodePeaks(value, scale = 1): number[] \| null` | A hex string, an array of `0..1`, or an integer array with its `scale` → peaks `0..1`. `null` for nothing usable. |
+| `normalizeKey(key): string` | Any common key spelling → the short form (`"F minor"` → `Fm`, `"C♯"` → `C#`). Unparseable keys come back trimmed, as given. |
+| `normalizeSounds(list, peakScale = 1): Sound[]` | Normalise a list: drop sounds without a `url`, fill in titles and ids, de-duplicate ids. |
+| `parseManifest(manifest): Sound[]` | Read a manifest object (or a bare array), honouring `peakScale`. |
+| `facets(sounds)` | What the controls would offer: `{ types: {name, count}[], keys: string[], bpm: {min, max} \| null, hasDuration: boolean }`. |
+| `matches(sound, filter?): boolean` | Whether a sound passes a filter — the same search and filter rules as the list. |
+| `sortSounds(sounds, by = 'default'): Sound[]` | A sorted copy. Missing values sort last. |
+| `formatDuration(seconds): string` | `m:ss`, or `''` when unknown. |
+| `renderSounds(sounds, options?): string` | As above. |
+
+```js
+const sounds = WaveformSounds.utils.parseManifest(await (await fetch('/previews/sounds.json')).json());
+const bassIn128 = sounds.filter((s) => WaveformSounds.utils.matches(s, { type: 'Bass', bpmMin: 128, bpmMax: 128 }));
+```
+
+## Types
+
+The package ships hand-written typings (`index.d.ts`); the framework wrappers derive their props from them.
+
+| Type | Shape |
+| --- | --- |
+| `WaveformSoundsOptions` | Every [option](/extensions/sounds/options/). |
+| `SoundInput` | A sound as given — see [Sound fields](/extensions/sounds/#sound-fields). |
+| `Sound` | A normalised sound: `{ id: string, url: string, title: string, type: string, bpm: number \| null, key: string, duration: number \| null, tags: string[], peaks: number[] \| null, waveform: string \| null, download: string \| null }`. |
+| `SoundsManifest` | `{ version?: number, peakScale?: number, sounds: SoundInput[] }`. |
+| `SoundsFilter` | `{ query: string, type: string, key: string, bpmMin: number \| string, bpmMax: number \| string }`. `''` means "any". |
+| `SoundsSort` | `'default' \| 'title' \| 'bpm' \| 'key' \| 'duration'` |
+| `SoundsLayout` | `'inline' \| 'strip'` |
+| `SoundsFilterControl` | `'type' \| 'key' \| 'bpm'` |
+| `SoundsColumn` | `'type' \| 'bpm' \| 'key' \| 'duration'` |
+| `WaveformSoundsStrings` | Every [string](/extensions/sounds/strings/). |
+| `WaveformSoundsEventMap` | The `waveformsounds:*` events and their `detail`. |
+
+## Cleanup
+
+Call `destroy()` when removing a list in a single-page app — it stops the audio (the engine is destroyed), and drops every listener and observer. After a client-side navigation that replaced the page, `WaveformSounds.prune()` does the same for every list whose element is gone.
+
+```js
+list.destroy();
+```
+
+## Related
+
+<CardGrid>
+
+  <Card title="Player methods" icon="document">
+    The engine is a full player — [Player → Methods](/player/methods/).
+  </Card>
+  <Card title="Sounds manifest" icon="rocket">
+    Writing the JSON this reads — [Generator → Sounds manifest](/extensions/gen/manifest/).
+  </Card>
+
+</CardGrid>

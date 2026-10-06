@@ -6,24 +6,25 @@ sidebar:
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
-The `@arraypress` waveform family ships three Vue 3 wrappers, each a thin, typed component over its vanilla core:
+The `@arraypress` waveform family ships four Vue 3 wrappers, each a thin, typed component over its vanilla core:
 
 | Package | Component(s) | Wraps |
 | --- | --- | --- |
 | `@arraypress/waveform-player-vue` | `<WaveformPlayer>` | [`@arraypress/waveform-player`](/player/options/) |
 | `@arraypress/waveform-bar-vue` | `<WaveformBar>`, `<WaveformBarTrigger>` | [`@arraypress/waveform-bar`](/extensions/bar/) |
 | `@arraypress/waveform-playlist-vue` | `<WaveformPlaylist>` | [`@arraypress/waveform-playlist`](/extensions/playlist/) |
+| `@arraypress/waveform-sounds-vue` | `<WaveformSounds>` | [`@arraypress/waveform-sounds`](/extensions/sounds/) |
 
 Every wrapper follows the same design:
 
 - **Each is a `defineComponent`** with a render function — no `.vue` compile step, dual ESM/CJS builds, and a hand-written `.d.ts`. Core options surface as **props**, lifecycle events as **emits**, and the instance as a **template ref**.
-- **Prop types are derived from the core's `WaveformPlayerOptions`**, not re-declared — so they never drift as the core evolves.
+- **Prop types are derived from the core's own typings** (`WaveformPlayerOptions`; `WaveformSoundsOptions` for the sound list), not re-declared — so they never drift as the core evolves.
 - **The core JS is dynamically `import()`ed inside `onMounted`**, so the audio + canvas + `fetch` surface never runs during SSR / Nuxt.
 - **Every optional prop is declared `{ type: …, default: undefined }`.** An absent prop is *never forwarded* to the core, so the core's own default applies — you only pass the props you want to override.
 - **CSS is never auto-loaded** — you import each core's stylesheet once at your app entry.
 
 :::caution[Use `waveformStyle`, not `style`]
-On all three components, `style` (and `class`, `id`) is a standard HTML attribute that **falls through to the host `<div>`** via Vue's attribute inheritance — use it to reserve layout height, etc. The base class (`wfp-host` / `wb-host`) is always merged in. The core's `style` alias for the *visual* waveform style is intentionally omitted from the prop type. To pick a visual style use **`waveformStyle`** / `waveform-style` (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`).
+On all four components, `style` (and `class`, `id`) is a standard HTML attribute that **falls through to the host `<div>`** via Vue's attribute inheritance — use it to reserve layout height, etc. The base class (`wfp-host` / `wb-host`) is always merged in. The core's `style` alias for the *visual* waveform style is intentionally omitted from the prop type. To pick a visual style use **`waveformStyle`** / `waveform-style` (`'bars' | 'mirror' | 'line' | 'blocks' | 'dots' | 'seekbar'`).
 :::
 
 ---
@@ -505,9 +506,132 @@ Changing `tracks` (compared by serialized value) or any construction-time option
 
 ---
 
+## Sounds — `<WaveformSounds>`
+
+A searchable, filterable list of sound previews — a sample pack, a preset bank — with a mini waveform per row and one shared audio engine. With `sounds`, the list's markup is **rendered on the server too** (Nuxt, `vue/server-renderer`) by the core's DOM-free renderer, and the runtime adopts it instead of rebuilding. See [WaveformSounds](/extensions/sounds/) for what the list does.
+
+### Install
+
+Peer deps: `@arraypress/waveform-sounds` (`^0.1.0`), `@arraypress/waveform-player` (`^1.24.5`), Vue `^3.5.0`.
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```bash
+npm install @arraypress/waveform-sounds-vue @arraypress/waveform-sounds @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```bash
+pnpm add @arraypress/waveform-sounds-vue @arraypress/waveform-sounds @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```bash
+yarn add @arraypress/waveform-sounds-vue @arraypress/waveform-sounds @arraypress/waveform-player vue
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```bash
+bun add @arraypress/waveform-sounds-vue @arraypress/waveform-sounds @arraypress/waveform-player vue
+```
+
+</TabItem>
+
+</Tabs>
+
+Import both stylesheets, and import the player for its global — the list plays through `window.WaveformPlayer`, and the wrapper doesn't import it for you (or pass the class as `playerClass`):
+
+```ts
+import '@arraypress/waveform-player'; // registers window.WaveformPlayer, the engine
+import '@arraypress/waveform-player/styles.css';
+import '@arraypress/waveform-sounds/styles.css';
+```
+
+### Quick start
+
+```vue
+<script setup lang="ts">
+import { WaveformSounds } from '@arraypress/waveform-sounds-vue';
+</script>
+
+<template>
+  <WaveformSounds manifest="/sounds.json" @play="(sound) => console.log(sound.title)" />
+</template>
+```
+
+Write `sounds.json` with [`waveform-gen --manifest`](/extensions/gen/manifest/) — mind its `--base-url`, which has to match where the audio is served. With a `manifest` the list is fetched and built in the browser; pass a `:sounds` array instead to render it on the server. A `sounds` array — even an empty one — wins over `manifest`.
+
+### Props
+
+Every `WaveformSoundsOptions` key except the callbacks is a runtime-declared prop, typed from the core's `index.d.ts` — `sounds` / `manifest`, `player`, `search`, `filters`, `sorts`, `showCount`, `menuSearch`, `idPrefix`, `urlState`, `loopToggle`, `maxTypeChips`, `pageSize`, `columns`, `waveformStyle`, `waveformColor`, `progressColor`, `barWidth`, `barGap`, `loop`, `autoAdvance`, `arrowAudition`, `playerOptions`, `playerClass`, `strings`. Use them camelCase or kebab-case in templates (`:page-size="100"`). See [Options](/extensions/sounds/options/) for each one. `class`, `style` and `id` fall through to the host, which always carries `wfp-host`.
+
+- **Dropdown ids**: `idPrefix`, else one from Vue's `useId()` — unique per list, identical on the server and the client.
+- **`urlState`** (`boolean | string`; a bare `url-state` attribute is `true`) is runtime-only: the server renders the unfiltered list and the runtime applies the address on load.
+- **A changed prop rebuilds the list** over freshly reset markup, but arrays and objects compare by value, so an equal inline literal from a re-rendering parent doesn't rebuild (and lose the visitor's filter and playback). **`loop` is the exception** — it's applied live through `setLoop()`.
+- `playerOptions` callbacks always reach the latest prop value; swapping one doesn't rebuild.
+
+Theme it through `style` — set `--ws-surface` (your page background) so the server-rendered first paint is right: `<WaveformSounds :sounds="sounds" style="--ws-surface: #09090b" />`.
+
+### Events
+
+The core's callbacks surface as emits, with the same arguments. `emit` is stable, so a new listener never rebuilds the list.
+
+| Emit | Arguments |
+| --- | --- |
+| `@ready` | `(instance)` |
+| `@play` / `@pause` / `@end` | `(sound, instance)` |
+| `@filter` | `(visible: Sound[], instance)` |
+| `@error` | `(error, instance)` |
+
+The core's bubbling [`waveformsounds:*` events](/extensions/sounds/api/#events) fire from the host as well.
+
+### Imperative API
+
+Grab the instance with a template `ref` typed as `WaveformSoundsExpose`:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { WaveformSounds, type WaveformSoundsExpose } from '@arraypress/waveform-sounds-vue';
+
+const list = ref<WaveformSoundsExpose>();
+</script>
+
+<template>
+  <WaveformSounds ref="list" manifest="/sounds.json" />
+  <button @click="list?.setFilter({ type: 'Drum loops' })">Drum loops</button>
+  <button @click="list?.setSort('bpm')">By BPM</button>
+</template>
+```
+
+| Method | Signature | Notes |
+| --- | --- | --- |
+| `play` | `(target?, opts?: { at?: number }) => void` | By index, `id` or `Sound`; no target resumes. |
+| `pause` | `() => void` | |
+| `toggle` | `(target?) => void` | |
+| `next` / `previous` | `() => void` | The next / previous visible sound. |
+| `setFilter` | `(patch: Partial<SoundsFilter>) => void` | Merged into the current filter. |
+| `clearFilters` | `() => void` | The sort stays. |
+| `setSort` | `(by: SoundsSort) => void` | |
+| `setLoop` | `(on: boolean) => void` | |
+| `showMore` | `() => void` | |
+| `instance` | `readonly WaveformSounds \| null` | The core instance (`visible`, `current`, `sounds`, `engine`, `ready`, …). |
+
+A call before the instance exists is a no-op; a call while it's still building (a manifest fetch) runs once it's ready, in order. After that, calls are synchronous — so `play()` from a click keeps the browser's user activation.
+
+---
+
 ## Server-side rendering & Nuxt
 
-All three components are SSR / Nuxt safe by construction: the host markup (and, for the playlist, the `[data-track]` children) renders on the server, and the browser-only core is dynamically `import()`ed inside `onMounted` — which runs **only on the client**, never during server render. The interactive UI hydrates in once the library loads.
+All four components are SSR / Nuxt safe by construction: the host markup (for the playlist, the `[data-track]` children; for the sound list, the whole list when given `sounds`) renders on the server, and the browser-only core is dynamically `import()`ed inside `onMounted` — which runs **only on the client**, never during server render. The interactive UI hydrates in once the library loads.
 
 No extra guarding is needed for the imperative path: keep instantiation inside `onMounted` (the wrappers already do), never at module top level. Reserve layout space with `style` (e.g. `:style="{ minHeight: '96px' }"`) to avoid a content shift before the waveform draws.
 

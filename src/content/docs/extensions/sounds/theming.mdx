@@ -1,0 +1,90 @@
+---
+title: Theming
+description: The --ws-* custom properties, the page surface, and the CSS classes.
+sidebar:
+  order: 6
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+The list is colour-agnostic by default, like the rest of the family. Every colour derives from `currentColor`, so it fits a light page and a dark one with no setup, and the "on" states — the selected chip, the pressed Loop toggle, the playing row's button — are **inverted**: the text colour as the fill, the page background as the ink. White on a dark page, black on a light one.
+
+Theme it with custom properties on `.waveform-sounds` (or any ancestor). The stylesheet is `@arraypress/waveform-sounds/styles.css` — the framework wrappers never inject it.
+
+```css
+.waveform-sounds {
+  --ws-surface: #0a0a0a;   /* your page background */
+  --ws-accent: #22d3ee;    /* opt into a brand colour… */
+  --ws-on-accent: #04141a; /* …and the ink that sits on it */
+  --ws-radius: 6px;
+  --ws-control-radius: 6px;
+}
+```
+
+## Custom properties
+
+| Property | Default | What it styles |
+| --- | --- | --- |
+| `--ws-surface` | detected by the runtime | The page background behind the list — the ink on inverted fills, and the dropdowns' background. See [below](#the-page-surface). |
+| `--ws-accent` | `currentColor` | Fills and borders of the "on" states, focus rings, the focused search field and open menu button, and (through `--ws-progress-color`) the played part of a row. |
+| `--ws-on-accent` | `var(--ws-surface)`, else the inverse of the text colour | The ink on an accent fill. |
+| `--ws-muted` | `currentColor` at 62% | Secondary text: the type, BPM, key and length columns, the count, placeholders, icons. |
+| `--ws-border` | `currentColor` at 12% | Row dividers and control borders. |
+| `--ws-hover` | `currentColor` at 5% | Hover backgrounds. |
+| `--ws-current` | `--ws-accent` at 7% | The current row's background. |
+| `--ws-field` | `currentColor` at 5% | Control backgrounds (search, menus, the play buttons). |
+| `--ws-wave-color` | `currentColor` at 30% | The row waveforms' bars, unless `waveformColor` is set. |
+| `--ws-progress-color` | `var(--ws-accent)` | The played part of a row waveform, unless `progressColor` is set. |
+| `--ws-radius` | `10px` | Dropdowns, the docked strip player. |
+| `--ws-control-radius` | `999px` | Search, menu buttons, chips, the Loop toggle, Show more. |
+| `--ws-row-height` | `3.25rem` | Minimum row height. |
+| `--ws-wave-height` | `28px` | Row waveform height. |
+| `--ws-mono` | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` | The BPM, key and length columns, and the counts on chips and menu options. |
+| `--ws-popover-bg` | `var(--ws-surface, Canvas)` | The dropdowns' background. |
+| `--ws-strip-bg` | `Canvas` | The docked player's background in the `strip` layout. |
+
+The canvas can't read CSS, so the runtime resolves `--ws-wave-color` and `--ws-progress-color` to real colours itself, and re-reads them when the page's theme flips (a `class`, `data-theme`, `data-color-scheme` or `style` change on `<html>` or `<body>`, or a `prefers-color-scheme` change).
+
+<Aside type="caution" title="One rule for custom fills">
+An element whose background is `var(--ws-accent)` never sets its own `color` — its *children* take `--ws-on-accent`. `--ws-accent` defaults to `currentColor`, which resolves where it's used, so a button with `color: <ink>; background: currentColor` would paint ink on ink. Follow the same rule if you restyle the "on" states.
+</Aside>
+
+## The page surface
+
+`--ws-surface` is the colour behind the list. The inverted states use it as their ink, and the dropdowns use it as their background. The runtime **measures** it — the first (near-)opaque background at or above the list — and re-measures when the theme flips, unless you set it yourself.
+
+Set it for a **server-rendered** list. The markup paints before any script runs, so until the runtime measures the page the first paint can only use what the CSS says (without it, the inverted ink falls back to the inverse of the text colour, which is close but not your exact background):
+
+```css
+.waveform-sounds { --ws-surface: var(--color-bg); }
+```
+
+Setting it in a theme that switches between light and dark? Point it at the same variable your page background uses, and it follows.
+
+## CSS classes
+
+| Class | Element |
+| --- | --- |
+| `.waveform-sounds` | The container. `.waveform-sounds--inline` / `.waveform-sounds--strip` for the layout. It's an `inline-size` container, so the narrow row layout follows the list's width, not the window's. |
+| `.ws-toolbar` | Everything above the rows. `.ws-search` / `.ws-search-input` the search box; `.ws-controls` the row of menus, BPM range and Loop; `.ws-meta` the chips and count. |
+| `.ws-menu` / `.ws-menu-btn` / `.ws-menu-pop` / `.ws-menu-list` / `.ws-menu-option` | A dropdown: the wrapper, its button, the popup, the listbox and an option (`.is-active` while highlighted, `aria-selected` when chosen). `.ws-menu-search` is its search field, `.ws-menu-count` an option's count, `.ws-menu-none` the no-matches line. |
+| `.ws-bpm-range` | The BPM fields. |
+| `.ws-loop` | The Loop toggle (`aria-pressed`). |
+| `.ws-types` / `.ws-chip` | The type chips (`aria-pressed` on the selected one); `.ws-chip-count` the count inside one. |
+| `.ws-count` | The count line. |
+| `.ws-list` | The `<ul>` of rows, with `.ws-list--inline` / `.ws-list--strip`. |
+| `.ws-row` | A row. `.is-current` for the playing or paused sound, `.is-playing` while it plays, `.is-error` when it failed to load (its title is struck through). |
+| `.ws-play` | A row's play / pause button. |
+| `.ws-title` | The title. |
+| `.ws-cells` / `.ws-cell` | The columns: `.ws-type`, `.ws-bpm`, `.ws-key`, `.ws-duration`. |
+| `.ws-wave` / `.ws-canvas` | The row waveform (`role="slider"`) and its canvas — `inline` layout only. |
+| `.ws-download` | A row's download link. |
+| `.ws-empty` / `.ws-clear` | The no-matches message and its Clear filters button. |
+| `.ws-more` | Show more. |
+| `.ws-engine` / `.ws-engine--strip` | The engine player's slot — hidden in `inline`, the docked player in `strip`. |
+| `.ws-sr` | Visually hidden text for screen readers. |
+
+The engine is a regular `WaveformPlayer`, so its own [styling](/player/styling/) applies inside `.ws-engine` — set its colours through [`playerOptions`](/extensions/sounds/options/#engine).
+
+## Responsive
+
+Below 560px of list width the rows switch to three lines — the title, then `Bass · 128 · Fm · 0:08`, then the waveform — and on coarse pointers the buttons grow to 44px and the inputs to 16px. See [Mobile](/extensions/sounds/features/#mobile).

@@ -1,0 +1,158 @@
+---
+title: Options
+description: Every WaveformSounds option — type, default, data-* attribute and what it does.
+sidebar:
+  order: 3
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Set options as constructor options **or** as `data-*` attributes on the container. Precedence is the family's: **container `data-*` > constructor option > default**. An option left unset (or `null` / `undefined`) never overrides a default.
+
+```js
+new WaveformSounds('#pack', { manifest: '/previews/sounds.json', pageSize: 100, autoAdvance: true });
+```
+
+```html
+<div data-waveform-sounds data-manifest="/previews/sounds.json" data-page-size="100" data-auto-advance></div>
+```
+
+How the attributes are read:
+
+- **Names** are kebab-case: `pageSize` → `data-page-size`.
+- **Booleans** — present-and-empty or `"true"` is on, `"false"` is off; anything else is ignored. So `data-search="false"` hides the search box.
+- **Numbers** — an empty attribute counts as not set.
+- **Lists** (`filters`, `sorts`, `columns`) are comma-separated: `data-columns="type, key"`. An empty attribute is an empty list — `data-sorts=""` is *no* Sort menu, not the default one.
+- **JSON** (`strings`, `playerOptions`) — invalid JSON logs `[WaveformSounds] Ignoring invalid JSON in data-<name>` and is ignored rather than breaking the list.
+- `data-url-state` — `"true"` or empty is `true`, `"false"` is off, anything else is the parameter prefix.
+
+Unknown entries in `filters`, `sorts` and `columns` are dropped, `menuSearch` / `maxTypeChips` / `pageSize` are rounded down to whole numbers (anything that isn't a number of 0 or more falls back to the default), and any `player` other than `'strip'` is `'inline'`.
+
+## Data
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `sounds` | — | `SoundInput[] \| null` | `null` | The sounds — see [Sound fields](/extensions/sounds/#sound-fields). An array (even an empty one) wins over `manifest`. In markup, the equivalent is server-rendered rows. |
+| `manifest` | `data-manifest` | `string \| null` | `null` | URL of a sounds manifest (JSON), fetched when there are no `sounds` and no server-rendered rows. A non-2xx response is reported through `onError` and `waveformsounds:error`. |
+
+## Layout and toolbar
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `player` | `data-player` | `'inline' \| 'strip'` | `'inline'` | `'inline'`: a mini waveform per row; the playing row fills and seeks. `'strip'`: plain rows and one full player docked below. See [Layouts](/extensions/sounds/features/#layouts). |
+| `search` | `data-search` | `boolean` | `true` | Show the search box. |
+| `filters` | `data-filters` | `('type' \| 'key' \| 'bpm')[]` | `['type', 'key', 'bpm']` | Which filter controls to offer. Each appears only when the data has something to filter: 2+ types, 2+ keys, a spread of BPMs. `[]` = no filters. |
+| `sorts` | `data-sorts` | `('default' \| 'title' \| 'bpm' \| 'key' \| 'duration')[]` | all five, in that order | The orders the Sort menu offers, in order; **the first is the starting order**. Orders the data can't use are dropped. `[]` (or a single usable order) hides the menu. |
+| `showCount` | `data-show-count` | `boolean` | `true` | Show the `12 of 300 sounds` count. |
+| `menuSearch` | `data-menu-search` | `number` | `8` | A dropdown (type / key / sort) gets a search field when it has **more** than this many options. |
+| `maxTypeChips` | `data-max-type-chips` | `number` | `10` | Up to this many types show as chips; more become a **Type** menu. |
+| `loopToggle` | `data-loop-toggle` | `boolean` | `true` | Show the Loop toggle. |
+| `pageSize` | `data-page-size` | `number` | `50` | Rows shown before **Show more**. `0` shows all. |
+| `columns` | `data-columns` | `('type' \| 'bpm' \| 'key' \| 'duration')[]` | `['type', 'bpm', 'key', 'duration']` | The columns after the title, in this order. `[]` = title only. |
+| `idPrefix` | `data-id-prefix` | `string` | the container's `id`, else a hash of the sounds | Prefix for the dropdowns' element ids. Two lists of the **same** sounds on one page each need one (or an `id`). The framework wrappers always pass a unique one. |
+| `urlState` | `data-url-state` | `boolean \| string` | `false` | Keep the filters and sort in the address. `true` uses `q`, `type`, `key`, `bpm`, `sort`; a string prefixes them (`'pack'` → `pack-q`, …). See [Filters in the address](/extensions/sounds/features/#filters-in-the-address). |
+
+## Row waveform
+
+These style the row canvases in the `inline` layout. (The engine player's own look is set through `playerOptions`.)
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `waveformStyle` | `data-waveform-style` | `'mirror' \| 'bars'` | `'mirror'` | Row waveform style. Anything else is `'mirror'`. |
+| `waveformColor` | `data-waveform-color` | `string \| null` | `null` → CSS `--ws-wave-color` | Unplayed bar colour — a value a canvas accepts (`#888`, `rgba(…)`; not `var()`). |
+| `progressColor` | `data-progress-color` | `string \| null` | `null` → CSS `--ws-progress-color` | Played-part colour — a value a canvas accepts. |
+| `barWidth` | `data-bar-width` | `number` | `2` | Bar width in CSS px (at least 1). |
+| `barGap` | `data-bar-gap` | `number` | `1` | Gap between bars in CSS px (at least 0). |
+
+With the colours left unset, the canvas uses the [`--ws-wave-color` and `--ws-progress-color`](/extensions/sounds/theming/) custom properties, resolved to real colours by the runtime (a canvas can't read CSS) and re-read when the page's theme flips.
+
+## Behaviour
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `loop` | `data-loop` | `boolean` | `false` | Start with Loop on. Change it later with [`setLoop()`](/extensions/sounds/api/#public-methods). |
+| `autoAdvance` | `data-auto-advance` | `boolean` | `false` | Play the next visible sound when one ends (in the current filter and sort; no wrap at the end). |
+| `arrowAudition` | `data-arrow-audition` | `boolean` | `true` | While a sound plays, ↑ / ↓ (and Home / End) move to a row **and** play it — the sample-browser audition. Off, they only move focus. |
+
+## Engine
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `playerOptions` | `data-player-options` (JSON) | `object \| null` | `null` | Options for the engine `WaveformPlayer` — colours, `height`, `waveformStyle`, `preload`, … — and its callbacks, which are called **after** the list's own, with the same arguments. Two things can't be overridden: `audioMode` is always `'self'`, and the list's own handlers always run. |
+| `playerClass` | — | `typeof WaveformPlayer \| null` | `null` → `window.WaveformPlayer` | The `WaveformPlayer` class to build the engine from, for ESM setups without the global. |
+
+The engine's defaults, before `playerOptions` is applied:
+
+| Engine option | `inline` | `strip` |
+| --- | --- | --- |
+| `height` | `32` (hidden) | `48` |
+| `waveformStyle` | `'bars'` | `'mirror'` |
+| `preload` | `'metadata'` | `'metadata'` |
+| `singlePlay` | `true` | `true` |
+
+```js
+new WaveformSounds('#pack', {
+  manifest: '/previews/sounds.json',
+  player: 'strip',
+  playerOptions: { height: 64, waveformStyle: 'bars', onPlay: () => console.log('engine playing') },
+});
+```
+
+<Aside type="note" title="The engine is built when the list is ready">
+The engine `WaveformPlayer` is constructed once the list is built — no audio loads until something plays — when a player class is available then. Otherwise it's built on the first play. Either way there is exactly one per list, and it's destroyed with the list.
+</Aside>
+
+## Strings
+
+| Option | `data-*` | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `strings` | `data-strings` (JSON) | `Partial<WaveformSoundsStrings> \| null` | `null` → English | Every visible or announced word. Partial: merged over the English defaults. See [Strings & i18n](/extensions/sounds/strings/). |
+
+## Callbacks
+
+Each callback fires alongside the matching bubbling [`waveformsounds:*` event](/extensions/sounds/api/#events). Constructor-only — there are no `data-*` forms.
+
+| Option | Signature | Fires |
+| --- | --- | --- |
+| `onReady` | `(instance) => void` | The list is built (after the manifest fetch, if any). |
+| `onPlay` | `(sound, instance) => void` | A sound starts playing. |
+| `onPause` | `(sound, instance) => void` | The playing sound pauses. Fires once at a natural end, not twice. |
+| `onEnd` | `(sound, instance) => void` | A sound plays to its end (before an auto-advance). |
+| `onFilter` | `(visible, instance) => void` | After every filter, sort or page change — and once when the list is built — with the matching sounds, in sort order. |
+| `onError` | `(error, instance) => void` | The list failed to build (e.g. the manifest request failed), or a sound failed to load or play. |
+
+`sound` is the normalised [`Sound`](/extensions/sounds/api/#types) — `{ id, url, title, type, bpm, key, duration, tags, peaks, waveform, download }`.
+
+## Defaults at a glance
+
+`WaveformSounds.DEFAULT_OPTIONS` (also a named export) holds every default:
+
+```js
+{
+  player: 'inline',
+  search: true,
+  filters: ['type', 'key', 'bpm'],
+  sorts: ['default', 'title', 'bpm', 'key', 'duration'],
+  loopToggle: true,
+  showCount: true,
+  menuSearch: 8,
+  pageSize: 50,
+  columns: ['type', 'bpm', 'key', 'duration'],
+  maxTypeChips: 10,
+  sounds: null,
+  manifest: null,
+  waveformStyle: 'mirror',
+  waveformColor: null,
+  progressColor: null,
+  barWidth: 2,
+  barGap: 1,
+  loop: false,
+  autoAdvance: false,
+  arrowAudition: true,
+  idPrefix: null,
+  urlState: false,
+  playerOptions: null,
+  playerClass: null,
+  strings: null,
+  onReady: null, onPlay: null, onPause: null, onEnd: null, onFilter: null, onError: null,
+}
+```

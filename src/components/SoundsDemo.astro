@@ -1,0 +1,93 @@
+---
+/**
+ * SoundsDemo — a live WaveformSounds list embedded in the docs.
+ *
+ * Renders the real `data-waveform-sounds` container — exactly the markup the
+ * snippets show — then loads the sounds runtime from CDN on demand. The list
+ * plays through the page's `window.WaveformPlayer` (already in the Starlight
+ * head), so it hands off with every other demo on the page via `singlePlay`.
+ *
+ * The data is `public/audio/sounds.json`, written by
+ * `npx @arraypress/waveform-gen@2.1.0 ./public/audio/ --manifest ./public/audio/sounds.json --base-url /audio/`.
+ * Two edits were made by hand afterwards: `title` (the generator lower-cases
+ * the file name; these are the titles the other demos use) and `type` (the
+ * files sit in one folder, so the generator gives them none). There is no
+ * `bpm` or `key` in it on purpose: the file names don't carry them and they
+ * are not known, so the BPM filter, key menu and those sort orders don't
+ * appear — which is how the list behaves on real data without them.
+ */
+interface Props {
+	manifest?: string;
+	player?: 'inline' | 'strip';
+	loop?: boolean;
+	id?: string;
+}
+
+const { manifest = '/audio/sounds.json', player = 'inline', loop, id } = Astro.props;
+---
+
+<div class="sounds-demo not-content" data-ws-demo>
+	<div
+		data-waveform-sounds
+		id={id}
+		data-manifest={manifest}
+		data-player={player}
+		data-loop={loop ? 'true' : undefined}
+	></div>
+</div>
+
+<script is:inline>
+	(function () {
+		var CSS = 'https://unpkg.com/@arraypress/waveform-sounds/dist/waveform-sounds.min.css';
+		var JS = 'https://unpkg.com/@arraypress/waveform-sounds/dist/waveform-sounds.min.js';
+
+		function ensureCss() {
+			if (document.querySelector('link[data-ws-css]')) return;
+			var l = document.createElement('link');
+			l.rel = 'stylesheet';
+			l.href = CSS;
+			l.setAttribute('data-ws-css', '');
+			document.head.appendChild(l);
+		}
+		function withRuntime(cb) {
+			if (window.WaveformSounds) return cb();
+			var existing = document.querySelector('script[data-ws-js]');
+			if (existing) return existing.addEventListener('load', cb);
+			var s = document.createElement('script');
+			s.src = JS;
+			s.setAttribute('data-ws-js', '');
+			s.addEventListener('load', cb);
+			document.head.appendChild(s);
+		}
+		function setup() {
+			if (!document.querySelector('[data-ws-demo]')) return;
+			// The engine is the head's player (a deferred script): wait for it,
+			// so the list builds its engine once, from the page's own class.
+			if (!window.WaveformPlayer) return;
+			ensureCss();
+			withRuntime(function () {
+				if (window.WaveformSounds && window.WaveformSounds.init) window.WaveformSounds.init();
+			});
+		}
+		setup();
+		if (!window.__wsDemoBound) {
+			window.__wsDemoBound = true;
+			document.addEventListener('DOMContentLoaded', setup);
+			document.addEventListener('astro:page-load', setup);
+			// A list whose element left the page must stop its audio.
+			document.addEventListener('astro:after-swap', function () {
+				if (window.WaveformSounds && window.WaveformSounds.prune) window.WaveformSounds.prune();
+			});
+		}
+	})();
+</script>
+
+<style>
+	.sounds-demo {
+		margin: 1.25rem 0;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.75rem;
+		background: var(--sl-color-gray-6);
+	}
+</style>

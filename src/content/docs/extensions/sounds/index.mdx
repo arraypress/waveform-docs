@@ -1,0 +1,210 @@
+---
+title: Getting Started
+description: Install WaveformSounds and list a pack of sound previews from a manifest.
+sidebar:
+  order: 1
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import SoundsDemo from '~/components/SoundsDemo.astro';
+
+`WaveformSounds` is a searchable, filterable list of sounds for showcasing the previews inside a sample pack, preset bank or sound library. Each row is a sound with a mini waveform, its type, BPM, key and length; above the rows sit a search box, type chips, a key menu, a BPM range, a sort menu and a Loop toggle. Press a row and it plays; press ↓ while it plays and the next one plays — the way a sample browser auditions.
+
+It is built for hundreds of sounds, not a handful: **one** [WaveformPlayer](/player/options/) (self mode) is the audio engine for the whole list, and the rows are light — a button, some text and a small canvas drawn from low-resolution peaks only when it scrolls into view. 300 sounds is 300 rows, not 300 players.
+
+Here's a real one, loaded from a manifest. Press a row, use the chips and the search, or focus a row and use the arrow keys:
+
+<SoundsDemo />
+
+That's one element — `<div data-waveform-sounds data-manifest="/audio/sounds.json">` — and a JSON file written by [`waveform-gen --manifest`](/extensions/gen/manifest/). This demo's sounds carry no BPM or key, so the BPM range, the key menu and those sort orders simply don't appear: every control shows up only when the data gives it something to do.
+
+<Aside type="caution" title="Requires the core player">
+The list plays through `window.WaveformPlayer` (or the class you pass as [`playerClass`](/extensions/sounds/options/#engine)). Load `@arraypress/waveform-player` first: without it the list still renders, but nothing plays, and the first play logs `[WaveformSounds] @arraypress/waveform-player is required`. The player is a peer dependency (`^1.24.5`).
+</Aside>
+
+## Sounds or a playlist?
+
+Both build on the player; they're for different jobs.
+
+| | [WaveformPlaylist](/extensions/playlist/) | WaveformSounds |
+| --- | --- | --- |
+| Made for | Albums, podcasts, chaptered episodes | Sample packs, preset banks, sound libraries |
+| Typical size | A handful of tracks | Tens to hundreds of short previews |
+| Finding things | Scroll the list | Search, filter by type / key / BPM, sort |
+| Waveform | One full player for the selected track | A mini waveform on every row (or one docked player, the `strip` layout) |
+| Per-item data | Artist, artwork, album, chapters | Type, BPM, key, length, tags, an optional download |
+| Data source | `[data-track]` markup | A JSON manifest, a `sounds` array, or server-rendered rows |
+
+If listeners sit back and listen, use the playlist. If they hunt for the right kick, use this.
+
+## Install
+
+Install it alongside the core player:
+
+<Tabs syncKey="pkg">
+
+<TabItem label="npm">
+
+```sh
+npm install @arraypress/waveform-player @arraypress/waveform-sounds
+```
+
+</TabItem>
+<TabItem label="pnpm">
+
+```sh
+pnpm add @arraypress/waveform-player @arraypress/waveform-sounds
+```
+
+</TabItem>
+<TabItem label="yarn">
+
+```sh
+yarn add @arraypress/waveform-player @arraypress/waveform-sounds
+```
+
+</TabItem>
+<TabItem label="bun">
+
+```sh
+bun add @arraypress/waveform-player @arraypress/waveform-sounds
+```
+
+</TabItem>
+
+</Tabs>
+
+```js
+import '@arraypress/waveform-player';             // registers window.WaveformPlayer, the engine
+import '@arraypress/waveform-sounds';             // registers window.WaveformSounds and auto-inits
+import '@arraypress/waveform-player/styles.css';
+import '@arraypress/waveform-sounds/styles.css';
+```
+
+Or from a CDN — player first, then the list:
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.css">
+<link rel="stylesheet" href="https://unpkg.com/@arraypress/waveform-sounds@latest/dist/waveform-sounds.css">
+
+<script src="https://unpkg.com/@arraypress/waveform-player@latest/dist/waveform-player.min.js"></script>
+<script src="https://unpkg.com/@arraypress/waveform-sounds@latest/dist/waveform-sounds.min.js"></script>
+```
+
+The package ships an IIFE (`waveform-sounds.js`, minified `waveform-sounds.min.js`, the `unpkg` default) exposing `window.WaveformSounds`, ESM and CJS builds, two more entry points — [`/render`](/extensions/sounds/api/#server-rendering-render) (a DOM-free server renderer) and [`/no-autoinit`](/extensions/sounds/api/#no-autoinit) — and the stylesheet (`waveform-sounds.css`, also `waveform-sounds.min.css`, and exported as `@arraypress/waveform-sounds/styles.css`). Typings are bundled. Framework wrappers for [Astro](/frameworks/astro/#the-sound-list), [React](/frameworks/react/#sounds--waveformsounds), [Svelte](/frameworks/svelte/#sounds--waveformsounds) and [Vue](/frameworks/vue/#sounds--waveformsounds) are separate packages.
+
+## Quick start
+
+<Steps>
+
+1. **Write a manifest** from your folder of previews. BPM and key are read from file names like `Bass_Loop_04_128_Fmin.wav`; the type is the sub-folder. `--base-url` is the public URL the folder is served at:
+
+   ```sh
+   npx @arraypress/waveform-gen ./public/previews/ --recursive \
+     --manifest ./public/previews/sounds.json --base-url /previews/
+   ```
+
+   `--manifest` needs `@arraypress/waveform-gen` 2.1.0 or later. See [Sounds manifest](/extensions/gen/manifest/) for every flag and the file-name rules.
+
+2. **Point a container at it.** Every `[data-waveform-sounds]` element is initialised when the DOM is ready — no JavaScript to write:
+
+   ```html
+   <div data-waveform-sounds data-manifest="/previews/sounds.json"></div>
+   ```
+
+3. **Configure it with `data-*`** if the defaults don't suit — every option has an attribute:
+
+   ```html
+   <div data-waveform-sounds
+        data-manifest="/previews/sounds.json"
+        data-page-size="100"
+        data-columns="type,bpm,key"
+        data-url-state="true"></div>
+   ```
+
+</Steps>
+
+Or construct it yourself with a `sounds` array — no manifest, no fetch:
+
+```js
+import WaveformSounds from '@arraypress/waveform-sounds';
+
+const list = new WaveformSounds('#pack', {
+  sounds: [
+    { url: '/previews/kick-01.mp3', title: 'Kick 01', type: 'Drums', duration: 2.4 },
+    { url: '/previews/bass-04.mp3', title: 'Bass Loop 04', type: 'Bass', bpm: 128, key: 'F minor' },
+  ],
+  onPlay: (sound) => console.log('playing', sound.title),
+});
+```
+
+<Aside type="note" title="Auto-init and how to opt out">
+Importing (or loading) the main entry initialises every `[data-waveform-sounds]` element on `DOMContentLoaded`, or straight away if the document is already parsed. Each element is marked `data-ws-initialized="true"` and is never initialised twice; a failure is logged with `console.error`, not thrown. Turn it off page-wide with `<html data-waveform-autoinit="false">` (the family's switch), or import `@arraypress/waveform-sounds/no-autoinit` and call [`WaveformSounds.init()`](/extensions/sounds/api/#static-methods) yourself — after adding markup dynamically, for example.
+</Aside>
+
+## Where the sounds come from
+
+The list takes its sounds from the first of these it finds:
+
+1. **Server-rendered rows** already inside the container (a `[data-ws-list]` element, as written by the [`/render` entry](/extensions/sounds/api/#server-rendering-render) or a framework wrapper). The runtime *adopts* that markup instead of rebuilding it.
+2. **The `sounds` option** — an array. An empty array counts: it renders an empty list and the manifest is not fetched.
+3. **The `manifest` option** (`data-manifest`) — a URL fetched with `fetch()` when there are no `sounds`. A failed request is reported through `onError` / `waveformsounds:error`.
+
+### The manifest
+
+```json
+{
+  "version": 1,
+  "sounds": [
+    {
+      "url": "/previews/Bass/NW_Bass_Loop_04_128_Fmin.wav",
+      "title": "NW Bass Loop 04",
+      "type": "Bass",
+      "bpm": 128,
+      "key": "Fm",
+      "duration": 8.02,
+      "peaks": "1f3a…"
+    }
+  ]
+}
+```
+
+A bare array of sounds works too. `version` is informational. `peakScale` is the maximum of integer `peaks` arrays (e.g. `100` for values `0..100`) — hex peaks, which is what `waveform-gen` writes, ignore it.
+
+### Sound fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `url` | `string` | **Required.** The audio URL. A sound without one is dropped. |
+| `title` | `string` | Display name. Defaults to the file name, with its extension dropped and `_` turned into spaces. |
+| `type` | `string` | The kind of sound ("Drum loops", "Bass", "One-shots") — the type chips and the Type column. |
+| `bpm` | `number \| string` | Tempo. Enables the BPM range filter and sort, and lets a number in the search match it. Kept to two decimals; `0` or anything non-numeric is no BPM. |
+| `key` | `string` | Musical key in any common spelling — `"F minor"`, `"Fmin"`, `"f m"` → `Fm`; `"C# Major"`, `"C♯"` → `C#`. Shown and filtered in that short form; an unparseable key is kept as written. |
+| `duration` | `number \| string` | Length: seconds (`8.02`) or `"m:ss"` / `"h:mm:ss"`. Shown as `m:ss`. |
+| `tags` | `string[] \| string` | Extra words the search matches. A string is split on commas. |
+| `peaks` | `string \| number[]` | Low-resolution peaks for the row waveform: an 8-bit hex string (two characters per bar, `00`–`ff`) or numbers `0..1`. Without them the row shows a flat line until it's played. |
+| `waveform` | `string \| number[]` | Full-resolution peaks for the `strip` layout's docked player — a [`waveform-gen`](/extensions/gen/) `.json` URL or an array. |
+| `download` | `string` | An optional download link for this sound. Rows with one get a download button; rows without carry nothing. |
+| `id` | `string` | A stable id for [`play('id')`](/extensions/sounds/api/#public-methods). Defaults to `sound-<n>`, 1-based in list order. A repeated id gets `-2`, `-3`, … appended. |
+
+<Aside type="tip" title="Peaks also save the download">
+A sound with `peaks` never makes the engine decode its file just to draw it — the core only decodes when it has no peaks. A sound without them borrows the engine's decoded peaks after its first play, so its row fills in then.
+</Aside>
+
+## Next steps
+
+<CardGrid>
+
+  <Card title="Features" icon="star">
+    Layouts, search and filters, hundreds of sounds, keyboard, the address, downloads, analytics, server rendering, mobile — [Features](/extensions/sounds/features/).
+  </Card>
+  <Card title="Options" icon="setting">
+    Every option with its type, default and `data-*` attribute — [Options](/extensions/sounds/options/).
+  </Card>
+  <Card title="API & events" icon="document">
+    Methods, properties, static methods, events, `/render` and `utils` — [API](/extensions/sounds/api/).
+  </Card>
+  <Card title="Theming" icon="seti:css">
+    The `--ws-*` custom properties and CSS classes — [Theming](/extensions/sounds/theming/).
+  </Card>
+
+</CardGrid>

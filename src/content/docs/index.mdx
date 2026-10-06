@@ -5,8 +5,8 @@ description: Documentation for the @arraypress waveform family — a small, zero
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
-**The vanilla-JS waveform audio player — plus a bar, playlist, analytics and a
-peaks CLI.** A small, zero-dependency family configured from plain markup: drop
+**The vanilla-JS waveform audio player — plus a bar, playlist, sound list,
+analytics and a peaks CLI.** A small, zero-dependency family configured from plain markup: drop
 in a script and a few `data-*` attributes and ship. ~12KB gzipped, no dependencies.
 
 ```html
@@ -42,6 +42,7 @@ That is a complete, working player. Start with
 
 	<LinkCard title="WaveformBar" href="/extensions/bar/" description="Persistent Spotify-style bottom bar." />
 	<LinkCard title="WaveformPlaylist" href="/extensions/playlist/" description="Playlists, chapters and albums." />
+	<LinkCard title="WaveformSounds" href="/extensions/sounds/" description="Searchable, filterable lists of sound previews." />
 	<LinkCard title="WaveformTracker" href="/extensions/tracker/" description="Privacy-first listen analytics." />
 	<LinkCard title="WaveformGen" href="/extensions/gen/" description="Pre-generate peaks at build time." />
 

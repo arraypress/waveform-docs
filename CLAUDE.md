@@ -15,7 +15,7 @@ Astro + Starlight documentation site for the `@arraypress` waveform family
 Each carries a `<!-- GENERATED … -->` marker.
 
 The script reads each package's `CHANGELOG.md` from the sibling repos
-(`PKG_ROOT = ../`, i.e. `~/Developer/waveform-player/`). It **warns and continues**
+(`PKG_ROOT = ../`, i.e. `~/Developer/Javascript/waveform-player/`). It **warns and continues**
 on a missing file and still exits `0`, so a wrong `PKG_ROOT` looks exactly like
 success. **Always read the output** — every line should be `✓`, and any `⚠` means
 that package was skipped and its page left stale.
@@ -36,6 +36,11 @@ repo.** Keep it that way; don't "helpfully" pin a version into a snippet.
 - `src/content/docs/extensions/playlist/options.mdx` — forwarded-options prose list.
 - `src/content/docs/frameworks/astro.mdx` — common-props table.
 - react/vue/svelte framework pages **enumerate nothing** and need no change.
+- `src/content/docs/extensions/sounds/options.mdx` — WaveformSounds' options (its own
+  surface, `@arraypress/waveform-sounds`; a player option change doesn't touch it). A new
+  sounds option needs a row there, in the "Defaults at a glance" block, in the Astro
+  page's sound-list props table, and in the option-name lists of the React / Svelte / Vue
+  pages' Sounds → Props sections (those DO enumerate, unlike their player sections). Its manifest flags live in `extensions/gen/manifest.mdx`.
 
 ## Cross-repo
 Documenting a new option is one step of a 15-package + 2-site batch —

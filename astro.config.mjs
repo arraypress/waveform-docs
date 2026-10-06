@@ -37,7 +37,7 @@ export default defineConfig({
 		starlight({
 			title: 'WaveformPlayer',
 			description:
-				'Documentation for the @arraypress waveform family — a small, zero-dependency set of vanilla-JS audio components: a canvas waveform player, a persistent bottom bar, playlists, listen analytics, and build-time peak tooling.',
+				'Documentation for the @arraypress waveform family — a small, zero-dependency set of vanilla-JS audio components: a canvas waveform player, a persistent bottom bar, playlists, a searchable sound list, listen analytics, and build-time peak tooling.',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/arraypress/waveform-player' },
 			],
@@ -72,9 +72,9 @@ export default defineConfig({
 				starlightLlmsTxt({
 					projectName: 'WaveformPlayer',
 					description:
-						'A small, zero-dependency family of vanilla-JS audio components: a canvas waveform player, a persistent bottom bar, playlists, listen analytics, and build-time peak tooling. Auto-initializes from HTML data-* attributes; ships typed Astro and React wrappers.',
+						'A small, zero-dependency family of vanilla-JS audio components: a canvas waveform player, a persistent bottom bar, playlists, a searchable sound list, listen analytics, and build-time peak tooling. Auto-initializes from HTML data-* attributes; ships typed Astro, React, Svelte and Vue wrappers.',
 					details:
-						'These docs cover the core player, its extensions (Bar, Playlist, Tracker, Generator), and framework/platform integrations. Full site: https://waveformplayer.com',
+						'These docs cover the core player, its extensions (Bar, Playlist, Sounds, Tracker, Generator), and framework/platform integrations. Full site: https://waveformplayer.com',
 					// Changelogs are noisy for the abridged set — keep them out of
 					// llms-small.txt (they remain in the complete llms-full.txt).
 					exclude: ['changelog', 'changelog/**'],
@@ -85,6 +85,7 @@ export default defineConfig({
 				{ label: 'Core Player', items: [{ autogenerate: { directory: 'player' } }] },
 				{ label: 'Bar', collapsed: true, items: [{ autogenerate: { directory: 'extensions/bar' } }] },
 				{ label: 'Playlist', collapsed: true, items: [{ autogenerate: { directory: 'extensions/playlist' } }] },
+				{ label: 'Sounds', collapsed: true, items: [{ autogenerate: { directory: 'extensions/sounds' } }] },
 				{ label: 'Tracker', collapsed: true, items: [{ autogenerate: { directory: 'extensions/tracker' } }] },
 				{ label: 'Generator', collapsed: true, items: [{ autogenerate: { directory: 'extensions/gen' } }] },
 				{ label: 'Frameworks & Platforms', collapsed: true, items: [{ autogenerate: { directory: 'frameworks' } }] },
