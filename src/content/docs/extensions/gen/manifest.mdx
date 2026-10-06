@@ -1,0 +1,148 @@
+---
+title: Sounds manifest
+description: --manifest — one JSON for a whole pack, for WaveformSounds. Flags, output, and how BPM and key are read from file names.
+sidebar:
+  order: 3
+---
+import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+For [WaveformSounds](/extensions/sounds/), write **one manifest for a whole pack** instead of a JSON per sound: every file's URL, a title, its type, BPM and key (read from the file name), its length and low-resolution peaks — so a list of hundreds of previews loads from one request.
+
+```bash
+npx @arraypress/waveform-gen ./public/previews/ --recursive \
+  --manifest ./public/previews/sounds.json --base-url /previews/
+```
+
+```html
+<div data-waveform-sounds data-manifest="/previews/sounds.json"></div>
+```
+
+<Aside type="note" title="New in 2.1.0">
+`--manifest` and its flags need `@arraypress/waveform-gen` **2.1.0** or later.
+</Aside>
+
+## Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--manifest <file>` | — | Where to write the manifest. Its folders are created as needed. **Without `--output`, no per-file JSON is written** — only the manifest. |
+| `--root <dir>` | the deepest folder containing every input | The folder URLs and types are relative to. A directory argument counts as itself, a file argument (e.g. one a shell glob expanded) as its folder. A file outside `--root` fails with `… is outside the manifest root …`. |
+| `--base-url <url>` | `/` | The public URL `--root` is served at. A path (`/previews/`) or an origin (`https://cdn.example.com/packs`); a trailing `/` is added if missing. |
+| `--type <name>` | the file's folder name | One type for every sound. By default a file's type is the name of the folder it's in — and files directly in `--root` get none. |
+| `--manifest-bars <n>` | `64` | Bars per sound in `peaks`. An integer of 1 or more, or the run exits `1`. |
+| `--waveform-base-url <url>` | `--base-url` | The public URL of `--output`. With `--output`, each sound links its full per-file JSON as `waveform` (used by the `strip` layout's docked player). |
+
+They combine with the usual flags: `--recursive` to walk sub-folders (which is what gives sounds their types), `--bpm` to detect a tempo for files whose name carries none, `--samples` for the resolution decoded at before downsampling to `--manifest-bars`, `--quiet`, and `--output` / `--precision` for the per-file JSON. Value flags take `--flag value` or `--flag=value`. `--manifest` with `--format inline` is a usage error (exit `2`).
+
+### `--base-url` is the one to get right
+
+Every `url` is `--base-url` joined with the file's path relative to `--root`, each segment URL-encoded (`Drum Loops/kick 1.wav` → `Drum%20Loops/kick%201.wav`). The default `--base-url` is `/` — the site root — so **set it whenever the audio isn't served from the root**:
+
+| Files on disk | Served at | Command | A `url` |
+| --- | --- | --- | --- |
+| `public/previews/Bass/loop.wav` | `/previews/` | `waveform-gen ./public/previews/ --recursive --manifest … --base-url /previews/` | `/previews/Bass/loop.wav` |
+| `public/previews/Bass/loop.wav` | — | the same, with no `--base-url` | `/Bass/loop.wav` — **wrong**, a 404 |
+| `packs/neon/Bass/loop.wav` | `https://cdn.example.com/neon/` | `waveform-gen ./packs/neon/ --recursive --manifest … --base-url https://cdn.example.com/neon/` | `https://cdn.example.com/neon/Bass/loop.wav` |
+
+The manifest file itself can live anywhere — its location doesn't change the URLs. With `--output`, the `waveform` links are built the same way from `--waveform-base-url` and each JSON's path under `--output`:
+
+```bash
+npx @arraypress/waveform-gen ./public/previews/ --recursive \
+  --manifest ./public/previews/sounds.json --base-url /previews/ \
+  --output ./public/waveforms/ --waveform-base-url /waveforms/
+```
+
+## Output
+
+```json
+{
+  "version": 1,
+  "sounds": [
+    {
+      "url": "/previews/Bass/NW_Bass_Loop_04_128_Fmin.wav",
+      "title": "NW Bass Loop 04",
+      "type": "Bass",
+      "bpm": 128,
+      "key": "Fm",
+      "duration": 8.02,
+      "peaks": "1f3a…"
+    }
+  ]
+}
+```
+
+Pretty-printed (2-space indent) with a trailing newline. Each sound has, in this order:
+
+| Field | Always? | Notes |
+| --- | --- | --- |
+| `url` | Yes | `--base-url` + the path relative to `--root`, segment-encoded. |
+| `title` | Yes | The file name with its extension dropped, separators (`_`, `-`, spaces) turned into single spaces, and the BPM and key words removed. If nothing would be left, the whole name. |
+| `type` | When there is one | `--type`, else the name of the file's folder. None for a file directly in `--root`. |
+| `bpm` | When known | From the file name; with `--bpm`, a detected tempo fills in when the name has none. Left out otherwise — never guessed. |
+| `key` | When known | From the file name, in the short form (`Fm`, `C#`, `Bb`). Left out otherwise. |
+| `duration` | When decoded | Seconds, to two decimals. |
+| `peaks` | Yes | An 8-bit hex string, two lowercase characters per bar (`00`–`ff`). |
+| `waveform` | With `--output` | The URL of the sound's full per-file JSON. |
+
+**Peaks.** 64 bars by default (`--manifest-bars`), downsampled from the same normalised peaks the per-file JSON holds by keeping the loudest value in each bucket — so a short transient (a kick, a snare hit) still shows, and the loudest bar is `ff`. The encoding is byte-for-byte WaveformSounds' own [`encodePeaks`](/extensions/sounds/api/#utils): each value clamped to `0..1`, scaled by 255 and rounded. At 64 bars that's 128 characters a sound. There is no `peakScale` in the output — it only applies to integer arrays, and hex needs none.
+
+**Order.** Sounds are sorted by path, in natural order — `Loop 2` before `Loop 10`, folder by folder, case-insensitively.
+
+**Failures.** A file that fails to decode is left out of the manifest and still fails the run (exit `1`); the manifest is written with every file that succeeded. With `--output`, a sound is only listed once its JSON has been written, so it never links a file that doesn't exist.
+
+Without `--quiet` (and without `--output`), each file's line shows what was read from its name — `✅ NW_Bass_Loop_04_128_Fmin.wav (128 BPM, Fm)` — and the run ends with a summary: `📋 ./public/previews/sounds.json: 300 sounds, 212 with BPM, 187 with key`. Worth a glance — it's how you spot a pack whose names the parser couldn't read.
+
+## BPM and key from file names
+
+The parser errs towards **leaving a value out**: an unknown BPM just isn't filterable, while a wrong one files the sound under the wrong filter. The words of a name are the parts between spaces, `_` and `-`; brackets and trailing punctuation around a word are ignored, so `(C# minor)` and `[140 BPM]` read fine.
+
+**BPM** — a whole word that is a number from **50 to 220**:
+
+- Marked tempos win: `128bpm`, `bpm128`, `128 BPM`, `BPM_174`.
+- A bare number counts too (`_128_`) — but not one with a leading zero (`090` is an index), and not when there are two *different* bare candidates with nothing to choose between them. Then the one sitting right beside a key wins; if neither is, there's no BPM.
+- Numbers outside 50–220 (`250`, `04`) are never a BPM.
+
+**Key** — a whole word (or a root followed by a separate mode word, `F_minor`, `C# Major`):
+
+- Read anywhere: a mode word (`Fmin`, `Cmaj`, `F#minor`, `Bbmin`), a sharp (`F#`, `A#m`), a flat with `m` (`Bbm`), or an upper-case root with a lower-case `m` (`Fm` — but not `FM`, the synth, and not `fm`).
+- Read **only right beside the BPM**: the ambiguous spellings — a lone root (`A`, `C`), a lone flat (`Eb`), and `Am` (also an English word).
+- Written in the short form: `Fmin` → `Fm`, `Cmaj` → `C`, `A♯` → `A#`.
+
+| File name | `title` | `bpm` | `key` |
+| --- | --- | --- | --- |
+| `NW_Bass_Loop_04_128_Fmin.wav` | `NW Bass Loop 04` | `128` | `Fm` |
+| `Lead 128bpm A#m.wav` | `Lead` | `128` | `A#m` |
+| `Vox (C# minor) [140 BPM].wav` | `Vox` | `140` | `C#m` |
+| `Bass_F_minor_124.wav` | `Bass` | `124` | `Fm` |
+| `Keys_Gbmaj_96.wav` | `Keys` | `96` | `Gb` |
+| `Drums_BPM_174.wav` | `Drums` | `174` | — |
+| `Chord_Loop_A_120.wav` | `Chord Loop` | `120` | `A` (beside the BPM) |
+| `Chord_Loop_A.wav` | `Chord Loop A` | — | — (a lone `A`, no BPM beside it) |
+| `Pluck_120_Am.wav` | `Pluck` | `120` | `Am` (beside the BPM) |
+| `Am_Pluck_120.wav` | `Am Pluck` | `120` | — (`Am` isn't beside the BPM) |
+| `Loop_120_Eb.wav` | `Loop` | `120` | `Eb` |
+| `Synth FM 128.wav` | `Synth FM` | `128` | — (`FM` is the synth) |
+| `Pad_090_Cmaj.wav` | `Pad 090` | — (leading zero: an index) | `C` |
+| `Loop_90_128.wav` | `Loop 90 128` | — (two bare numbers, no key beside either) | — |
+| `Loop_100_140_Fm.wav` | `Loop 100` | `140` (the one beside the key) | `Fm` |
+| `Perc_250.wav` | `Perc 250` | — (out of range) | — |
+| `Kick_01.wav` | `Kick 01` | — | — |
+
+Names the parser can't read are left with no BPM or key — fill them in afterwards if you know them, or rename the files. WaveformSounds normalises keys again when it reads the manifest, so a hand-written `"F minor"` works too.
+
+## From code
+
+The same thing as a library call, for a build script:
+
+```js
+import { buildManifest } from '@arraypress/waveform-gen';
+import { writeFile } from 'node:fs/promises';
+
+const manifest = await buildManifest(['./public/previews/Bass/loop-01.wav', './public/previews/Drums/kick.wav'], {
+  root: './public/previews',
+  baseUrl: '/previews/',
+});
+await writeFile('./public/previews/sounds.json', JSON.stringify(manifest, null, 2) + '\n');
+```
+
+Unlike the CLI, `buildManifest()` takes a list of **files** (expand your folders yourself) and **throws** on the first file it can't decode. See [Library API](/extensions/gen/library/#sounds-manifests) for its options and the pieces it's built from — `parseFilename()` among them.

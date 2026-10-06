@@ -16,7 +16,10 @@ The JSON it produces drops straight into the player's [`waveform`](/player/optio
     `waveform-gen ./audio/*.mp3 --output ./waveforms/` — batch-generate one JSON per file.
   </Card>
   <Card title="Library" icon="document">
-    `generatePeaks(filePath, options)` — the single public export, returns a Promise.
+    `generatePeaks(filePath, options)` — returns a Promise of `{ peaks, bpm, duration }`.
+  </Card>
+  <Card title="Sounds manifest" icon="list-format">
+    `waveform-gen ./previews/ --recursive --manifest sounds.json` — one JSON for a whole pack, for [WaveformSounds](/extensions/sounds/) (2.1.0+). See [Sounds manifest](/extensions/gen/manifest/).
   </Card>
 
 </CardGrid>
@@ -104,6 +107,9 @@ waveform-gen song.mp3 --samples 400 --bpm
 
 # Print the peaks array to stdout for piping
 waveform-gen song.mp3 --format inline
+
+# One manifest for a whole pack (WaveformSounds, 2.1.0+)
+waveform-gen ./public/previews/ --recursive --manifest ./public/previews/sounds.json --base-url /previews/
 ```
 
 <Aside type="note" title="Globs are the shell's job">
@@ -121,6 +127,12 @@ WaveformGen does not expand globs itself — `./audio/*.mp3` is expanded by your
 | `--bpm` | `false` | flag | Run BPM detection and write an integer `"bpm"` into the JSON (only when a tempo is found). |
 | `--recursive` | `false` | flag | Scan passed directories recursively. Default scans the top level only. |
 | `--quiet` | `false` | flag | Suppress progress and the summary line. Errors always go to stderr (2.0.0+). |
+| `--manifest <file>` | — | path | Write one [sounds manifest](/extensions/gen/manifest/) for every input instead of a JSON per file (with `--output`, both). 2.1.0+. |
+| `--root <dir>` | _deepest folder containing every input_ | path | Manifest only: the folder URLs and types are relative to. |
+| `--base-url <url>` | `/` | string | Manifest only: the public URL of `--root`. |
+| `--type <name>` | _the file's folder_ | string | Manifest only: one type for every sound. |
+| `--manifest-bars <n>` | `64` | integer | Manifest only: bars per sound. |
+| `--waveform-base-url <url>` | _`--base-url`_ | string | Manifest only: the public URL of `--output`, for each sound's `waveform` link. |
 | `--help`, `-h` | — | flag | Print help and `exit(0)`. Also shown when run with zero arguments. |
 | `--` | — | — | End of flags: every later argument is an input path. |
 
@@ -140,8 +152,8 @@ As of `waveform-gen` 1.5.0 the library default was raised from `200` to `1800`, 
 |-----------|----------|
 | `--help` / `-h` / no args | Prints help, `exit(0)`. |
 | Every file generated | `exit(0)`. |
-| Unknown flag, flag missing its value, value on a boolean flag | `[WaveformGen] … (see --help)`, `exit(2)` before anything runs. |
-| Invalid flag value (`--samples 0`, `--samples abc`, `--format xml`) | Error message, `exit(1)` before anything runs. |
+| Unknown flag, flag missing its value, value on a boolean flag, `--manifest` with `--format inline` | `[WaveformGen] … (see --help)`, `exit(2)` before anything runs. |
+| Invalid flag value (`--samples 0`, `--samples abc`, `--format xml`, `--manifest-bars 0`) | Error message, `exit(1)` before anything runs. |
 | No audio files resolved | `[WaveformGen] No audio files found.`, `exit(1)`. |
 | Fatal / uncaught error | `[WaveformGen] Fatal error: …`, `exit(1)`. |
 | A single file fails to decode, or its output path is already taken | Reported on stderr (`❌ name: message`), **run continues**, then `exit(1)` (2.0.0+). |

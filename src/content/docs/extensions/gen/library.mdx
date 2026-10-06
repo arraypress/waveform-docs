@@ -2,30 +2,31 @@
 title: Library API
 description: The programmatic API, feeding the player, and build pipelines.
 sidebar:
-  order: 3
+  order: 4
 ---
 import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
 ## Library API
 
-The package exports exactly one function — `generatePeaks` — re-exported from `lib/index.js`.
+The package's one entry (`@arraypress/waveform-gen`, ESM) exports `generatePeaks` and `roundPeaks`, plus — since 2.1.0 — the [sounds-manifest](#sounds-manifests) functions: `buildManifest`, `manifestEntry`, `createManifest`, `parseFilename`, `encodePeaks`, `resamplePeaks`, `fileUrl`, `naturalCompare`, `commonRoot`, `relativeTo`, and the constants `MANIFEST_VERSION` (`1`) and `DEFAULT_MANIFEST_BARS` (`64`). No typings ship with it.
 
 ```javascript
 import { generatePeaks } from '@arraypress/waveform-gen';
 
-const { peaks, bpm } = await generatePeaks('./song.mp3', {
+const { peaks, bpm, duration } = await generatePeaks('./song.mp3', {
   samples: 1800,   // optional — library now defaults to 1800 (matches the CLI)
   precision: 2,
   detectBPM: true,
 });
 
-// peaks → number[] normalized 0..1 (loudest = 1.0)
-// bpm   → number | null
+// peaks    → number[] normalized 0..1 (loudest = 1.0)
+// bpm      → number | null
+// duration → number (seconds, 2.1.0+)
 ```
 
 ### `generatePeaks(filePath, options?)`
 
-`(filePath: string, options?: { samples?: number; precision?: number; detectBPM?: boolean }) => Promise<{ peaks: number[]; bpm: number | null }>`
+`(filePath: string, options?: { samples?: number; precision?: number; detectBPM?: boolean }) => Promise<{ peaks: number[]; bpm: number | null; duration: number }>`
 
 Reads and decodes the file, extracts max-amplitude peaks per bin across all channels, normalizes so the loudest peak is `1.0`, and rounds to `precision`.
 
@@ -35,7 +36,9 @@ Reads and decodes the file, extracts max-amplitude peaks per bin across all chan
 | `precision` | `2` | number | Decimal places. `>= 0` rounds; `< 0` returns unrounded normalized peaks. |
 | `detectBPM` | `false` | boolean | When `true`, also run BPM detection and return `bpm` (`number \| null`). |
 
-**Returns** a Promise resolving to `{ peaks, bpm }`. `bpm` is `null` unless `detectBPM` is `true` **and** a stable tempo was found.
+**Returns** a Promise resolving to `{ peaks, bpm, duration }`. `bpm` is `null` unless `detectBPM` is `true` **and** a stable tempo was found. `duration` is the decoded length in seconds (2.1.0+).
+
+`roundPeaks(peaks, precision)` is the rounding step on its own — a negative `precision` returns the peaks unchanged.
 
 **Rejects** on an invalid `samples`, a file that can't be read, or one that can't be decoded — a corrupt mp3/wav/flac/ogg is reported as `appears to be corrupt or unreadable`, m4a/aac get a convert-first hint, and a file that decodes to no audio throws instead of returning empty peaks.
 
@@ -53,7 +56,7 @@ await writeFile('./waveforms/track.json', JSON.stringify(output, null, 2) + '\n'
 ```
 
 <Aside type="note" title="Markers are CLI-only">
-The `.markers.txt` sidecar parsing lives in the CLI, not the library. `generatePeaks()` returns only `{ peaks, bpm }` — if you need markers from the library path, parse the sidecar yourself and merge it into the output object.
+The `.markers.txt` sidecar parsing lives in the CLI, not the library. `generatePeaks()` returns only `{ peaks, bpm, duration }` — if you need markers from the library path, parse the sidecar yourself and merge it into the output object.
 </Aside>
 
 ### BPM detection
@@ -64,6 +67,46 @@ BPM is energy/onset based (window `2048`, hop `1024`): it detects transients, bu
 - **`null`** when there are fewer than 2 onsets or no bucket matched.
 
 It's a heuristic, not exact metadata — verify critical values. When `null`, the CLI omits `bpm` from the JSON entirely.
+
+## Sounds manifests
+
+The functions behind [`--manifest`](/extensions/gen/manifest/) (2.1.0+). Everything but `buildManifest` is pure — no decoding, no file system.
+
+### `buildManifest(files, options?)`
+
+`(files: string[], options?) => Promise<{ version: 1, sounds: object[] }>`
+
+Decodes each file and returns a [WaveformSounds manifest](/extensions/gen/manifest/#output), sorted by path in natural order. `files` are audio file paths — expand folders yourself. It **rejects** on the first file it can't decode (the CLI instead leaves that file out and exits `1`), on a file outside `root`, and on a `bars` that isn't a positive integer.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `root` | the deepest folder containing every file | The folder URLs and types are relative to. |
+| `baseUrl` | `'/'` | The public URL of `root`. |
+| `bars` | `64` | Bars per sound in the hex `peaks`. |
+| `type` | the file's folder name | One type for every sound. |
+| `detectBPM` | `false` | Detect a tempo for files whose name carries none. |
+| `samples` | `1800` | Resolution decoded at before downsampling to `bars`. |
+| `waveform` | — | `(file, rel) => string \| undefined` — the URL of a file's full peaks JSON, written as that sound's `waveform`. |
+
+```javascript
+import { buildManifest } from '@arraypress/waveform-gen';
+
+const manifest = await buildManifest(files, { root: './public/previews', baseUrl: '/previews/' });
+```
+
+### The pieces
+
+| Function | Description |
+|----------|-------------|
+| `parseFilename(name)` | `{ title, bpm, key }` read from a file name or path — the [rules](/extensions/gen/manifest/#bpm-and-key-from-file-names). `bpm` and `key` are `null` when not found. `parseFilename('NW_Bass_Loop_04_128_Fmin.wav')` → `{ title: 'NW Bass Loop 04', bpm: 128, key: 'Fm' }`. |
+| `manifestEntry(analysis, options?)` | One sound from `{ rel, peaks, duration?, bpm? }` (`bpm` is a detected tempo, used only when the name has none) and `{ baseUrl, bars, type, waveform }`. |
+| `createManifest(items)` | `{ version: 1, sounds }` from `{ rel, entry }[]`, sorted by `rel` in natural order. |
+| `encodePeaks(peaks)` | Peaks `0..1` → 8-bit hex, byte-for-byte WaveformSounds' `encodePeaks`. |
+| `resamplePeaks(peaks, count)` | Downsample to `count` bars, keeping the loudest value in each bucket. |
+| `fileUrl(relPath, baseUrl = '/')` | `baseUrl` + the path, each segment URL-encoded (a trailing `/` is added to `baseUrl`). |
+| `naturalCompare(a, b)` | The path order: numeric, case-insensitive, folder by folder. |
+| `commonRoot(entries)` | The deepest folder containing every `{ path, isDir }` entry (a file counts as its folder); `null` when there is none. |
+| `relativeTo(root, file)` | A file's path under `root` with `/` separators; throws when it's outside. |
 
 ## Feeding the player
 
@@ -127,7 +170,7 @@ Every supported file under `./public/audio/` becomes a JSON at the same relative
 
 ### Programmatic batch with a manifest
 
-When you need more control — a manifest, custom file names, or merged metadata — drive the library directly:
+When you need more control — your own index file, custom file names, or merged metadata — drive the library directly. (For a [WaveformSounds](/extensions/sounds/) list, use [`--manifest`](/extensions/gen/manifest/) or `buildManifest()` instead: they write the format it reads.)
 
 ```javascript
 import { generatePeaks } from '@arraypress/waveform-gen';
