@@ -15,7 +15,20 @@ The Astro, React, Svelte and Vue wrappers (`@arraypress/waveform-sounds-astro`, 
 
 ## [Unreleased]
 
-## [0.1.1] — 2026-10-07
+## [0.1.2] — 2026-10-07
+
+### Fixed
+
+- **The `strip` layout keeps its docked styling.** The engine was mounted on
+  the `.ws-engine` slot itself, and `WaveformPlayer` resets its container's
+  `className`, so `ws-engine--strip` was wiped on the first play: no sticky
+  position, border, padding, `--ws-strip-bg` or `--ws-radius`. The engine now
+  mounts into a child of the slot (`[data-ws-engine-mount]`, made at runtime,
+  so server-rendered markup from 0.1.0/0.1.1 works unchanged) and `destroy()`
+  removes it.
+- `render.d.ts` declares `escapeHtml`, which `/render` has always exported.
+
+## [0.1.1] — 2026-10-06
 
 ### Fixed
 
