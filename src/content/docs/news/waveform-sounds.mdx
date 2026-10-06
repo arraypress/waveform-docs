@@ -1,0 +1,70 @@
+---
+title: WaveformSounds — a sound list for sample packs
+description: '@arraypress/waveform-sounds is a new extension: a searchable, filterable list of sound previews, with a mini waveform per row and one shared audio engine.'
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import SoundsDemo from '~/components/SoundsDemo.astro';
+
+There's a new member of the family: **[`@arraypress/waveform-sounds`](/extensions/sounds/)**, first
+released on **6 October 2026**. It's a list of sounds — the previews inside a sample pack, a preset
+bank or a sound library — that people can search, filter and audition.
+
+<SoundsDemo />
+
+## Why another list?
+
+[WaveformPlaylist](/extensions/playlist/) is made for listening: an album, a podcast, a few tracks
+with artwork and chapters. A sample pack is a different job. It can hold hundreds of short previews,
+and the person browsing it isn't listening through — they're hunting for the right kick, a bass
+loop at 128 BPM, something in F minor.
+
+So WaveformSounds is built around finding and auditioning:
+
+- **Search, type chips, a key menu, a BPM range and a sort menu** — each one appearing only when
+  your data gives it something to filter.
+- **Auditioning from the keyboard**: while a sound plays, ↓ plays the next one, the way a sample
+  browser does. ← / → seek, `/` jumps to the search.
+- **One audio engine for the whole list.** Every sound plays through a single
+  [WaveformPlayer](/player/options/); the rows are just a button, some text and a small waveform
+  drawn from low-resolution peaks when it scrolls into view. Hundreds of sounds is hundreds of rows,
+  not hundreds of players.
+- **Filters in the address**, so a filtered list can be shared; optional per-sound **download
+  links**; listen analytics through [WaveformTracker](/extensions/tracker/) with no extra code.
+- **Server rendering.** A DOM-free renderer writes the whole list as HTML, and the runtime adopts
+  it instead of rebuilding it.
+- **Colour-agnostic**, like the rest of the family: it takes its colours from the page, light or
+  dark, until you give it a brand colour.
+
+## One manifest for the whole pack
+
+The data is a single JSON file, and [`waveform-gen`](/extensions/gen/) 2.1.0 writes it for you:
+
+```sh
+npx @arraypress/waveform-gen ./public/previews/ --recursive \
+  --manifest ./public/previews/sounds.json --base-url /previews/
+```
+
+It reads each file's BPM and key from its name (`Bass_Loop_04_128_Fmin.wav`), its type from its
+folder, and stores 64 bars of peaks per sound as a short hex string. Where a name is ambiguous it
+leaves the value out rather than guess. Then the list is one element:
+
+```html
+<div data-waveform-sounds data-manifest="/previews/sounds.json"></div>
+```
+
+<Aside type="tip" title="Frameworks">
+	There are wrappers for [Astro](/frameworks/astro/#the-sound-list),
+	[React](/frameworks/react/#sounds--waveformsounds),
+	[Svelte](/frameworks/svelte/#sounds--waveformsounds) and
+	[Vue](/frameworks/vue/#sounds--waveformsounds) — all four render the list on the server when you
+	give them the sounds.
+</Aside>
+
+## Get started
+
+Start with [Sounds → Getting Started](/extensions/sounds/), then
+[Generator → Sounds manifest](/extensions/gen/manifest/) for the file-name rules. The release notes
+are in the [changelog](/changelog/sounds/).
