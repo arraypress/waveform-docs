@@ -179,7 +179,7 @@ A bare array of sounds works too. `version` is informational. `peakScale` is the
 | `type` | `string` | The kind of sound ("Drum loops", "Bass", "One-shots") — the type chips and the Type column. |
 | `bpm` | `number \| string` | Tempo. Enables the BPM range filter and sort, and lets a number in the search match it. Kept to two decimals; `0` or anything non-numeric is no BPM. |
 | `key` | `string` | Musical key in any common spelling — `"F minor"`, `"Fmin"`, `"f m"` → `Fm`; `"C# Major"`, `"C♯"` → `C#`. Shown and filtered in that short form; an unparseable key is kept as written. |
-| `duration` | `number \| string` | Length: seconds (`8.02`) or `"m:ss"` / `"h:mm:ss"`. Shown as `m:ss`. |
+| `duration` | `number \| string` | Length: seconds (`8.02`) or `"m:ss"` / `"h:mm:ss"`. Shown as `m:ss`, or in tenths under a second (`0.4s`, 0.1.3+). |
 | `tags` | `string[] \| string` | Extra words the search matches. A string is split on commas. |
 | `peaks` | `string \| number[]` | Low-resolution peaks for the row waveform: an 8-bit hex string (two characters per bar, `00`–`ff`) or numbers `0..1`. Without them the row shows a flat line until it's played. |
 | `waveform` | `string \| number[]` | Full-resolution peaks for the `strip` layout's docked player — a [`waveform-gen`](/extensions/gen/) `.json` URL or an array. |

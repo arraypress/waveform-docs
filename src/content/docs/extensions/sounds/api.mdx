@@ -160,7 +160,7 @@ The renderer reads the options that shape the markup: `player`, `search`, `filte
 | `facets(sounds)` | What the controls would offer: `{ types: {name, count}[], keys: string[], bpm: {min, max} \| null, hasDuration: boolean }`. |
 | `matches(sound, filter?): boolean` | Whether a sound passes a filter — the same search and filter rules as the list. |
 | `sortSounds(sounds, by = 'default'): Sound[]` | A sorted copy. Missing values sort last. |
-| `formatDuration(seconds): string` | `m:ss`, or `''` when unknown. |
+| `formatDuration(seconds): string` | `m:ss`; tenths under a second (`0.4s`, 0.1.3+); `''` when unknown. |
 | `renderSounds(sounds, options?): string` | As above. |
 
 ```js
