@@ -69,7 +69,7 @@ With the colours left unset, the canvas uses the [`--ws-wave-color` and `--ws-pr
 
 | Option | `data-*` | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `loop` | `data-loop` | `boolean` | `false` | Start with Loop on. Change it later with [`setLoop()`](/extensions/sounds/api/#public-methods). |
+| `loop` | `data-loop` | `boolean \| null` | `null` | Start with Loop on or off. `null`: on when any sound is marked `loop: true` (then only loops repeat), off otherwise (0.3.0+; `false` before). Change it later with [`setLoop()`](/extensions/sounds/api/#public-methods). |
 | `autoAdvance` | `data-auto-advance` | `boolean` | `false` | Play the next visible sound when one ends (in the current filter and sort; no wrap at the end). |
 | `arrowAudition` | `data-arrow-audition` | `boolean` | `true` | While a sound plays, ↑ / ↓ (and Home / End) move to a row **and** play it — the sample-browser audition. Off, they only move focus. |
 

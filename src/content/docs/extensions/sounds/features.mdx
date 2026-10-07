@@ -22,14 +22,14 @@ import SoundsDemo from '~/components/SoundsDemo.astro';
 
 ## Search and filters
 
-Above the rows, in order: the search box, a row of controls (type menu, key menu, BPM range, Loops / One-shots, sort menu, Loop toggle), then the type chips and the count.
+Above the rows, in order: the search box, a row of controls (type menu, key menu, BPM menu, Loops / One-shots, sort menu, Loop toggle), then the type chips and the count.
 
 - **Search** matches every word, in any order, against the title, type, key and tags — forgiving one typo in a word of four letters or more, so `drun` finds drum loops. A number in the query also matches the BPM exactly: `bass 128` finds 128 BPM bass loops.
 - **Type** — one chip per type, with its count, plus **All**. Past `maxTypeChips` types (default 10) the chips become a **Type** menu instead: a pack has a handful of types, a whole library can have fifty.
 - **Key** — a menu of every key in the data, in musical order (C, C#, D … B, each major before its minor).
-- **BPM** — a min / max range, with the data's range as the placeholders. Sounds without a BPM drop out while a range is set.
+- **BPM** — a menu (`Any BPM`, or `120–128 BPM` once set) opening a two-handle range across the pack's own tempos. Drag either handle (or focus one and use the arrow keys, one BPM a step); the label follows the drag and the list re-filters once it settles. A handle left at an end is no limit on that side. Sounds without a BPM drop out while a limit is set. *0.3.0+; before that, two number fields.*
 - **Sort** — the orders in `sorts`, the first being the starting order: `default` (as given), `title` (natural order, so `Loop 2` sorts before `Loop 10`), `bpm`, `key` and `duration`. Sounds missing the value sort last.
-- **Loop** — loops the current sound (auditioning a loop is the common case). `loop` starts with it on.
+- **Loop** — repeats the current sound. On a list that marks its loops it starts **on** and repeats only loops (a one-shot plays once); on one that doesn't, it starts off and repeats whatever plays. The `loop` option overrides the starting state.
 - **The count** — `300 sounds`, or `12 of 300 sounds` while a filter is on. It's an `aria-live` region.
 
 **Every control appears only when the data gives it something to do**: no type filter for a single type, no key menu for a single key, no BPM range without a spread of tempos, no Loops / One-shots filter unless the list has both, no sort order the data can't use (no BPM sort without BPMs), and no Sort menu with only one usable order. And every control can go: `search`, `filters`, `sorts`, `loopToggle`, `showCount` and `columns` remove them one by one. To take BPM out everywhere, leave it out of all three lists:
@@ -114,7 +114,7 @@ That does three things:
 
 - **A loop icon** beside the name (with "Loop" for screen readers). One-shots carry nothing.
 - **An All / Loops / One-shots filter**, once the list has both kinds — someone hunting for a kick doesn't have to scroll past forty drum loops. It's the `'loop'` entry in [`filters`](/extensions/sounds/options/) (on by default; leave it out to hide the control), and `?loop=loop` / `?loop=one-shot` with [`urlState`](#filters-in-the-address).
-- **The Loop toggle repeats only loops.** A one-shot always plays once, toggle or not.
+- **The Loop toggle starts on, and repeats only loops** (0.3.0+; on 0.2.x it started off). A one-shot always plays once, toggle or not; turn it off to hear loops once.
 
 A list that marks no loops behaves exactly as before: no filter, and the Loop toggle repeats whatever plays. [`waveform-gen --manifest`](/extensions/gen/manifest/#loops-from-the-path) (2.2.0+) sets `loop: true` for files whose folder or name has the word "loop" in it.
 

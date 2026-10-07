@@ -15,6 +15,29 @@ The Astro, React, Svelte and Vue wrappers (`@arraypress/waveform-sounds-astro`, 
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-07
+
+### Changed
+
+- **BPM is a menu with a two-handle range** instead of two number fields.
+  The button reads `Any BPM`, or `120–128 BPM` once set; its panel holds a
+  range across the pack's own tempos (two native range inputs on one track:
+  arrow keys, screen readers and touch work as they do on any slider), the
+  live readout and an `Any BPM` reset. The label follows the drag; the list
+  re-filters once it settles. A handle left at an end is no limit on that
+  side, so a range nobody narrowed never hides the sounds without a BPM.
+  `?bpm=` in the address and `setFilter({bpmMin, bpmMax})` work as before.
+  New strings: `anyBpm`, `bpmRange`.
+- **On a list that marks loops, Loop starts on.** Only loops repeat (as in
+  0.2.0), so loops repeat out of the box and one-shots still play once. The
+  `loop` option now defaults to `null` (follow the data); `true` / `false`
+  still force it. A list that marks nothing starts with it off, as before.
+
+### Removed
+
+- `.ws-bpm-range` and its number inputs (`data-ws-bpm-min` / `-max` are
+  now the range handles).
+
 ## [0.2.0] — 2026-10-07
 
 ### Added

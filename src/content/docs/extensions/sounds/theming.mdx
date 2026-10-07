@@ -65,9 +65,10 @@ Setting it in a theme that switches between light and dark? Point it at the same
 | Class | Element |
 | --- | --- |
 | `.waveform-sounds` | The container. `.waveform-sounds--inline` / `.waveform-sounds--strip` for the layout. It's an `inline-size` container, so the narrow row layout follows the list's width, not the window's. |
-| `.ws-toolbar` | Everything above the rows. `.ws-search` / `.ws-search-input` the search box; `.ws-controls` the row of menus, BPM range and Loop; `.ws-meta` the chips and count. |
+| `.ws-toolbar` | Everything above the rows. `.ws-search` / `.ws-search-input` the search box; `.ws-controls` the row of menus and Loop; `.ws-meta` the chips and count. |
 | `.ws-menu` / `.ws-menu-btn` / `.ws-menu-pop` / `.ws-menu-list` / `.ws-menu-option` | A dropdown: the wrapper, its button, the popup, the listbox and an option (`.is-active` while highlighted, `aria-selected` when chosen). `.ws-menu-search` is its search field, `.ws-menu-count` an option's count, `.ws-menu-none` the no-matches line. |
-| `.ws-bpm-range` | The BPM fields. |
+| `.ws-menu--bpm` / `.ws-bpm-pop` | The BPM menu and its panel; `.ws-bpm-readout` / `.ws-bpm-clear` its range and reset. |
+| `.ws-range` / `.ws-range-input` | The two-handle range: the track (`::before`), the filled span (`::after`, `.is-active` once narrowed), and each handle (a native range input). |
 | `.ws-loop` | The Loop toggle (`aria-pressed`). |
 | `.ws-seg` / `.ws-seg-btn` | The All / Loops / One-shots control and its buttons (`aria-pressed` on the chosen one). |
 | `.ws-types` / `.ws-chip` | The type chips (`aria-pressed` on the selected one); `.ws-chip-count` the count inside one. |
