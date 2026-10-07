@@ -72,7 +72,7 @@ Or load both from a CDN — **player first**, then the playlist:
 
 The IIFE build exposes a global `WaveformPlaylist`; the package also ships an ESM build (`waveform-playlist.esm.js`) with a default export, plus a minified IIFE for `unpkg`.
 
-The playlist also requires the **[Tabler Icons](https://tabler.io/icons) font** if you use artwork — the play/pause overlay renders `ti ti-player-play` / `ti ti-player-pause` glyphs.
+The play/pause and "now playing" glyphs are inline SVG, so no icon font is needed. (Before 1.9.0 the playlist relied on the page loading the [Tabler Icons](https://tabler.io/icons) font, and its icons were blank without it.)
 
 ## Quick start
 

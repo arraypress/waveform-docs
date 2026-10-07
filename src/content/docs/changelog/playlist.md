@@ -13,6 +13,41 @@ Generated from [`@arraypress/waveform-playlist`'s CHANGELOG](https://github.com/
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-10-07
+
+### Changed
+
+- **A redesigned stylesheet, one grid for every layout.** Three variables
+  line everything up — `--wp-inset`, `--wp-thumb-size`, `--wp-gap`: the
+  cover, thumbnails and chapter dots share a left edge, titles and chapter
+  labels start on one line, and durations, chapter times and the hero clock
+  end on one right edge in tabular figures. (Measured on 1.8.0's hero layout:
+  six different left edges.)
+- **The playing track is marked once:** a bold title and an animated
+  "now playing" glyph on its thumbnail (pause under the pointer), instead of
+  a tint, a side bar, bold text and a play icon at once.
+- **No nested boxes.** One hairline divides "now playing" from the list; the
+  bordered list box and per-row borders are gone. Rows are 48px (40px
+  compact), with a rounded hover.
+- **Chapters** sit under their track on the title line, with a dot rail —
+  the playing chapter's dot filled, its label bold — instead of an inset
+  panel with a highlight louder than the track's. Times are right-aligned in
+  the page font (they were the browser's default monospace).
+- **Hero:** the title (larger) and artist sit above the waveform with the
+  time; the cover's glyph is a small disc, so the artwork isn't dimmed, and
+  it hides while playing (not on a cover without artwork). The default
+  `coverSize` is `height + 48` (was `+ 36`). Marker labels open below the
+  waveform there, clear of the title.
+- The grid's now-playing bar has its title above the waveform too, under a
+  hairline instead of in a box.
+
+### Fixed
+
+- **Icons no longer need an icon font.** Play/pause rendered as Tabler
+  `ti` glyphs, so on a page without the Tabler font every icon was blank.
+  They're inline SVG now (`.wp-state`, `data-state` = `play` | `pause` |
+  `playing`); the `ti-*` classes are gone.
+
 ## [1.8.0] — 2026-09-24
 
 ### Fixed

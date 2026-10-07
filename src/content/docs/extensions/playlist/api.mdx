@@ -73,8 +73,8 @@ The playlist dispatches **no custom DOM events of its own** — it has no emit p
 | --- | --- |
 | player `onEnd` | Resets chapter highlight to the start; auto-advances to the next track if `continuous` and not on the last track. |
 | player `onTimeUpdate(current, total)` | Re-highlights the active chapter row (`.wp-active` + `aria-current`; chapters sharing a start time highlight the first), updates the hero/grid time readout, and — once the duration is known — warns about chapters that start after the track ends. |
-| player `onPlay` | Sets `isPlaying = true`, marks the active track, updates the artwork overlay icon to `ti-player-pause`. |
-| player `onPause` | Sets `isPlaying = false`, updates the overlay icon to `ti-player-play`; if paused at the end (`current >= duration - 0.1`) resets `currentChapterIndex = -1` and re-highlights chapter 0. |
+| player `onPlay` | Sets `isPlaying = true`, marks the active track, and sets the play-state glyph (`.wp-state`) to `data-state="playing"` (the animated bars; a pause icon under the pointer) — `"pause"` on the hero cover. |
+| player `onPause` | Sets `isPlaying = false`, sets the glyph back to `data-state="play"`; if paused at the end (`current >= duration - 0.1`) resets `currentChapterIndex = -1` and re-highlights chapter 0. |
 | player `onLoad(player)` | Runs a pending cross-track chapter seek if this is the track it was waiting for. |
 | player `onError` | Cancels a pending chapter seek. |
 | player `onNextTrack` / `onPreviousTrack` | The lock-screen / Media Session skip buttons call `nextTrack()` / `previousTrack()`. |
@@ -91,20 +91,35 @@ The playlist generates a structured DOM you can target for theming. Key hooks:
 | `.wp-player` | The generated player wrapper (list / minimal layouts). In the **hero** and **grid** layouts the embedded player renders into `.wp-hero-stage` instead. |
 | `.wp-list-container` / `.wp-list` | The list wrapper and the `<ul>` track list. `.wp-chapters-only` is the single-track-with-chapters variant. |
 | `.wp-item` | Track row (`role="button"`). `.wp-active` marks the active row. |
-| `.wp-indicator` | Track-number badge (shown when a track has no artwork). |
+| `.wp-indicator` | Track number (shown when a track has no artwork). |
+| `.wp-state` | A play-state glyph: inline SVG play / pause icons and the animated "now playing" bars, one shown by `data-state` (`play`, `pause`, `playing`). |
 | `.wp-artwork-container` / `.wp-artwork` / `.wp-artwork-overlay` | Artwork wrapper, image, and the active-track play/pause overlay. |
 | `.wp-info` / `.wp-title` / `.wp-artist` / `.wp-duration` | The text column. |
-| `.wp-chapters` / `.wp-chapter` | Nested chapter list and rows under a track (multi-track). `.wp-chapter-time` / `.wp-chapter-label` for the row contents. |
+| `.wp-chapters` / `.wp-chapter` | Nested chapter list and rows under a track (multi-track), starting on the title line, with a dot rail in the lead column (`::before` / `::after`). `.wp-chapter-time` / `.wp-chapter-label` for the row contents. |
 | `.wp-chapter-item` / `.wp-time` / `.wp-label` | Rows in the single-track chapters-only list. |
 | `.wp-controls` / `.wp-track-btn` | Minimal-layout button container and buttons (`aria-pressed` reflects selection). |
-| `.wp-hero` / `.wp-hero-cover` / `.wp-hero-art` / `.wp-hero-overlay` | **Hero** — the "now playing" unit, the cover play/pause button, its image, and the overlay icon. |
-| `.wp-hero-stage` / `.wp-hero-meta` / `.wp-hero-title` / `.wp-hero-sub` / `.wp-hero-time` | **Hero** — the waveform stage (hosts the player) and the title / artist / current-total-time meta row. |
+| `.wp-hero` / `.wp-hero-cover` / `.wp-hero-art` / `.wp-hero-overlay` | **Hero** — the "now playing" unit, the cover play/pause button (`.is-playing` while it plays, `.has-art` with artwork), its image, and the disc behind the glyph. |
+| `.wp-hero-stage` / `.wp-hero-meta` / `.wp-hero-title` / `.wp-hero-sub` / `.wp-hero-time` | **Hero** — the waveform stage (hosts the player) and the title / artist / current-total-time meta row above it. |
 | `.wp-queue` / `.wp-queue-item` / `.wp-queue-thumb` / `.wp-queue-state` | **Hero** — the stripped track queue: list, row, thumbnail, and the per-row play-state indicator. |
 | `.wp-now-bar` / `.wp-now-bar-top` / `.wp-now-meta` | **Grid** — the slim now-playing transport bar (`.wp-now-bar-top` when `barPosition: 'top'`) and its title/time meta. |
 | `.wp-grid` / `.wp-grid-item` / `.wp-grid-cover` / `.wp-grid-art` / `.wp-grid-title` | **Grid** — the card container, a card (active card is ringed), the cover wrapper, image, and title. |
 
-<Aside type="note" title="Dark-surface styling">
-The default CSS assumes a dark surface and uses modern features — `color-mix(in srgb, currentColor …, transparent)` for active states and `backdrop-filter: blur(2px)` on the artwork overlay. Theming is driven by `currentColor` / `inherit`, with responsive tweaks at `max-width: 480px`.
+### Layout variables
+
+*1.9.0+.* One grid lines every layout up: the cover, thumbnails and chapter dots share a left edge; titles and chapter labels start on one line; durations, chapter times and the hero clock end on one right edge. Set these on `.waveform-playlist` (or an ancestor):
+
+| Variable | Default | What it sets |
+| --- | --- | --- |
+| `--wp-inset` | `0.5rem` | The left/right inset of every row and the hero. |
+| `--wp-thumb-size` | `36px` (`28px` compact) | The lead column: thumbnail, track number, chapter dot. Also set by `thumbnailSize`. |
+| `--wp-gap` | `0.875rem` | Lead column → text. |
+| `--wp-row-height` | `3rem` (`2.5rem` compact) | A row's minimum height. |
+| `--wp-radius` | `8px` | Row hover and grid-card corners. |
+| `--wp-muted` / `--wp-line` / `--wp-hover` | from `currentColor` | Secondary text, hairlines, hover fill. |
+| `--wp-cover-overlay-color` / `--wp-cover-overlay-scrim` | `#fff` / `rgba(0,0,0,0.5)` | The glyph over artwork and its disc (keeps it over 3:1 on any cover — change the pair together). |
+
+<Aside type="note" title="Colour-agnostic">
+Everything derives from `currentColor`, so the playlist fits a light page and a dark one as is. It uses `color-mix(in srgb, currentColor …, transparent)` for tints and `backdrop-filter` on the glyph discs, with responsive tweaks at `max-width: 480px`.
 </Aside>
 
 ## Cleanup

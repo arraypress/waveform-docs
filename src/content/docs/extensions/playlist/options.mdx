@@ -14,7 +14,7 @@ The playlist picks one of five UIs based on content and the `layout` option:
 
 2. **Minimal** — `layout: 'minimal'` renders a compact row of pill buttons (`.wp-controls` / `.wp-track-btn`), one per track. Good for album switchers and tight footers.
 
-3. **List** (default) — everything else renders the full track-row list (`.wp-list`), each row showing artwork/number, title, artist and duration, with chapters as expandable nested sub-lists under the active track.
+3. **List** (default) — everything else renders the full track-row list (`.wp-list`), each row showing artwork/number, title, artist and duration, with chapters as expandable nested sub-lists under the active track (indented to the title, with a dot rail).
 
 4. **Hero** — `layout: 'hero'` (added in 1.4.0) — a "now playing" unit: the cover artwork doubles as the play/pause button beside the waveform, with a title/artist and a current/total time readout, shown over a stripped track queue. A single **chaptered** track instead renders a seekable chapter list with chapter markers on the waveform.
 
@@ -62,7 +62,7 @@ The following sizing/position options were added in 1.4.0. Most apply to the **h
 
 | Option | `data-*` | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `coverSize` | `data-cover-size` | `number \| null` | `null` | Hero cover size in px. `null` derives a size from the waveform height (`(height ?? 56) + 36`). |
+| `coverSize` | `data-cover-size` | `number \| null` | `null` | Hero cover size in px. `null` derives a size from the waveform height plus the title block above it (`(height ?? 56) + 48`; `+ 36` before 1.9.0). |
 | `thumbnailSize` | `data-thumbnail-size` | `number \| null` | `null` | Queue/grid/list artwork size in px. Sets the `--wp-thumb-size` CSS var (list & hero queue) and `--wp-grid-cover` (grid). `null` falls back to the CSS default. |
 | `density` | `data-density` | `'comfortable' \| 'compact'` | `'comfortable'` | Row spacing for list rows, the hero queue, grid cards and chapters. `'compact'` adds `.wp-density-compact` for tighter rows. |
 | `coverPosition` | `data-cover-position` | `'left' \| 'top'` | `'left'` | Hero only — place the cover beside (`'left'`) or above (`'top'`) the waveform. `'top'` adds `.wp-cover-top`. |
