@@ -15,6 +15,25 @@ The Astro, React, Svelte and Vue wrappers (`@arraypress/waveform-sounds-astro`, 
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-08
+
+### Fixed
+
+- **The strip's docked player no longer starts empty.** It showed a play
+  button, no waveform and `0:00 / 0:00`, and its button did nothing. The
+  first sound the list shows is now cued in it — title, waveform, length —
+  without playing (metadata only, the browser default for any `<audio>`),
+  and its button plays it. Its row isn't marked until it plays, `current`
+  stays `null`, `next()` starts with it, and a filter change re-cues the
+  first sound still shown until something plays.
+- **The docked player stays in place.** It was `position: sticky`, so it
+  slid along the bottom of the screen over the rows as the page scrolled.
+  It's static now; `--ws-strip-position: sticky` brings the old behaviour
+  back for a long list.
+- **Rows and the player agree on lengths.** Rows rounded to the nearest
+  second and the player's clock rounds down, so a 7.6s sound read `0:08`
+  in its row and `0:07` in the player. Rows round down too now.
+
 ## [0.3.0] — 2026-10-07
 
 ### Changed

@@ -12,7 +12,7 @@ import SoundsDemo from '~/components/SoundsDemo.astro';
 `player` picks one of two layouts:
 
 - **`inline`** (default) — every row has a mini waveform. The playing row fills with progress, and pressing its waveform seeks. The engine player is hidden.
-- **`strip`** — plain rows with no waveform; the engine is shown as a full player docked under the list for the current sound, and it sticks to the bottom of the viewport while a long list scrolls (0.1.2 and later; before that a bug dropped its docked styling on the first play). A sound's `waveform` (full-resolution peaks) is drawn there when it has one; otherwise its row `peaks` are.
+- **`strip`** — plain rows with no waveform; the engine is shown as a full player docked under the list for the current sound, and it starts with the first sound cued — its title, waveform and length, ready to play (0.3.1+; before that it was an empty frame). It stays in place under the list; set `--ws-strip-position: sticky` to keep it at the bottom of the viewport while a long list scrolls. A sound's `waveform` (full-resolution peaks) is drawn there when it has one; otherwise its row `peaks` are.
 
 <SoundsDemo player="strip" />
 
