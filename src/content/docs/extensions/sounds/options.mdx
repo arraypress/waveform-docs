@@ -40,16 +40,16 @@ Unknown entries in `filters`, `sorts` and `columns` are dropped, `menuSearch` / 
 | --- | --- | --- | --- | --- |
 | `player` | `data-player` | `'inline' \| 'strip'` | `'inline'` | `'inline'`: a mini waveform per row; the playing row fills and seeks. `'strip'`: plain rows and one full player docked below. See [Layouts](/extensions/sounds/features/#layouts). |
 | `search` | `data-search` | `boolean` | `true` | Show the search box. |
-| `filters` | `data-filters` | `('type' \| 'key' \| 'bpm')[]` | `['type', 'key', 'bpm']` | Which filter controls to offer. Each appears only when the data has something to filter: 2+ types, 2+ keys, a spread of BPMs. `[]` = no filters. |
+| `filters` | `data-filters` | `('type' \| 'key' \| 'bpm' \| 'loop')[]` | `['type', 'key', 'bpm', 'loop']` | Which filter controls to offer. Each appears only when the data has something to filter: 2+ types, 2+ keys, a spread of BPMs, both loops and one-shots (`'loop'`, 0.2.0+). `[]` = no filters. |
 | `sorts` | `data-sorts` | `('default' \| 'title' \| 'bpm' \| 'key' \| 'duration')[]` | all five, in that order | The orders the Sort menu offers, in order; **the first is the starting order**. Orders the data can't use are dropped. `[]` (or a single usable order) hides the menu. |
 | `showCount` | `data-show-count` | `boolean` | `true` | Show the `12 of 300 sounds` count. |
 | `menuSearch` | `data-menu-search` | `number` | `8` | A dropdown (type / key / sort) gets a search field when it has **more** than this many options. |
 | `maxTypeChips` | `data-max-type-chips` | `number` | `10` | Up to this many types show as chips; more become a **Type** menu. |
-| `loopToggle` | `data-loop-toggle` | `boolean` | `true` | Show the Loop toggle. |
+| `loopToggle` | `data-loop-toggle` | `boolean` | `true` | Show the Loop toggle. When any sound is marked `loop: true`, it repeats only loops. |
 | `pageSize` | `data-page-size` | `number` | `50` | Rows shown before **Show more**. `0` shows all. |
 | `columns` | `data-columns` | `('type' \| 'bpm' \| 'key' \| 'duration')[]` | `['type', 'bpm', 'key', 'duration']` | The columns after the title, in this order. `[]` = title only. |
 | `idPrefix` | `data-id-prefix` | `string` | the container's `id`, else a hash of the sounds | Prefix for the dropdowns' element ids. Two lists of the **same** sounds on one page each need one (or an `id`). The framework wrappers always pass a unique one. |
-| `urlState` | `data-url-state` | `boolean \| string` | `false` | Keep the filters and sort in the address. `true` uses `q`, `type`, `key`, `bpm`, `sort`; a string prefixes them (`'pack'` → `pack-q`, …). See [Filters in the address](/extensions/sounds/features/#filters-in-the-address). |
+| `urlState` | `data-url-state` | `boolean \| string` | `false` | Keep the filters and sort in the address. `true` uses `q`, `type`, `key`, `bpm`, `loop`, `sort`; a string prefixes them (`'pack'` → `pack-q`, …). See [Filters in the address](/extensions/sounds/features/#filters-in-the-address). |
 
 ## Row waveform
 
@@ -120,7 +120,7 @@ Each callback fires alongside the matching bubbling [`waveformsounds:*` event](/
 | `onFilter` | `(visible, instance) => void` | After every filter, sort or page change — and once when the list is built — with the matching sounds, in sort order. |
 | `onError` | `(error, instance) => void` | The list failed to build (e.g. the manifest request failed), or a sound failed to load or play. |
 
-`sound` is the normalised [`Sound`](/extensions/sounds/api/#types) — `{ id, url, title, type, bpm, key, duration, tags, peaks, waveform, download }`.
+`sound` is the normalised [`Sound`](/extensions/sounds/api/#types) — `{ id, url, title, type, bpm, key, duration, tags, peaks, waveform, download, loop }`.
 
 ## Defaults at a glance
 
@@ -130,7 +130,7 @@ Each callback fires alongside the matching bubbling [`waveformsounds:*` event](/
 {
   player: 'inline',
   search: true,
-  filters: ['type', 'key', 'bpm'],
+  filters: ['type', 'key', 'bpm', 'loop'],
   sorts: ['default', 'title', 'bpm', 'key', 'duration'],
   loopToggle: true,
   showCount: true,

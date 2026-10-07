@@ -8,7 +8,7 @@ import { Tabs, TabItem, Aside, Card, CardGrid, Steps } from '@astrojs/starlight/
 
 ## Library API
 
-The package's one entry (`@arraypress/waveform-gen`, ESM) exports `generatePeaks` and `roundPeaks`, plus — since 2.1.0 — the [sounds-manifest](#sounds-manifests) functions: `buildManifest`, `manifestEntry`, `createManifest`, `parseFilename`, `encodePeaks`, `resamplePeaks`, `fileUrl`, `naturalCompare`, `commonRoot`, `relativeTo`, and the constants `MANIFEST_VERSION` (`1`) and `DEFAULT_MANIFEST_BARS` (`64`). No typings ship with it.
+The package's one entry (`@arraypress/waveform-gen`, ESM) exports `generatePeaks` and `roundPeaks`, plus — since 2.1.0 — the [sounds-manifest](#sounds-manifests) functions: `buildManifest`, `manifestEntry`, `isLoopPath` (2.2.0+), `createManifest`, `parseFilename`, `encodePeaks`, `resamplePeaks`, `fileUrl`, `naturalCompare`, `commonRoot`, `relativeTo`, and the constants `MANIFEST_VERSION` (`1`) and `DEFAULT_MANIFEST_BARS` (`64`). No typings ship with it.
 
 ```javascript
 import { generatePeaks } from '@arraypress/waveform-gen';
@@ -99,7 +99,8 @@ const manifest = await buildManifest(files, { root: './public/previews', baseUrl
 | Function | Description |
 |----------|-------------|
 | `parseFilename(name)` | `{ title, bpm, key }` read from a file name or path — the [rules](/extensions/gen/manifest/#bpm-and-key-from-file-names). `bpm` and `key` are `null` when not found. `parseFilename('NW_Bass_Loop_04_128_Fmin.wav')` → `{ title: 'NW Bass Loop 04', bpm: 128, key: 'Fm' }`. |
-| `manifestEntry(analysis, options?)` | One sound from `{ rel, peaks, duration?, bpm? }` (`bpm` is a detected tempo, used only when the name has none) and `{ baseUrl, bars, type, waveform }`. |
+| `manifestEntry(analysis, options?)` | One sound from `{ rel, peaks, duration?, bpm? }` (`bpm` is a detected tempo, used only when the name has none) and `{ baseUrl, bars, type, waveform }`. Adds `loop: true` when the path names a loop (2.2.0+). |
+| `isLoopPath(rel): boolean` | Whether a folder or the file name has the word "loop" / "loops" in it (camelCase split first; a whole word only). 2.2.0+. |
 | `createManifest(items)` | `{ version: 1, sounds }` from `{ rel, entry }[]`, sorted by `rel` in natural order. |
 | `encodePeaks(peaks)` | Peaks `0..1` → 8-bit hex, byte-for-byte WaveformSounds' `encodePeaks`. |
 | `resamplePeaks(peaks, count)` | Downsample to `count` bars, keeping the loudest value in each bucket. |

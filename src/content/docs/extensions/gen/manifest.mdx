@@ -64,6 +64,7 @@ npx @arraypress/waveform-gen ./public/previews/ --recursive \
       "type": "Bass",
       "bpm": 128,
       "key": "Fm",
+      "loop": true,
       "duration": 8.02,
       "peaks": "1f3a…"
     }
@@ -80,6 +81,7 @@ Pretty-printed (2-space indent) with a trailing newline. Each sound has, in this
 | `type` | When there is one | `--type`, else the name of the file's folder. None for a file directly in `--root`. |
 | `bpm` | When known | From the file name; with `--bpm`, a detected tempo fills in when the name has none. Left out otherwise — never guessed. |
 | `key` | When known | From the file name, in the short form (`Fm`, `C#`, `Bb`). Left out otherwise. |
+| `loop` | Loops only | `true` when a folder or the file name has the word "loop" in it ([Loops from the path](#loops-from-the-path), 2.2.0+). Left out for everything else — a one-shot. |
 | `duration` | When decoded | Seconds, to two decimals. |
 | `peaks` | Yes | An 8-bit hex string, two lowercase characters per bar (`00`–`ff`). |
 | `waveform` | With `--output` | The URL of the sound's full per-file JSON. |
@@ -129,6 +131,20 @@ The parser errs towards **leaving a value out**: an unknown BPM just isn't filte
 | `Kick_01.wav` | `Kick 01` | — | — |
 
 Names the parser can't read are left with no BPM or key — fill them in afterwards if you know them, or rename the files. WaveformSounds normalises keys again when it reads the manifest, so a hand-written `"F minor"` works too.
+
+## Loops from the path
+
+*2.2.0+.* A sound gets `"loop": true` when a folder or the file name has the word **loop** or **loops** in it; everything else is left unmarked, which [WaveformSounds](/extensions/sounds/features/#loops-and-one-shots) reads as a one-shot. A whole word only, and camelCase is split first:
+
+| Path | `loop` |
+| --- | --- |
+| `Drum Loops/Groove_01.wav` | `true` (the folder) |
+| `Bass_Loop_01.wav` | `true` |
+| `DrumLoop_120.wav` | `true` (camelCase) |
+| `Loopmasters_Kick.wav` | — (inside another word) |
+| `Kick_128.wav` | — (a tempo doesn't make a loop) |
+
+In code, `isLoopPath(rel)` gives the same answer.
 
 ## From code
 

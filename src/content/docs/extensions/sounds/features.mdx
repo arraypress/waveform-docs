@@ -22,7 +22,7 @@ import SoundsDemo from '~/components/SoundsDemo.astro';
 
 ## Search and filters
 
-Above the rows, in order: the search box, a row of controls (type menu, key menu, BPM range, sort menu, Loop toggle), then the type chips and the count.
+Above the rows, in order: the search box, a row of controls (type menu, key menu, BPM range, Loops / One-shots, sort menu, Loop toggle), then the type chips and the count.
 
 - **Search** matches every word, in any order, against the title, type, key and tags — forgiving one typo in a word of four letters or more, so `drun` finds drum loops. A number in the query also matches the BPM exactly: `bass 128` finds 128 BPM bass loops.
 - **Type** — one chip per type, with its count, plus **All**. Past `maxTypeChips` types (default 10) the chips become a **Type** menu instead: a pack has a handful of types, a whole library can have fifty.
@@ -32,7 +32,7 @@ Above the rows, in order: the search box, a row of controls (type menu, key menu
 - **Loop** — loops the current sound (auditioning a loop is the common case). `loop` starts with it on.
 - **The count** — `300 sounds`, or `12 of 300 sounds` while a filter is on. It's an `aria-live` region.
 
-**Every control appears only when the data gives it something to do**: no type filter for a single type, no key menu for a single key, no BPM range without a spread of tempos, no sort order the data can't use (no BPM sort without BPMs), and no Sort menu with only one usable order. And every control can go: `search`, `filters`, `sorts`, `loopToggle`, `showCount` and `columns` remove them one by one. To take BPM out everywhere, leave it out of all three lists:
+**Every control appears only when the data gives it something to do**: no type filter for a single type, no key menu for a single key, no BPM range without a spread of tempos, no Loops / One-shots filter unless the list has both, no sort order the data can't use (no BPM sort without BPMs), and no Sort menu with only one usable order. And every control can go: `search`, `filters`, `sorts`, `loopToggle`, `showCount` and `columns` remove them one by one. To take BPM out everywhere, leave it out of all three lists:
 
 ```js
 new WaveformSounds('#pack', {
@@ -87,7 +87,7 @@ Each row is a list item with a play button (`aria-pressed`, labelled `Play <titl
 `urlState: true` keeps the filters and the sort in the URL, so a filtered list can be shared and survives a refresh:
 
 ```text
-?q=bass&type=Bass+loops&key=Fm&bpm=120-130&sort=bpm
+?q=bass&type=Bass+loops&key=Fm&bpm=120-130&loop=one-shot&sort=bpm
 ```
 
 | Parameter | Holds |
@@ -101,6 +101,22 @@ Each row is a list item with a play button (`aria-pressed`, labelled `Play <titl
 A string prefixes the names, for a page with more than one list: `urlState: 'pack'` reads and writes `pack-q`, `pack-type`, `pack-key`, `pack-bpm` and `pack-sort`. As an attribute, `data-url-state="true"` (or a bare `data-url-state`) is `true`, `"false"` is off, and anything else is the prefix.
 
 The address is rewritten with `history.replaceState` a quarter of a second after a change, so filtering adds no back-button entries; every other parameter and the hash are kept. Values the list can't use — a type it doesn't have, a key no sound is in, a sort it doesn't offer — are ignored, never applied, so a stale link shows the whole list rather than an empty one.
+
+## Loops and one-shots
+
+*0.2.0+.* A sound is a one-shot unless it says otherwise. Mark the loops:
+
+```js
+{ url: '/previews/drums-01.mp3', title: 'Drums 01', bpm: 128, loop: true }
+```
+
+That does three things:
+
+- **A loop icon** beside the name (with "Loop" for screen readers). One-shots carry nothing.
+- **An All / Loops / One-shots filter**, once the list has both kinds — someone hunting for a kick doesn't have to scroll past forty drum loops. It's the `'loop'` entry in [`filters`](/extensions/sounds/options/) (on by default; leave it out to hide the control), and `?loop=loop` / `?loop=one-shot` with [`urlState`](#filters-in-the-address).
+- **The Loop toggle repeats only loops.** A one-shot always plays once, toggle or not.
+
+A list that marks no loops behaves exactly as before: no filter, and the Loop toggle repeats whatever plays. [`waveform-gen --manifest`](/extensions/gen/manifest/#loops-from-the-path) (2.2.0+) sets `loop: true` for files whose folder or name has the word "loop" in it.
 
 ## Downloads
 

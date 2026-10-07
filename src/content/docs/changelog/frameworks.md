@@ -1797,6 +1797,20 @@ Initial release.
 
 ### [Unreleased]
 
+### [0.2.0] — 2026-10-07
+
+#### Changed
+
+- **Requires `@arraypress/waveform-sounds` 0.2.0** (peer `^0.2.0`), which adds
+  loops and one-shots: `loop: true` on a sound, an All / Loops / One-shots
+  filter (`filters` entry `'loop'`), and a Loop toggle that repeats only
+  loops. Nothing to change in this component: the sounds and `filters` pass
+  through as before.
+
+#### Added
+
+- `SoundsLoopFilter` is re-exported with the other types.
+
 ### [0.1.0] — 2026-10-06
 
 #### Added
@@ -1834,6 +1848,20 @@ Initial release.
 ## `@arraypress/waveform-sounds-react`
 
 ### [Unreleased]
+
+### [0.2.0] — 2026-10-07
+
+#### Changed
+
+- **Requires `@arraypress/waveform-sounds` 0.2.0** (peer `^0.2.0`), which adds
+  loops and one-shots: `loop: true` on a sound, an All / Loops / One-shots
+  filter (`filters` entry `'loop'`), and a Loop toggle that repeats only
+  loops. Nothing to change in this component: the sounds and `filters` pass
+  through as before.
+
+#### Added
+
+- `SoundsLoopFilter` is re-exported with the other types.
 
 ### [0.1.0] — 2026-10-06
 
@@ -1902,6 +1930,20 @@ Initial release.
 
 ### [Unreleased]
 
+### [0.2.0] — 2026-10-07
+
+#### Changed
+
+- **Requires `@arraypress/waveform-sounds` 0.2.0** (peer `^0.2.0`), which adds
+  loops and one-shots: `loop: true` on a sound, an All / Loops / One-shots
+  filter (`filters` entry `'loop'`), and a Loop toggle that repeats only
+  loops. Nothing to change in this component: the sounds and `filters` pass
+  through as before.
+
+#### Added
+
+- `SoundsLoopFilter` is re-exported with the other types.
+
 ### [0.1.0] — 2026-10-06
 
 Initial release.
@@ -1957,6 +1999,20 @@ Initial release.
 ## `@arraypress/waveform-sounds-svelte`
 
 ### [Unreleased]
+
+### [0.2.0] — 2026-10-07
+
+#### Changed
+
+- **Requires `@arraypress/waveform-sounds` 0.2.0** (peer `^0.2.0`), which adds
+  loops and one-shots: `loop: true` on a sound, an All / Loops / One-shots
+  filter (`filters` entry `'loop'`), and a Loop toggle that repeats only
+  loops. Nothing to change in this component: the sounds and `filters` pass
+  through as before.
+
+#### Added
+
+- `SoundsLoopFilter` is re-exported with the other types.
 
 ### [0.1.0] — 2026-10-06
 

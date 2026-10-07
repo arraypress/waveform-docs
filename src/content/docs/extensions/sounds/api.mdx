@@ -30,7 +30,7 @@ Calls made before it's built are honoured: `setFilter()` and `setSort()` show in
 | `toggle(target?): void` | The current sound plays / pauses; any other sound starts. |
 | `next(): void` | Play the next **visible** sound (in the current filter and sort), revealing it if it's past the current page. No wrap at the end. |
 | `previous(): void` | Play the previous visible sound. |
-| `setLoop(on: boolean): void` | Loop the current sound (and every sound after it) on or off, and update the Loop toggle. |
+| `setLoop(on: boolean): void` | Loop the current sound (and every sound after it) on or off, and update the Loop toggle. When the list marks its loops, only loops repeat. |
 | `setFilter(patch): void` | Merge `patch` into the current filter and re-apply it; back to the first page. Keys: `query`, `type`, `key`, `bpmMin`, `bpmMax`. The controls are updated to match. |
 | `clearFilters(): void` | Reset every filter. The sort stays. |
 | `setSort(by): void` | Change the order: `'default' \| 'title' \| 'bpm' \| 'key' \| 'duration'` (anything else is `'default'`). |
@@ -57,7 +57,7 @@ A numeric `play(3)` means the fourth sound as given (the manifest or `sounds` or
 | `sounds` | `Sound[]` | Every sound, normalised, in the original order. |
 | `visible` | `Sound[]` | The sounds passing the filter, in sort order (all of them, not only the page shown). A getter. |
 | `current` | `Sound \| null` | The playing or paused sound. A getter. |
-| `filter` | `SoundsFilter` | The current filter: `{ query, type, key, bpmMin, bpmMax }`. |
+| `filter` | `SoundsFilter` | The current filter: `{ query, type, key, bpmMin, bpmMax, loop }`. |
 | `sortBy` | `SoundsSort` | The current order. |
 | `playing` | `boolean` | Whether a sound is playing. |
 | `engine` | `WaveformPlayer \| null` | The engine player — the full [player API](/player/methods/). Built when the list is ready (when a player class is available), else on the first play. |
@@ -157,7 +157,7 @@ The renderer reads the options that shape the markup: `player`, `search`, `filte
 | `normalizeKey(key): string` | Any common key spelling → the short form (`"F minor"` → `Fm`, `"C♯"` → `C#`). Unparseable keys come back trimmed, as given. |
 | `normalizeSounds(list, peakScale = 1): Sound[]` | Normalise a list: drop sounds without a `url`, fill in titles and ids, de-duplicate ids. |
 | `parseManifest(manifest): Sound[]` | Read a manifest object (or a bare array), honouring `peakScale`. |
-| `facets(sounds)` | What the controls would offer: `{ types: {name, count}[], keys: string[], bpm: {min, max} \| null, hasDuration: boolean }`. |
+| `facets(sounds)` | What the controls would offer: `{ types: {name, count}[], keys: string[], bpm: {min, max} \| null, hasDuration: boolean, loops: number, oneShots: number }`. |
 | `matches(sound, filter?): boolean` | Whether a sound passes a filter — the same search and filter rules as the list. |
 | `sortSounds(sounds, by = 'default'): Sound[]` | A sorted copy. Missing values sort last. |
 | `formatDuration(seconds): string` | `m:ss`; tenths under a second (`0.4s`, 0.1.3+); `''` when unknown. |
@@ -176,12 +176,13 @@ The package ships hand-written typings (`index.d.ts`); the framework wrappers de
 | --- | --- |
 | `WaveformSoundsOptions` | Every [option](/extensions/sounds/options/). |
 | `SoundInput` | A sound as given — see [Sound fields](/extensions/sounds/#sound-fields). |
-| `Sound` | A normalised sound: `{ id: string, url: string, title: string, type: string, bpm: number \| null, key: string, duration: number \| null, tags: string[], peaks: number[] \| null, waveform: string \| null, download: string \| null }`. |
+| `Sound` | A normalised sound: `{ id: string, url: string, title: string, type: string, bpm: number \| null, key: string, duration: number \| null, tags: string[], peaks: number[] \| null, waveform: string \| null, download: string \| null, loop: boolean }`. |
 | `SoundsManifest` | `{ version?: number, peakScale?: number, sounds: SoundInput[] }`. |
-| `SoundsFilter` | `{ query: string, type: string, key: string, bpmMin: number \| string, bpmMax: number \| string }`. `''` means "any". |
+| `SoundsFilter` | `{ query: string, type: string, key: string, bpmMin: number \| string, bpmMax: number \| string, loop?: SoundsLoopFilter }`. `''` means "any". |
+| `SoundsLoopFilter` | `'' \| 'loop' \| 'one-shot'` |
 | `SoundsSort` | `'default' \| 'title' \| 'bpm' \| 'key' \| 'duration'` |
 | `SoundsLayout` | `'inline' \| 'strip'` |
-| `SoundsFilterControl` | `'type' \| 'key' \| 'bpm'` |
+| `SoundsFilterControl` | `'type' \| 'key' \| 'bpm' \| 'loop'` |
 | `SoundsColumn` | `'type' \| 'bpm' \| 'key' \| 'duration'` |
 | `WaveformSoundsStrings` | Every [string](/extensions/sounds/strings/). |
 | `WaveformSoundsEventMap` | The `waveformsounds:*` events and their `detail`. |

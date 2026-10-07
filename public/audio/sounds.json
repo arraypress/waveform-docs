@@ -5,6 +5,7 @@
       "url": "/audio/drum-loop.mp3",
       "title": "Drum Loop",
       "type": "Drums",
+      "loop": true,
       "duration": 3.75,
       "peaks": "a585883a912a1508ff8c883f8a4c200aa8848940882b1408eb8988428d4e1f09a2848741942d1507e59b8a418d4d1f09a5858840912b1607bf948b4193291e08"
     },

@@ -184,6 +184,7 @@ A bare array of sounds works too. `version` is informational. `peakScale` is the
 | `peaks` | `string \| number[]` | Low-resolution peaks for the row waveform: an 8-bit hex string (two characters per bar, `00`–`ff`) or numbers `0..1`. Without them the row shows a flat line until it's played. |
 | `waveform` | `string \| number[]` | Full-resolution peaks for the `strip` layout's docked player — a [`waveform-gen`](/extensions/gen/) `.json` URL or an array. |
 | `download` | `string` | An optional download link for this sound. Rows with one get a download button; rows without carry nothing. |
+| `loop` | `boolean` | `true` for a loop; anything else is a one-shot (the default). Loops get a loop icon, a list with both gets a Loops / One-shots filter, and the Loop toggle repeats only loops. 0.2.0+. See [Loops and one-shots](/extensions/sounds/features/#loops-and-one-shots). |
 | `id` | `string` | A stable id for [`play('id')`](/extensions/sounds/api/#public-methods). Defaults to `sound-<n>`, 1-based in list order. A repeated id gets `-2`, `-3`, … appended. |
 
 <Aside type="tip" title="Peaks also save the download">

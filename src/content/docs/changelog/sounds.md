@@ -15,6 +15,43 @@ The Astro, React, Svelte and Vue wrappers (`@arraypress/waveform-sounds-astro`, 
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-07
+
+### Added
+
+- **Loops and one-shots.** A sound can be marked `loop: true`; anything
+  else is a one-shot. Marking loops does three things:
+  - a small loop icon beside the name (with "Loop" for screen readers);
+  - an **All / Loops / One-shots** filter, offered only when the list has
+    both kinds (`filters` entry `'loop'`, on by default; in the address
+    as `?loop=loop` / `?loop=one-shot` with `urlState`);
+  - the Loop toggle repeats only loops. A one-shot always plays once.
+  A list that marks no loops behaves exactly as before.
+- `isLoop()` and `LOOP_FILTERS` in the data module; `facets()` reports
+  `loops` and `oneShots`; four new strings (`loopFilter`, `loops`,
+  `oneShots`, `isLoop`).
+
+### Changed
+
+- The title cell wraps its text in `.ws-title-text` (so a loop's icon can
+  sit after an ellipsised name). Styling `.ws-title` still works.
+
+## [0.1.3] — 2026-10-07
+
+### Fixed
+
+- **Sounds under a second show their length.** `formatDuration` rounded to
+  whole seconds, so a 0.38s one-shot read `0:00` — which looks like a
+  missing length, and one-shots (kicks, hats, single notes) are routinely
+  that short. Under a second it now shows tenths: `0.4s`.
+- **The `strip` player matches a dark page.** Its background fell back to the
+  system `Canvas` colour, which is white on a dark page that doesn't declare
+  `color-scheme: dark` — a white box under a dark list. It now falls back to
+  `--ws-surface` (the measured page surface), as the dropdowns already did.
+- **No stray `·` on a narrow screen.** The mobile meta line put a separator
+  before a cell whenever any cell came first, even an empty one, so a sound
+  with no key read `· 0:08`. It now follows only a cell with content.
+
 ## [0.1.2] — 2026-10-07
 
 ### Fixed
