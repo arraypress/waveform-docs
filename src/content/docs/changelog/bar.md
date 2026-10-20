@@ -13,6 +13,20 @@ Generated from [`@arraypress/waveform-bar`'s CHANGELOG](https://github.com/array
 
 ## [Unreleased]
 
+## [1.12.2] — 2026-10-21
+
+### Fixed
+
+- **The idle bar's controls are no longer focusable while it's hidden.** Before
+  the first track (and after `hide()`), the bar was only slid off-screen and
+  faded, so keyboard users tabbed through invisible play / queue / volume
+  buttons and screen readers still read them. The bar is now `inert` from
+  creation until `show()`, and again on `hide()`, and its hidden state adds
+  `visibility: hidden` with a matching transition, so the slide-out still
+  animates. The queue panel and volume popup were already `visibility: hidden`
+  when closed (now pinned by a test). If your own CSS forces the idle bar on
+  screen, it now also needs `visibility: visible` — or call `show()`.
+
 ## [1.12.1] — 2026-09-24
 
 ### Fixed

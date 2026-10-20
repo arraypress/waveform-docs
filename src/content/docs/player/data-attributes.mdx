@@ -352,7 +352,7 @@ Use single quotes around the attribute so the JSON's double quotes survive in HT
 | `data-seek-label` | `seekLabel` | string (slider accessible name) | `null` |
 | `data-seek-value-text` | `seekValueText` | string (spoken `aria-valuetext` template; `%1$s` current, `%2$s` total) | `null` |
 | `data-play-pause-label` | `playPauseLabel` | string (play button `aria-label`) | `Play/Pause` |
-| `data-speed-label` | `speedLabel` | string (speed button + menu `aria-label`) | `Playback speed` |
+| `data-speed-label` | `speedLabel` | string (speed menu `aria-label`; the button's is the rate + this, e.g. `1.5x Playback speed`) | `Playback speed` |
 
 With `accessibleSeek` on (the default), the waveform becomes a `role=slider` with arrow/page/home/end keyboard seeking. `seekLabel` falls back to the title, then to `"Seek"`. See [Accessibility](/player/accessibility/).
 

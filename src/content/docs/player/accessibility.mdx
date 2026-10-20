@@ -123,12 +123,13 @@ Beyond the slider, the rendered DOM is labelled throughout. Every string is an o
 | Element | CSS class | ARIA | Localize with |
 | --- | --- | --- | --- |
 | Play / pause button | `.waveform-btn` | `aria-label` | `playPauseLabel` (default `"Play/Pause"`) |
-| Speed trigger + menu | `.speed-btn` / `.speed-menu` | `aria-label` | `speedLabel` (default `"Playback speed"`) |
+| Speed trigger | `.speed-btn` | `aria-label` | The visible rate, then `speedLabel` — `"1.5x Playback speed"`, kept in step with the rate (since 1.30.0) |
+| Speed menu | `.speed-menu` | `aria-label` | `speedLabel` (default `"Playback speed"`) |
 | Artwork image | `.waveform-artwork` | `alt` | `artworkAlt` (default `"Album artwork"`) |
-| Cue markers | `.waveform-marker` | `aria-label` | each marker's `label` |
+| Cue markers | `.waveform-marker` | `aria-label` | each marker's `label` and time — `"Chorus, 1:30"`; the time alone when a marker has no label (since 1.30.0) |
 | Error overlay | `.waveform-error` | `role="alert"` | `errorText` (default `"Unable to load audio"`) |
 
-Marker labels come straight from your [`markers`](/player/data-attributes/#markers) data, so give each cue a meaningful `label`. The error overlay text comes from `errorText` (escaped) and is announced live via `role="alert"`.
+Marker labels come straight from your [`markers`](/player/data-attributes/#markers) data, so give each cue a meaningful `label`. The speed button's name starts with the rate it shows, so it satisfies WCAG 2.5.3 (Label in Name) in any language. Markers are buttons, so they are rendered *beside* the seek slider (in `.waveform-surface`, overlaid on the waveform), never inside it — a control nested in `role="slider"` is unreachable to assistive tech (WCAG 4.1.2). The error overlay text comes from `errorText` (escaped) and is announced live via `role="alert"`.
 
 ## Localizing the interface
 
@@ -137,7 +138,7 @@ All screen-reader / lock-screen text is exposed as options so you can translate 
 | Option | Default | Where it is announced |
 | --- | --- | --- |
 | `playPauseLabel` | `'Play/Pause'` | Play button `aria-label` |
-| `speedLabel` | `'Playback speed'` | Speed button + menu `aria-label` |
+| `speedLabel` | `'Playback speed'` | Speed menu `aria-label`; the speed button's, after the rate (`"1.5x Playback speed"`) |
 | `artworkAlt` | `'Album artwork'` | Artwork image `alt` |
 | `errorText` | `'Unable to load audio'` | `role="alert"` error overlay |
 | `seekValueText` | `'%1$s of %2$s'` | Seek slider spoken `aria-valuetext` |

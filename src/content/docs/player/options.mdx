@@ -263,7 +263,7 @@ new WaveformPlayer('#player', {
 | `seekLabel` | `null` | `string \| null` | Slider accessible name; falls back to `title`, then `'Seek'`. `data-seek-label`. |
 | `seekValueText` | `null` | `string \| null` | Template for the slider's spoken `aria-valuetext`; `%1$s` is the current time, `%2$s` the total (both `M:SS`). Sequential `%s` and reordered positional args supported. Falls back to `'%1$s of %2$s'`. `data-seek-value-text`. |
 | `playPauseLabel` | `'Play/Pause'` | `string` | Play button `aria-label` (screen-reader name). Localize for non-English UIs. `data-play-pause-label`. |
-| `speedLabel` | `'Playback speed'` | `string` | Speed button + menu `aria-label`. Localize for non-English UIs. `data-speed-label`. |
+| `speedLabel` | `'Playback speed'` | `string` | Speed menu `aria-label`, and the speed button's after its visible rate (`"1.5x Playback speed"`, since 1.30.0). Localize for non-English UIs. `data-speed-label`. |
 
 :::tip[Keyboard seeking]
 With `accessibleSeek` (the default), the waveform is focusable and keyboard-seekable: Arrows &plusmn;5s, PageUp/PageDown &plusmn;10s, Home/End to the edges, digits 0–9 jump to tenths, and Space toggles playback. See [Accessibility](/player/accessibility/).
